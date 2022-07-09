@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <insert id="insert_log">
+        insert into `log`(`user`, `category`, `ip`, `city`, `date`) values (#{log.user},#{log.category},#{log.ip},#{log.city}, now());
+    </insert>
+
+    <select id="select_one">
+        select `id`,`user`, `category`, `ip`, `city`, `date` from `log`
+        <where>
+            <if test="log.id != 0">
+                and `id` = #{log.id}
+            </if>
+            <if test="log.user != ''">
+                and `user` = #{log.user}
+            </if>
+            <if test="log.category != ''">
+                and `category` = #{log.category}
+            </if>
+        </where>
+        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
+        <trim prefix=" " suffix=";">
+            order by id limit #{log.id}
+        </trim>
+    </select>
+
+    <select id="select_page">
+        select `id`,`user`, `category`, `ip`, `city`, `date` from `log`
+        <where>
+            <if test="log.id != 0">
+                and `id` = #{log.id}
+            </if>
+            <if test="log.user != ''">
+                and `user` = #{log.user}
+            </if>
+            <if test="log.category != ''">
+                and `category` = #{log.category}
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
+        <trim prefix=" " suffix=";">
+            order by id desc limit #{extend.page_no},#{extend.page_size}
+        </trim>
+    </select>
+
+    <select id="select_count">
+        select count(1) from `log`
+        <where>
+            <if test="log.id != 0">
+                and `id` = #{log.id}
+            </if>
+            <if test="log.user != ''">
+                and `user` = #{log.user}
+            </if>
+            <if test="log.category != ''">
+                and `category` = #{log.category}
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+    </select>
+
+</mapper>

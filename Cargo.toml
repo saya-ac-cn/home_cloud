@@ -1,0 +1,47 @@
+[package]
+name = "home_cloud"
+version = "0.1.0"
+authors = ["saya <saya@saya.ac.cn>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+#rbatis orm dep must use async-std(Because actix-web relies on tokio0.2)
+rbson = "2.0"
+#为保证每次执行要重新加载html文件，需要启用Cargo.toml里面 rbatis = { ......  , features=["debug_mode"]}, 但是发布生产环境请删除features=["debug_mode"]
+rbatis = { version = "3.0", default-features = false, features = ["mysql","runtime-async-std-rustls","debug_mode"] }
+#must use async-std(Because actix-web relies on tokio0.2)
+async-std = "1.10"
+#serde and json
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.8"
+# 日期时间库
+chrono = { version = "0.4", features = ["serde"] }
+#static
+lazy_static = "1.4.0"
+#log
+log = "0.4"
+fast_log = { version="1.4.16", features = ["lz4","zip", "gzip"]}
+#futures
+futures = "0.3"
+#web server
+actix-web = "3.3"
+actix-http = "2.2"
+#jwt
+jsonwebtoken = "7"
+#snowflake
+rustflake = "0.1.0"
+md5 = "0.7.0"
+#captcha
+captcha = "0.0.8"
+#http client,use rust-tls replace to native tls
+reqwest = { version = "0.11",default-features = false, features = ["json","rustls-tls"] }
+#image code
+image = "0.23"
+#async trait
+async-trait = "0.1"
+#map
+indexmap = "1.7.0"
+once_cell = "1.9"
+
