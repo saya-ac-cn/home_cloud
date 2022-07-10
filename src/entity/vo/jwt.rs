@@ -1,20 +1,52 @@
+use actix_http::http::HeaderValue;
 use crate::error::Error;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation, Algorithm};
 use serde::{Deserialize, Serialize};
+use crate::service::CONTEXT;
 
 /// JWT 鉴权 Token结构
 #[derive(Debug, Serialize, Deserialize, Clone,Eq, PartialEq)]
 pub struct JWTToken {
-    //账号
+    /// 账号
     pub account: String,
-    //姓名
+    /// 姓名
     pub name: String,
-    //过期时间
+    /// 登录ip
+    pub ip: String,
+    /// 登录城市
+    pub city: String,
+    /// 过期时间
     pub exp: usize,
 }
 
 impl JWTToken {
+    /// extract token detail
+    /// secret: your secret string
+    pub fn extract_token(token:&String) -> Result<JWTToken, Error> {
+        let token = JWTToken::verify(&CONTEXT.config.jwt_secret, token);
+        if token.is_err() {
+            return Err(Error::from(format!("access_token is invalid!")));
+        }
+        let user_data = token.unwrap();
+        return Ok(user_data);
+    }
+
+    /// extract token detail
+    /// secret: your secret string
+    pub fn extract_token_by_header(token:Option<&HeaderValue>) -> Result<JWTToken, Error> {
+        return match token {
+            Some(token) => {
+                let token = token.to_str().unwrap_or("");
+                JWTToken::extract_token(&token.to_string())
+            }
+            _ => {
+                Err(Error::from(format!("access_token is empty!")))
+            }
+        }
+    }
+
+
     /// create token
     /// secret: your secret string
     pub fn create_token(&self, secret: &str) -> Result<String, Error> {
@@ -32,7 +64,7 @@ impl JWTToken {
     pub fn verify(secret: &str, token: &str) -> Result<JWTToken, Error> {
         let validation = Validation {
             //..Validation::default()
-            leeway: 1800,// 过期时间，单位秒
+            leeway: 1800,// 过期时间(30分钟)，单位秒
             validate_exp: true,
             validate_nbf: false,
             iss: None,
@@ -67,6 +99,8 @@ mod test {
         let j = JWTToken {
             account: "189".to_string(),
             name: "1".to_string(),
+            ip:String::from("127.0.0.1"),
+            city:String::from("局域网"),
             exp: DateTimeNative::now().timestamp() as usize,
         };
         sleep(Duration::from_secs(5));

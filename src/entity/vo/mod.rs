@@ -2,6 +2,7 @@ pub mod jwt;
 pub mod sign_in;
 pub mod user;
 pub mod log;
+pub mod log_type;
 
 pub use jwt::*;
 pub use sign_in::*;

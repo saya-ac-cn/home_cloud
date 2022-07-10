@@ -49,10 +49,12 @@ async fn main() -> std::io::Result<()> {
                     .service(user_controller::detail)
                     .service(user_controller::remove)
                     .service(user_controller::page)
+                    .service(user_controller::own_organize_user)
             )
             .service(
                 web::scope("/backend/log")
                     .service(log_controller::page)
+                    .service(log_controller::query_log_type)
             )
             .route(
                 "/admin/resource/upload",

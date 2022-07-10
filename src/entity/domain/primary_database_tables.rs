@@ -76,6 +76,14 @@ pub struct Log{
 }
 impl_field_name_method!(Log{id,user,category,ip,city,date});
 
+#[crud_table(table_name:log_type)]
+#[derive(Clone, Debug)]
+pub struct LogType{
+    pub category:Option<String>,
+    pub describe:Option<String>,
+}
+impl_field_name_method!(LogType{category,describe});
+
 
 ///文件资源表
 #[crud_table(table_name:resource)]

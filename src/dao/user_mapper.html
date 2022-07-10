@@ -105,4 +105,8 @@
         </where>
     </select>
 
+    <select id="select_own_organize_user">
+        select b.`account`,b.`name` from (select `organize_id` from `user` where account = #{account}) a left join `user` b on a.`organize_id`=b.`organize_id`;
+    </select>
+
 </mapper>

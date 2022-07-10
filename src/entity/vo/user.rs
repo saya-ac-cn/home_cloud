@@ -41,6 +41,15 @@ pub struct UserVO {
 }
 impl_field_name_method!(UserVO{account,name,password,sex,qq,email,phone,birthday,hometown,autograph,logo,background,organize_id,state,create_time,update_time});
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UserOwnOrganizeVO {
+    /// 用户名
+    pub account: Option<String>,
+    /// 姓名
+    pub name: Option<String>
+}
+
+
 impl From<User> for UserVO {
     fn from(arg: User) -> Self {
         Self {

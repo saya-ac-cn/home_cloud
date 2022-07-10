@@ -1,8 +1,11 @@
 use log::error;
 use crate::dao::log_mapper::LogMapper;
+use crate::dao::log_type_mapper::LogTypeMapper;
+use crate::entity::domain::LogType;
 use crate::entity::dto::{ExtendPageDTO};
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::vo::log::LogVO;
+use crate::entity::vo::log_type::LogTypeVO;
 use crate::util::Page;
 use crate::service::CONTEXT;
 use crate::error::Error;
@@ -11,6 +14,16 @@ use crate::error::Result;
 pub struct LogService {}
 
 impl LogService {
+
+    /// 日志类别列表
+    pub async fn query_log_type(&self) -> Result<Vec<LogTypeVO>> {
+        let query_result = LogTypeMapper::select_all(&mut CONTEXT.primary_rbatis.as_executor()).await;
+        if query_result.is_err() {
+            error!("在查询日志类型列表时，发生异常:{}",query_result.unwrap_err());
+            return Err(Error::from(format!("查询日志类型列表异常")));
+        }
+        return Ok(query_result.unwrap().unwrap());
+    }
 
     /// 日志分页
     pub async fn page(&self, arg: &LogPageDTO) -> Result<Page<LogVO>>  {

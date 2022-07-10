@@ -6,12 +6,13 @@ use rbatis::core::value::DateTimeNow;
 use rbatis::crud::{CRUD, CRUDMut};
 use crate::entity::domain::{LoginCheck, User};
 use crate::entity::dto::{ExtendPageDTO, UserDTO, UserPageDTO};
-use crate::entity::vo::user::UserVO;
+use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::entity::vo::{JWTToken, SignInVO};
 use crate::util::password_encoder::PasswordEncoder;
 use rbatis::plugin::object_id::ObjectId;
 use std::collections::BTreeMap;
 use std::time::Duration;
+use actix_web::HttpRequest;
 use log::error;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use rbatis::executor::ExecutorMut;
@@ -106,7 +107,7 @@ pub struct UserService {}
     }
 
     ///登录后台
-    pub async fn login(&self, arg: &SignInDTO) -> Result<SignInVO>  {
+    pub async fn login(&self,req: &HttpRequest, arg: &SignInDTO) -> Result<SignInVO>  {
         if arg.account.is_none()
             || arg.account.as_ref().unwrap().is_empty()
             || arg.password.is_none()
@@ -136,15 +137,28 @@ pub struct UserService {}
             /// TODO 这里还应该设置失败锁
             return Err(error.unwrap())
         }
-        let sign_in_vo = self.get_user_info(&user).await?;
-        LogMapper::record_log(&CONTEXT.primary_rbatis,String::from("OX001")).await;
+        let sign_in_vo = self.get_user_info(req,&user).await?;
+        // 通过上面生成的token，完整记录日志
+        let extract_result = &JWTToken::extract_token(&sign_in_vo.access_token);
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&extract_result.clone().unwrap(),String::from("OX001")).await;
         return Ok(sign_in_vo);
     }
 
      // 生成用户jwt并返回
-     pub async fn get_user_info(&self, user: &User) -> Result<SignInVO> {
+     pub async fn get_user_info(&self,req: &HttpRequest, user: &User) -> Result<SignInVO> {
          //去除密码，增加安全性
          let mut user = user.clone();
+         let mut ip = req.peer_addr().unwrap().ip().to_string();
+         // if req.peer_addr().is_some() {
+         //     ip = req.peer_addr().unwrap().ip().to_string();
+         // } else if req.connection_info().remote_addr().is_some(){
+         //     ip = req.connection_info().remote_addr().unwrap().parse().unwrap();
+         // }else if req.connection_info().realip_remote_addr().is_some() {
+         //     ip = req.connection_info().realip_remote_addr().unwrap().parse().unwrap()
+         // }
+         // println!("remote_addr{:?}",req.peer_addr().unwrap().ip().to_string());
+         // println!("remote_addr{:?}",req.connection_info().remote_addr().unwrap());
+         // println!("realip_remote_addr{:?}",req.connection_info().realip_remote_addr().unwrap());
          user.password = None;
          let mut sign_vo = SignInVO {
              user: Some(user.clone().into()),
@@ -153,6 +167,8 @@ pub struct UserService {}
          let jwt_token = JWTToken {
              account: user.account.unwrap_or_default(),
              name: user.name.clone().unwrap_or_default(),
+             ip,
+             city:String::from("云南西双版纳"),
              exp: DateTimeNative::now().timestamp() as usize,// 时间和校验的时候保持一致，统一秒
          };
          sign_vo.access_token = jwt_token.create_token(&CONTEXT.config.jwt_secret)?;
@@ -161,22 +177,30 @@ pub struct UserService {}
 
 
     /// 通过token获取用户信息
-    pub async fn get_user_info_by_token(&self, token: &JWTToken) -> Result<SignInVO> {
-        let user: Option<User> = CONTEXT
-            .primary_rbatis
-            .fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &token.account))
-            .await?;
-        let user = user.ok_or_else(|| Error::from(format!("账号:{} 不存在!", token.account)))?;
-        return self.get_user_info(&user).await;
+    pub async fn get_user_info_by_token(&self, req: &HttpRequest) -> Result<SignInVO> {
+        let token = req.headers().get("access_token");
+        let extract_result = &JWTToken::extract_token_by_header(token);
+        match extract_result {
+            Ok(token) => {
+                let user: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &token.account)).await?;
+                let user = user.ok_or_else(|| Error::from(format!("账号:{} 不存在!", token.account)))?;
+                return self.get_user_info(req,&user).await;
+            }
+            Err(e) => {
+                return Err(crate::error::Error::from(e.to_string()));
+            }
+        }
     }
 
     /// 登出后台
-    pub async fn logout(&self) {
-        LogMapper::record_log(&CONTEXT.primary_rbatis,String::from("OX002")).await;
+    pub async fn logout(&self,req: &HttpRequest) {
+        let token = req.headers().get("access_token");
+        LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX002")).await;
     }
 
     /// 修改用户信息
-    pub async fn edit(&self, arg: &UserDTO) -> Result<u64> {
+    pub async fn edit(&self,req: &HttpRequest, arg: &UserDTO) -> Result<u64> {
+        let token = req.headers().get("access_token");
         if arg.account.is_none() || arg.account.as_ref().unwrap().is_empty() {
             return Err(Error::from("账号account不能为空!"));
         }
@@ -207,7 +231,7 @@ pub struct UserService {}
             error!("在修改用户{}的信息时，发生异常:{}",arg.account.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from(format!("修改账户[{}]信息失败!", arg.account.as_ref().unwrap())));
         }
-        LogMapper::record_log(&CONTEXT.primary_rbatis,String::from("OX003")).await;
+        LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX003")).await;
         Ok(result.unwrap().rows_affected)
     }
 
@@ -228,4 +252,22 @@ pub struct UserService {}
         return Ok(user_vo);
     }
 
+     /// 获取当前用户所在组织的用户列表
+     pub async fn get_own_organize_user(&self, req: &HttpRequest) -> Result<Vec<UserOwnOrganizeVO>> {
+         let token = req.headers().get("access_token");
+         let extract_result = &JWTToken::extract_token_by_header(token);
+         match extract_result {
+             Ok(token) => {
+                 let query_result = UserMapper::select_own_organize_user(&mut CONTEXT.primary_rbatis.as_executor(),&token.account).await;
+                 if query_result.is_err() {
+                     error!("在查询用户所属组织下的用户列表时，发生异常:{}",query_result.unwrap_err());
+                     return Err(Error::from(format!("查询我所属组织的用户列表异常")));
+                 }
+                 return Ok(query_result.unwrap().unwrap());
+             }
+             Err(e) => {
+                 return Err(crate::error::Error::from(e.to_string()));
+             }
+         }
+     }
 }
