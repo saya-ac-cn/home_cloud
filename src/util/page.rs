@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::entity::dto::ExtendPageDTO;
+use crate::entity::dto::page::ExtendPageDTO;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Page<T> {

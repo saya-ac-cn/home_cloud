@@ -1,20 +1,13 @@
 /// 服务层
 ///
-/// 系统配置服务
-mod sys_config_service;
 /// 系统用户服务
 mod user_service;
-/// 文件资源服务
-mod resource_service;
 /// 日子相关服务
 mod log_service;
 
-use actix_web::test::config;
 use rbatis::rbatis::Rbatis;
 pub use crate::config::config::ApplicationConfig;
-pub use sys_config_service::*;
 pub use user_service::*;
-pub use resource_service::*;
 pub use log_service::*;
 use crate::dao::DataSource;
 
@@ -24,7 +17,6 @@ pub struct ServiceContext {
     pub financial_rbatis: Rbatis,
     pub user_service: UserService,
     pub log_service: LogService,
-    pub resource_service: ResourceService
 }
 
 impl Default for ServiceContext {
@@ -58,13 +50,12 @@ impl Default for ServiceContext {
             }),
             user_service: UserService {},
             log_service: LogService {},
-            resource_service: ResourceService {},
             config,
         }
     }
 }
 
-/// 在lazy_static! { //your code} 中的代码并不会在编译时初始化静态量，它会在首次调用时，执行代码，来初始化。也就是所谓的延迟计算。
+// 在lazy_static! { //your code} 中的代码并不会在编译时初始化静态量，它会在首次调用时，执行代码，来初始化。也就是所谓的延迟计算。
 lazy_static! {
     pub static ref CONTEXT: ServiceContext = ServiceContext::default();
 }

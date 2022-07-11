@@ -1,15 +1,14 @@
 use actix_http::http::HeaderValue;
 use rbatis::crud::CRUD;
 use rbatis::rbatis::Rbatis;
-use rbatis::executor::{RbatisRef, RBatisTxExecutor, ExecutorMut, RbatisExecutor};
+use rbatis::executor::{RbatisExecutor};
 use rbatis::db::DBExecResult;
 use rbatis::{DateTimeNative, Error};
-use crate::entity::domain::Log;
-use crate::entity::dto::{ExtendPageDTO};
+use crate::entity::domain::primary_database_tables::Log;
 use crate::entity::dto::log::LogPageDTO;
+use crate::entity::dto::page::ExtendPageDTO;
+use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::log::LogVO;
-use actix_web::{HttpRequest};
-use crate::entity::vo::JWTToken;
 
 pub struct LogMapper{}
 

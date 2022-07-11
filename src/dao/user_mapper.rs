@@ -1,10 +1,11 @@
 use rbatis::crud::CRUD;
 use rbatis::rbatis::Rbatis;
-use crate::entity::domain::User;
-use rbatis::executor::{RbatisRef, RBatisTxExecutor, ExecutorMut, RbatisExecutor};
+use rbatis::executor::{RbatisExecutor};
 use rbatis::db::DBExecResult;
-use crate::entity::dto::{ExtendPageDTO, UserPageDTO};
+use crate::entity::dto::page::ExtendPageDTO;
+use crate::entity::dto::user::UserPageDTO;
 use crate::entity::vo::user::UserOwnOrganizeVO;
+use crate::entity::domain::primary_database_tables::User;
 
 pub struct UserMapper{}
 

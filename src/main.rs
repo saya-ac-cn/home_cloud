@@ -1,4 +1,4 @@
-use home_cloud::controller::{user_controller, resource_controller, log_controller};
+use home_cloud::controller::{user_controller, log_controller};
 use home_cloud::service::CONTEXT;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use log::info;
@@ -55,10 +55,6 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/backend/log")
                     .service(log_controller::page)
                     .service(log_controller::query_log_type)
-            )
-            .route(
-                "/admin/resource/upload",
-                web::post().to(resource_controller::add),
             )
     })
     .bind(&CONTEXT.config.server_url)?

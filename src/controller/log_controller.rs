@@ -1,8 +1,7 @@
 use actix_web::{web,get, Responder};
 use crate::entity::dto::log::LogPageDTO;
-use crate::entity::vo::{JWTToken, RespVO};
+use crate::entity::vo::{RespVO};
 use crate::service::CONTEXT;
-use crate::util::{NOT_PARAMETER};
 
 /// 获取日志类别列表
 #[get("/type")]

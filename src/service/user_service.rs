@@ -2,24 +2,21 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::service::CONTEXT;
 use rbatis::DateTimeNative;
-use rbatis::core::value::DateTimeNow;
-use rbatis::crud::{CRUD, CRUDMut};
-use crate::entity::domain::{LoginCheck, User};
-use crate::entity::dto::{ExtendPageDTO, UserDTO, UserPageDTO};
+use rbatis::crud::{CRUD};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
-use crate::entity::vo::{JWTToken, SignInVO};
 use crate::util::password_encoder::PasswordEncoder;
-use rbatis::plugin::object_id::ObjectId;
-use std::collections::BTreeMap;
-use std::time::Duration;
 use actix_web::HttpRequest;
 use log::error;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
-use rbatis::executor::ExecutorMut;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::user_mapper::UserMapper;
+use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::dto::sign_in::SignInDTO;
+use crate::entity::dto::user::{UserDTO, UserPageDTO};
+use crate::entity::vo::jwt::JWTToken;
+use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
+use crate::entity::domain::primary_database_tables::User;
 
 /// 用户服务
 pub struct UserService {}
@@ -134,7 +131,7 @@ pub struct UserService {}
             error = Some(Error::from("密码不正确!"));
         }
         if error.is_some(){
-            /// TODO 这里还应该设置失败锁
+            // TODO 这里还应该设置失败锁
             return Err(error.unwrap())
         }
         let sign_in_vo = self.get_user_info(req,&user).await?;
@@ -148,7 +145,7 @@ pub struct UserService {}
      pub async fn get_user_info(&self,req: &HttpRequest, user: &User) -> Result<SignInVO> {
          //去除密码，增加安全性
          let mut user = user.clone();
-         let mut ip = req.peer_addr().unwrap().ip().to_string();
+         let ip = req.peer_addr().unwrap().ip().to_string();
          // if req.peer_addr().is_some() {
          //     ip = req.peer_addr().unwrap().ip().to_string();
          // } else if req.connection_info().remote_addr().is_some(){
@@ -248,7 +245,7 @@ pub struct UserService {}
     pub async fn detail(&self, arg: &UserDTO) -> Result<UserVO> {
         let account = arg.account.clone().unwrap_or_default();
         let user = UserMapper::find_by_account(&CONTEXT.primary_rbatis,&account).await?.ok_or_else(|| Error::from(format!("用户:{} 不存在！", account)))?;
-        let mut user_vo = UserVO::from(user);
+        let user_vo = UserVO::from(user);
         return Ok(user_vo);
     }
 

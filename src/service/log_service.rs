@@ -1,9 +1,8 @@
 use log::error;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
-use crate::entity::domain::LogType;
-use crate::entity::dto::{ExtendPageDTO};
 use crate::entity::dto::log::LogPageDTO;
+use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::log::LogVO;
 use crate::entity::vo::log_type::LogTypeVO;
 use crate::util::Page;

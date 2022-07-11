@@ -1,6 +1,5 @@
-use crate::entity::domain::{User};
 use serde::{Deserialize, Serialize};
-use crate::entity::dto::UserDTO;
+use crate::entity::domain::primary_database_tables::User;
 use crate::util::date_time::DateTimeUtil;
 
 /// 用户展示层

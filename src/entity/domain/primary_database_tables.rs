@@ -1,6 +1,5 @@
-use crate::entity::domain::LoginCheck;
 use rbatis::DateTimeNative;
-use crate::entity::dto::UserPageDTO;
+use crate::entity::dto::user::UserPageDTO;
 
 
 #[crud_table(table_name:user)]
@@ -83,18 +82,3 @@ pub struct LogType{
     pub describe:Option<String>,
 }
 impl_field_name_method!(LogType{category,describe});
-
-
-///文件资源表
-#[crud_table(table_name:resource)]
-#[derive(Clone, Debug)]
-pub struct Resource {
-    pub id: Option<u64>,//资源id,
-    pub name: Option<String>,//资源名称,
-    pub suffix: Option<String>,// '资源扩展',
-    pub size: Option<u64>,//文件大小,
-    pub del: Option<i32>,
-    pub create_user: Option<String>,//拥有者,
-    pub create_time: Option<DateTimeNative>,//上传时间
-}
-impl_field_name_method!(Resource{id,name,suffix,size,del,create_user,create_time});

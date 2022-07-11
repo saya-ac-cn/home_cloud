@@ -24,35 +24,41 @@
     </select>
 
     <select id="select_page">
-        select `id`,`user`, `category`, `ip`, `city`, `date` from `log`
+        select a.`id`,a.`user`, a.`category`, a.`ip`, a.`city`, a.`date`,b.`describe` as detail from `log` a left join `log_type` b on a.`category` = b.`category`
         <where>
-            <if test="log.id != 0">
-                and `id` = #{log.id}
+            <if test="!log.organize.is_empty()">
+                a.`user` in
+                <foreach collection="log.organize" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
             </if>
-            <if test="log.user != ''">
-                and `user` = #{log.user}
+            <if test="log.id != 0">
+                and a.`id` = #{log.id}
             </if>
             <if test="log.category != ''">
-                and `category` = #{log.category}
+                and a.`category` = #{log.category}
             </if>
             <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and `date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+                and a.`date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
             </if>
         </where>
         <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
         <trim prefix=" " suffix=";">
-            order by id desc limit #{extend.page_no},#{extend.page_size}
+            order by a.`id` desc limit #{extend.page_no},#{extend.page_size}
         </trim>
     </select>
 
     <select id="select_count">
         select count(1) from `log`
         <where>
+            <if test="!log.organize.is_empty()">
+                `user` in
+                <foreach collection="log.organize" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
             <if test="log.id != 0">
                 and `id` = #{log.id}
-            </if>
-            <if test="log.user != ''">
-                and `user` = #{log.user}
             </if>
             <if test="log.category != ''">
                 and `category` = #{log.category}

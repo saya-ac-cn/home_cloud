@@ -1,4 +1,3 @@
-use crate::entity::domain::LoginCheck;
 use serde::{Deserialize, Serialize};
 
 /// 用户通用数据传输层

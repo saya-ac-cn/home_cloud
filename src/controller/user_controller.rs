@@ -1,6 +1,6 @@
 use actix_web::{web,get,post,put,delete, HttpRequest, Responder};
-use crate::entity::dto::{UserDTO, UserPageDTO};
 use crate::entity::dto::sign_in::SignInDTO;
+use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::{RespVO};
 use crate::service::CONTEXT;
 
@@ -41,19 +41,19 @@ pub async fn update(req: HttpRequest,arg: web::Json<UserDTO>) -> impl Responder 
 
 /// 删除用户
 #[delete("/{user}")]
-pub async fn remove(path: web::Path<(String)>) -> impl Responder {
-    let (user) = path.into_inner();
+pub async fn remove(path: web::Path<String>) -> impl Responder {
+    let user = path.into_inner();
     let vo = CONTEXT.user_service.remove(&user).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 获取指定用户详情
 #[get("/detail/{user}")]
-pub async fn detail(path: web::Path<(String)>) -> impl Responder {
-    let (user) = path.into_inner();
-    let mut userDTO = UserDTO::empty();
-    userDTO.account = Some(user);
-    let vo = CONTEXT.user_service.detail(&userDTO).await;
+pub async fn detail(path: web::Path<String>) -> impl Responder {
+    let user = path.into_inner();
+    let mut user_dto = UserDTO::empty();
+    user_dto.account = Some(user);
+    let vo = CONTEXT.user_service.detail(&user_dto).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
