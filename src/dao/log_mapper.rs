@@ -1,4 +1,4 @@
-use actix_http::http::HeaderValue;
+use actix_http::header::HeaderValue;
 use rbatis::crud::CRUD;
 use rbatis::rbatis::Rbatis;
 use rbatis::executor::{RbatisExecutor};

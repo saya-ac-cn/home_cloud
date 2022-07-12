@@ -2,25 +2,26 @@ use std::cell::RefCell;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
-
-use actix_web::dev::{Body, Service, ServiceRequest, ServiceResponse, Transform};
-use actix_web::http::HeaderValue;
+use actix_http::header::HeaderValue;
+use actix_web::body::BoxBody;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse, Transform};
 use actix_web::{error, Error};
-use futures::future::{ok, Ready};
-use futures::Future;
+use futures_util::future::{ok, Ready};
+use futures_util::Future;
+
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::RespVO;
-
 use crate::service::CONTEXT;
+use crate::util::NOT_CHECKING;
+
 pub struct Auth;
-use crate::util::{NOT_CHECKING};
-impl<S> Transform<S> for Auth
-where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<Body>, Error = Error> + 'static,
-    S::Future: 'static,
+
+impl<S> Transform<S, ServiceRequest>for Auth
+    where
+        S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
+        S::Future: 'static,
 {
-    type Request = ServiceRequest;
-    type Response = ServiceResponse<Body>;
+    type Response = ServiceResponse<BoxBody>;
     type Error = Error;
     type Transform = AuthMiddleware<S>;
     type InitError = ();
@@ -37,21 +38,20 @@ pub struct AuthMiddleware<S> {
     service: Rc<RefCell<S>>,
 }
 
-impl<S> Service for AuthMiddleware<S>
-where
-    S: Service<Request = ServiceRequest, Response = ServiceResponse<Body>, Error = Error> + 'static,
-    S::Future: 'static,
+impl<S> Service<ServiceRequest> for AuthMiddleware<S>
+    where
+        S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error> + 'static,
+        S::Future: 'static,
 {
-    type Request = ServiceRequest;
-    type Response = ServiceResponse<Body>;
+    type Response = ServiceResponse<BoxBody>;
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(&self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
         let mut svc = self.service.clone();
         Box::pin(async move {
             let value = HeaderValue::from_str("").unwrap();

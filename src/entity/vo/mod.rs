@@ -66,7 +66,7 @@ impl<T> RespVO<T>
         }
     }
 
-    pub fn resp_json(&self) -> Response {
+    pub fn resp_json(&self) -> HttpResponse {
         if CONTEXT.config.debug {
             println!("[home_cloud][debug] resp:{}", self.to_string());
         }

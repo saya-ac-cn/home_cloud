@@ -1,4 +1,4 @@
-use actix_http::http::HeaderValue;
+use actix_http::header::HeaderValue;
 use crate::error::Error;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation, Algorithm};

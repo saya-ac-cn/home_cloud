@@ -1,4 +1,5 @@
-use actix_web::{web,get,post,put,delete, HttpRequest, Responder};
+use actix_multipart::Multipart;
+use actix_web::{web, get, post, put, delete, HttpRequest, Responder};
 use crate::entity::dto::sign_in::SignInDTO;
 use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::{RespVO};
@@ -70,3 +71,20 @@ pub async fn own_organize_user(req: HttpRequest) -> impl Responder {
     let user_data = CONTEXT.user_service.get_own_organize_user(&req).await;
     return RespVO::from_result(&user_data).resp_json();
 }
+
+/// 上传logo
+#[post("/logo/{user}")]
+pub async fn upload_logo(path: web::Path<String>,payload: Multipart) -> impl Responder {
+    let user = path.into_inner();
+    println!("user:{}",user);
+    let vo = CONTEXT.user_service.upload_logo(payload).await;
+    let aaa:RespVO<String> = RespVO{code:Some(0), msg: None, data: None };
+    return aaa.resp_json();
+}
+
+// #[post("/logo")]
+// pub async fn upload_logo(form: web::Form<SignInDTO>) -> impl Responder {
+//     println!("from data:{:?}",form);
+//     let aaa:RespVO<String> = RespVO{code:Some(0), msg: None, data: None };
+//     return aaa.resp_json();
+// }
