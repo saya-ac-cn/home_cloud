@@ -39,6 +39,13 @@ pub async fn update(req: HttpRequest,arg: web::Json<UserDTO>) -> impl Responder 
     return RespVO::from_result(&vo).resp_json();
 }
 
+/// 修改密码
+#[put("/password")]
+pub async fn update_password(req: HttpRequest,arg: web::Json<UserDTO>) -> impl Responder {
+    let vo = CONTEXT.user_service.update_password(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
 
 /// 删除用户
 #[delete("/{user}")]

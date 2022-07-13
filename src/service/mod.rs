@@ -4,11 +4,14 @@
 mod user_service;
 /// 日子相关服务
 mod log_service;
+/// 文件资源服务
+mod file_service;
 
 use rbatis::rbatis::Rbatis;
 pub use crate::config::config::ApplicationConfig;
 pub use user_service::*;
 pub use log_service::*;
+pub use file_service::*;
 use crate::dao::DataSource;
 
 pub struct ServiceContext {

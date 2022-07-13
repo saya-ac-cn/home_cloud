@@ -40,29 +40,6 @@ pub struct User {
 }
 impl_field_name_method!(User{account,name,password,sex,qq,email,phone,birthday,hometown,autograph,logo,background,organize_id,state,create_time,update_time});
 
-impl From<UserPageDTO> for User {
-    fn from(arg: UserPageDTO) -> Self {
-        Self{
-            account:arg.account,
-            name: arg.name,
-            password: None,
-            sex: None,
-            qq: None,
-            email: arg.email,
-            phone: arg.phone,
-            birthday: None,
-            hometown: None,
-            autograph: None,
-            logo: None,
-            background: None,
-            organize_id: arg.organize_id,
-            state: arg.state,
-            create_time: None,
-            update_time: None
-        }
-    }
-}
-
 #[crud_table(table_name:log)]
 #[derive(Clone, Debug)]
 pub struct Log{

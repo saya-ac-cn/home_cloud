@@ -270,6 +270,42 @@ pub struct UserService {}
          }
      }
 
+     /// 修改用户信息
+     pub async fn update_password(&self,req: &HttpRequest, arg: &UserDTO) -> Result<u64> {
+         let token = req.headers().get("access_token");
+         if arg.password.is_none() || arg.password.as_ref().unwrap().is_empty() {
+             return Err(Error::from("密码不能为空!"));
+         }
+         // 首先判断要修改的用户是否存在
+         let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account)).await?;
+         let  user_exist = user_option.ok_or_else(|| Error::from(format!("用户:{} 不存在!", &arg.account.clone().unwrap())))?;
+         let user_edit = User {
+             account: user_exist.account,
+             name: None,
+             password: Some(PasswordEncoder::encode(arg.password.as_ref().unwrap())),
+             sex: None,
+             qq: None,
+             email: None,
+             phone: None,
+             birthday: None,
+             hometown: None,
+             autograph: None,
+             logo: None,
+             background:None,
+             organize_id: None,
+             state: None,
+             create_time: None,
+             update_time: Some(rbatis::DateTimeNative::now()),
+         };
+         let result = UserMapper::update_user(&mut CONTEXT.primary_rbatis.as_executor(),&user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
+         if result.is_err() {
+             error!("在修改用户{}的密码时，发生异常:{}",arg.account.as_ref().unwrap(),result.unwrap_err());
+             return Err(Error::from(format!("修改账户[{}]密码失败!", arg.account.as_ref().unwrap())));
+         }
+         LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX004")).await;
+         Ok(result.unwrap().rows_affected)
+     }
+
      pub async fn upload_logo(&self, mut payload: Multipart) -> Result<i32> {
          while let Some(mut field) = payload.try_next().await.unwrap() {
              let content_disposition = field.content_disposition();

@@ -51,6 +51,7 @@ async fn main() -> std::io::Result<()> {
                     .service(user_controller::page)
                     .service(user_controller::own_organize_user)
                     .service(user_controller::upload_logo)
+                    .service(user_controller::update_password)
             )
             .service(
                 web::scope("/backend/log")
