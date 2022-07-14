@@ -7,7 +7,6 @@ pub mod log_type;
 
 use crate::error::Error;
 use crate::service::CONTEXT;
-use actix_http::Response;
 use actix_web::HttpResponse;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -26,6 +25,15 @@ impl<T> RespVO<T>
     where
         T: Serialize + DeserializeOwned + Clone,
 {
+
+    pub fn build_error(code:i32,message:&str) -> Self{
+         RespVO {
+            code: Some(code),
+            msg: Some(message.to_string()),
+            data: None,
+        }
+    }
+
     pub fn from_result(arg: &Result<T, Error>) -> Self {
         if arg.is_ok() {
             Self {
@@ -71,9 +79,9 @@ impl<T> RespVO<T>
             println!("[home_cloud][debug] resp:{}", self.to_string());
         }
         return HttpResponse::Ok()
-            .set_header("Access-Control-Allow-Origin", "*")
-            .set_header("Cache-Control", "no-cache")
-            .set_header("Content-Type", "text/json;charset=UTF-8")
+            .insert_header(("Access-Control-Allow-Origin", "*"))
+            .insert_header(("Cache-Control", "no-cache"))
+            .insert_header(("Content-Type", "text/json;charset=UTF-8"))
             .body(self.to_string());
     }
 }

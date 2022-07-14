@@ -6,6 +6,7 @@ use std::io;
 use serde::de::Visitor;
 use serde::ser::{Serialize, Serializer};
 use serde::{Deserialize, Deserializer};
+use crate::entity::vo::RespVO;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -14,7 +15,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[non_exhaustive]
 pub enum Error {
     /// Default Error
-    E(String),
+    E((String)),
 }
 
 impl Display for Error {

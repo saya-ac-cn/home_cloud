@@ -1,6 +1,7 @@
 use home_cloud::controller::{user_controller, log_controller};
 use home_cloud::service::CONTEXT;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_files as fs;
 use log::info;
 ///  命名规范
 /// 1、蛇形命名法（Snake Case）
@@ -19,8 +20,8 @@ use log::info;
 /// PS：Rust也不建议以“-rs”或“_rs”为后缀来命名包名，如果以此来命名，会强制性的将此后缀去掉。
 async fn index() -> impl Responder {
     HttpResponse::Ok()
-        .set_header("Access-Control-Allow-Origin", "*")
-        .set_header("Cache-Control", "no-cache")
+        .insert_header(("Access-Control-Allow-Origin", "*"))
+        .insert_header(("Cache-Control", "no-cache"))
         .body("[home_cloud] Hello !")
 }
 
@@ -41,6 +42,7 @@ async fn main() -> std::io::Result<()> {
                 "/login",
                 web::post().to(user_controller::login),
             )
+            .service(fs::Files::new("/warehouse", "/Users/saya/warehouse"))
             .service(
                 web::scope("/backend/user")
                     .service(user_controller::myself)

@@ -32,6 +32,8 @@ pub struct ApplicationConfig {
     pub login_fail_retry: u64,
     /// 重试等待时间
     pub login_fail_retry_wait_sec: u64,
+    /// 项目产生的数据目录
+    pub data_dir: String
 }
 
 /// 默认配置

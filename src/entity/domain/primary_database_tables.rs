@@ -1,5 +1,4 @@
 use rbatis::DateTimeNative;
-use crate::entity::dto::user::UserPageDTO;
 
 
 #[crud_table(table_name:user)]

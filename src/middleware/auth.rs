@@ -52,7 +52,7 @@ impl<S> Service<ServiceRequest> for AuthMiddleware<S>
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let mut svc = self.service.clone();
+        let svc = self.service.clone();
         Box::pin(async move {
             let value = HeaderValue::from_str("").unwrap();
             let token = req.headers().get("access_token").unwrap_or(&value);
@@ -102,7 +102,7 @@ fn is_white_list_api(path: &str) -> bool {
         return true;
     }
     for x in &CONTEXT.config.white_list_api {
-        if x.contains(path) {
+        if path.starts_with(x) {
             return true;
         }
     }

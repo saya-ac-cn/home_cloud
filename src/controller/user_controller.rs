@@ -80,11 +80,9 @@ pub async fn own_organize_user(req: HttpRequest) -> impl Responder {
 }
 
 /// 上传logo
-#[post("/logo/{user}")]
-pub async fn upload_logo(path: web::Path<String>,payload: Multipart) -> impl Responder {
-    let user = path.into_inner();
-    println!("user:{}",user);
-    let vo = CONTEXT.user_service.upload_logo(payload).await;
+#[post("/logo")]
+pub async fn upload_logo(req: HttpRequest,payload: Multipart) -> impl Responder {
+    let vo = CONTEXT.file_service.upload_logo(&req,payload).await;
     let aaa:RespVO<String> = RespVO{code:Some(0), msg: None, data: None };
     return aaa.resp_json();
 }

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::entity::domain::primary_database_tables::User;
+use crate::util;
 use crate::util::date_time::DateTimeUtil;
 
 /// 用户展示层
@@ -67,8 +68,8 @@ impl From<User> for UserVO {
             background: arg.background,
             organize_id: arg.organize_id,
             state: arg.state,
-            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time),
-            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time),
+            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
+            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S),
         }
     }
 }

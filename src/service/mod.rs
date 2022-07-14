@@ -20,13 +20,14 @@ pub struct ServiceContext {
     pub financial_rbatis: Rbatis,
     pub user_service: UserService,
     pub log_service: LogService,
+    pub file_service: FileService,
 }
 
 impl Default for ServiceContext {
     fn default() -> Self {
         let config = ApplicationConfig::default();
         // 主数据源配置
-        let primary_database_config = DataSource{
+        let primary_database_config = DataSource {
             database_url: config.primary_database_url.clone(),
             debug: config.debug,
             /// 逻辑删除字段
@@ -36,7 +37,7 @@ impl Default for ServiceContext {
         };
 
         // 财政数据源配置
-        let financial_database_config = DataSource{
+        let financial_database_config = DataSource {
             database_url: config.financial_database_url.clone(),
             debug: config.debug,
             logic_column: config.logic_column.clone(),
@@ -53,6 +54,7 @@ impl Default for ServiceContext {
             }),
             user_service: UserService {},
             log_service: LogService {},
+            file_service: FileService {},
             config,
         }
     }

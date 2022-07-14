@@ -1,4 +1,3 @@
-use actix_multipart::Multipart;
 use crate::error::Error;
 use crate::error::Result;
 use crate::service::CONTEXT;
@@ -7,7 +6,6 @@ use rbatis::crud::{CRUD};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
-use futures_util::TryStreamExt;
 use log::error;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
@@ -19,6 +17,8 @@ use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
 use crate::entity::domain::primary_database_tables::User;
+use crate::entity::vo::RespVO;
+use crate::util;
 
 /// 用户服务
 pub struct UserService {}
@@ -105,7 +105,7 @@ pub struct UserService {}
         return Ok(write_result?.rows_affected);
     }
 
-    ///登录后台
+    ///登录
     pub async fn login(&self,req: &HttpRequest, arg: &SignInDTO) -> Result<SignInVO>  {
         if arg.account.is_none()
             || arg.account.as_ref().unwrap().is_empty()
@@ -186,7 +186,8 @@ pub struct UserService {}
                 return self.get_user_info(req,&user).await;
             }
             Err(e) => {
-                return Err(crate::error::Error::from(e.to_string()));
+                error!("在获取用户信息时，发生异常:{}",e.to_string());
+                return Err(crate::error::Error::from(String::from("获取用户信息失败")));
             }
         }
     }
@@ -265,7 +266,8 @@ pub struct UserService {}
                  return Ok(query_result.unwrap().unwrap());
              }
              Err(e) => {
-                 return Err(crate::error::Error::from(e.to_string()));
+                 error!("在获取用户信息时，发生异常:{}",e.to_string());
+                 return Err(crate::error::Error::from(String::from("获取用户信息失败")));
              }
          }
      }
@@ -305,53 +307,5 @@ pub struct UserService {}
          LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX004")).await;
          Ok(result.unwrap().rows_affected)
      }
-
-     pub async fn upload_logo(&self, mut payload: Multipart) -> Result<i32> {
-         while let Some(mut field) = payload.try_next().await.unwrap() {
-             let content_disposition = field.content_disposition();
-             let aa = content_disposition.clone();
-             println!("key:{:?}",aa.get_name().unwrap());
-             println!("value:{:?}",field.headers());
-         }
-         return Ok(1);
-     }
-
-     // pub async fn upload_file(&self, mut payload: Multipart,arg: &web::Form<SignInDTO>) -> Result<HttpResponse> {
-     //     println!("form-data:{:?}",arg);
-     //     // iterate over multipart stream
-     //     while let Some(mut field) = payload.try_next().await.unwrap() {
-     //         // A multipart/form-data stream has to contain `content_disposition`
-     //         let content_disposition = field.content_disposition().unwrap();
-     //         let aa = content_disposition.clone();
-     //
-     //         println!("key:{:?}",aa.get_name().unwrap());
-     //         println!("value:{:?}",field);
-     //
-     //         // let file_name = content_disposition.get_filename();
-     //         // let warehouse_path = Path::new("./tmp/");
-     //         // if !warehouse_path.exists(){
-     //         //     match std::fs::create_dir_all(warehouse_path) {
-     //         //         Ok(f) => {
-     //         //             println!("created folder")
-     //         //         },
-     //         //         Err(err) => {
-     //         //             println!("{:?}", err);
-     //         //         }
-     //         //     };
-     //         // }
-     //         //
-     //         // let filepath = format!("{}{}",warehouse_path.to_str().unwrap(),file_name.unwrap());
-     //         // println!("path{}",filepath);
-     //         // // File::create is blocking operation, use threadpool
-     //         // let mut f = web::block(|| std::fs::File::create(filepath)).await.unwrap();
-     //         //
-     //         // // Field in turn is stream of *Bytes* object
-     //         // while let Some(chunk) = field.try_next().await.unwrap() {
-     //         //     // filesystem operations are blocking, we have to use threadpool
-     //         //     f = web::block(move || f.write_all(&chunk).map(|_| f)).await.unwrap();
-     //         // }
-     //     }
-     //     Ok(HttpResponse::Ok().into())
-     // }
 
 }
