@@ -9,8 +9,10 @@ pub const NOT_EXIST: i32 = -3;
 pub const NOT_CHECKING: i32 = -4;
 /// 缺少参数
 pub const NOT_PARAMETER: i32 = -5;
-/// 文件类型错误
+/// 文件错误
 pub const FILE_IO_ERROR: i32 = -6;
+/// 未知的错误类型（由内部意外抛出的，框架）
+pub const UNKNOWN_ERROR: i32 = -404;
 
 /// 定义数据目录下的子级目录
 /// 数据库目录

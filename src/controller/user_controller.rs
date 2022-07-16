@@ -83,13 +83,5 @@ pub async fn own_organize_user(req: HttpRequest) -> impl Responder {
 #[post("/logo")]
 pub async fn upload_logo(req: HttpRequest,payload: Multipart) -> impl Responder {
     let vo = CONTEXT.file_service.upload_logo(&req,payload).await;
-    let aaa:RespVO<String> = RespVO{code:Some(0), msg: None, data: None };
-    return aaa.resp_json();
+    return RespVO::from_result(&vo).resp_json();
 }
-
-// #[post("/logo")]
-// pub async fn upload_logo(form: web::Form<SignInDTO>) -> impl Responder {
-//     println!("from data:{:?}",form);
-//     let aaa:RespVO<String> = RespVO{code:Some(0), msg: None, data: None };
-//     return aaa.resp_json();
-// }

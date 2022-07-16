@@ -35,11 +35,11 @@ pub struct UserService {}
         let count_result = UserMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在用户分页统计时，发生异常:{}",count_result.unwrap_err());
-            return Err(Error::from(format!("用户分页查询异常")));
+            return Err(Error::from("用户分页查询异常"));
         }
         let total_row = count_result.unwrap().unwrap();
         if total_row <= 0 {
-            return Err(Error::from(format!("未查询到符合条件的数据")));
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
         }
         let mut result = Page::<UserVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
@@ -48,7 +48,7 @@ pub struct UserService {}
         let page_result = UserMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
         if page_result.is_err() {
             error!("在用户分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
-            return Err(Error::from(format!("用户分页查询异常")));
+            return Err(Error::from("用户分页查询异常"));
         }
         let page_rows = page_result.unwrap();
         let mut list = vec![];
@@ -63,7 +63,7 @@ pub struct UserService {}
     pub async fn add(&self, arg: &UserDTO) -> Result<u64> {
         let check_flag = arg.account.is_none() || arg.account.as_ref().unwrap().is_empty() || arg.name.is_none() || arg.name.as_ref().unwrap().is_empty() || arg.email.is_none() || arg.email.as_ref().unwrap().is_empty() || arg.phone.is_none() || arg.phone.as_ref().unwrap().is_empty() || arg.organize_id.is_none();
         if check_flag{
-            return Err(Error::from("账号、姓名、手机号、邮箱以及所属组织不能为空!"));
+            return Err(Error::from(("账号、姓名、手机号、邮箱以及所属组织不能为空!",util::NOT_PARAMETER)));
         }
         let old_user = UserMapper::find_by_account(&CONTEXT.primary_rbatis,arg.account.as_ref().unwrap_or_default()).await?;
         if old_user.is_some() {
@@ -98,7 +98,7 @@ pub struct UserService {}
         let write_result = CONTEXT.primary_rbatis.save(&user, &[]).await;
         if  write_result.is_err(){
             error!("创建账号时，发生异常:{}",write_result.unwrap_err());
-            return Err(Error::from(format!("创建账号时，发生异常!")));
+            return Err(Error::from("创建账号时，发生异常!"));
         }
         // 当前不允许创建用户操作
         // LogMapper::record_log(&CONTEXT.primary_rbatis,String::from(""));
@@ -112,13 +112,13 @@ pub struct UserService {}
             || arg.password.is_none()
             || arg.password.as_ref().unwrap().is_empty()
         {
-            return Err(Error::from("账号和密码不能为空!"));
+            return Err(Error::from(("账号和密码不能为空!",util::NOT_PARAMETER)));
         }
         let user: Option<User> = CONTEXT
             .primary_rbatis
             .fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account))
             .await?;
-        let user = user.ok_or_else(|| Error::from(format!("账号:{} 不存在!", &arg.account.clone().unwrap())))?;
+        let user = user.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &arg.account.clone().unwrap()),util::NOT_EXIST)))?;
         // 判断用户是否被锁定，2为锁定
         if user.state.eq(&Some(0)) {
             return Err(Error::from("账户被禁用!"));
@@ -127,7 +127,7 @@ pub struct UserService {}
         if !PasswordEncoder::verify(
             user.password
                 .as_ref()
-                .ok_or_else(|| Error::from("错误的用户数据，密码为空!"))?,
+                .ok_or_else(|| Error::from(("错误的用户数据，密码为空!",util::NOT_PARAMETER)))?,
             &arg.password.clone().unwrap(),
         ) {
             error = Some(Error::from("密码不正确!"));
@@ -182,7 +182,7 @@ pub struct UserService {}
         match extract_result {
             Ok(token) => {
                 let user: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &token.account)).await?;
-                let user = user.ok_or_else(|| Error::from(format!("账号:{} 不存在!", token.account)))?;
+                let user = user.ok_or_else(|| Error::from((format!("账号:{} 不存在!", token.account),util::NOT_EXIST)))?;
                 return self.get_user_info(req,&user).await;
             }
             Err(e) => {
@@ -202,11 +202,11 @@ pub struct UserService {}
     pub async fn edit(&self,req: &HttpRequest, arg: &UserDTO) -> Result<u64> {
         let token = req.headers().get("access_token");
         if arg.account.is_none() || arg.account.as_ref().unwrap().is_empty() {
-            return Err(Error::from("账号account不能为空!"));
+            return Err(Error::from(("账号account不能为空!",util::NOT_PARAMETER)));
         }
         // 首先判断要修改的用户是否存在
         let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account)).await?;
-        let user_exist = user_option.ok_or_else(|| Error::from(format!("用户:{} 不存在!", &arg.account.clone().unwrap())))?;
+        let user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &arg.account.clone().unwrap()),util::NOT_EXIST)))?;
 
         let user_edit = User {
             account: user_exist.account,
@@ -238,7 +238,7 @@ pub struct UserService {}
     /// 删除用户
     pub async fn remove(&self, account: &str) -> Result<u64> {
         if account.is_empty() {
-            return Err(Error::from("account 不能为空！"));
+            return Err(Error::from(("account 不能为空！",util::NOT_PARAMETER)));
         }
         let r = CONTEXT.primary_rbatis.remove_by_column::<User, _>(User::account(), &account).await;
         return Ok(r?);
@@ -247,7 +247,7 @@ pub struct UserService {}
     /// 用户详情
     pub async fn detail(&self, arg: &UserDTO) -> Result<UserVO> {
         let account = arg.account.clone().unwrap_or_default();
-        let user = UserMapper::find_by_account(&CONTEXT.primary_rbatis,&account).await?.ok_or_else(|| Error::from(format!("用户:{} 不存在！", account)))?;
+        let user = UserMapper::find_by_account(&CONTEXT.primary_rbatis,&account).await?.ok_or_else(|| Error::from((format!("用户:{} 不存在！", account),util::NOT_EXIST)))?;
         let user_vo = UserVO::from(user);
         return Ok(user_vo);
     }
@@ -276,11 +276,11 @@ pub struct UserService {}
      pub async fn update_password(&self,req: &HttpRequest, arg: &UserDTO) -> Result<u64> {
          let token = req.headers().get("access_token");
          if arg.password.is_none() || arg.password.as_ref().unwrap().is_empty() {
-             return Err(Error::from("密码不能为空!"));
+             return Err(Error::from(("密码不能为空!",util::NOT_PARAMETER)));
          }
          // 首先判断要修改的用户是否存在
          let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account)).await?;
-         let  user_exist = user_option.ok_or_else(|| Error::from(format!("用户:{} 不存在!", &arg.account.clone().unwrap())))?;
+         let  user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &arg.account.clone().unwrap()),util::NOT_EXIST)))?;
          let user_edit = User {
              account: user_exist.account,
              name: None,

@@ -23,7 +23,7 @@ pub struct FileService{}
 
 impl FileService {
 
-    pub async fn upload_logo(&self,req: &HttpRequest,mut payload: Multipart) -> Result<HttpResponse> {
+    pub async fn upload_logo(&self,req: &HttpRequest,mut payload: Multipart) -> Result<String> {
         let token = req.headers().get("access_token");
         let extract_result = &JWTToken::extract_token_by_header(token);
         if extract_result.is_err() {
@@ -33,7 +33,7 @@ impl FileService {
         let user_info = extract_result.clone().unwrap();
         // 首先判断要修改的用户是否存在
         let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &user_info.account)).await?;
-        let mut user_exist = user_option.ok_or_else(|| Error::from(format!("用户:{} 不存在!", &user_info.account.clone())))?;
+        let mut user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &user_info.account.clone()),util::NOT_EXIST)))?;
         let today_op = DateTimeUtil::naive_date_time_to_str(&Some(NaiveDateTime::now().date()), util::FORMAT_YMD);
         let today = today_op.unwrap();
         let save_path = format!("{}/{}/{}/{}/{}{}", &CONTEXT.config.data_dir,util::LOGO_PATH ,&user_info.account.clone(),today.clone(),today.clone(),rand::thread_rng().gen_range(10000..=99999));
@@ -64,7 +64,7 @@ impl FileService {
                 LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX005")).await;
             }
         }
-        Ok(HttpResponse::Ok().into())
+        Ok(String::from("上传成功"))
     }
 
     // pub async fn upload_logo2(&self, mut payload: Multipart) -> Result<HttpResponse> {
@@ -108,7 +108,7 @@ impl FileService {
             let create_result = std::fs::create_dir_all(save_path);
             if create_result.is_err() {
                 error!("create folder fail,cause by:{:?}",create_result.unwrap_err());
-                return Err(Error::from("create folder fail"));
+                return Err(Error::from(("create folder fail",util::FILE_IO_ERROR)));
             }
         }
         let file_path = format!("{}/{}", save_path.to_str().unwrap(), file_name);
