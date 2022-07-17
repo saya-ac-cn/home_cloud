@@ -1,4 +1,4 @@
-use home_cloud::controller::{user_controller, log_controller};
+use home_cloud::controller::{user_controller, log_controller, file_controller};
 use home_cloud::service::CONTEXT;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_files as fs;
@@ -18,12 +18,6 @@ use log::info;
 /// 连接符：Cargo默认把连接符“-”转换成下划线“_”
 /// 语句：跟C，Java语言等一样，每行语句结束都要添加;
 /// PS：Rust也不建议以“-rs”或“_rs”为后缀来命名包名，如果以此来命名，会强制性的将此后缀去掉。
-async fn index() -> impl Responder {
-    HttpResponse::Ok()
-        .insert_header(("Access-Control-Allow-Origin", "*"))
-        .insert_header(("Cache-Control", "no-cache"))
-        .body("[home_cloud] Hello !")
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -37,11 +31,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(home_cloud::middleware::auth::Auth)
-            .route("/", web::get().to(index))
-            .route(
-                "/login",
-                web::post().to(user_controller::login),
-            )
+            .route("/login", web::post().to(user_controller::login),)
+            .route("/logout", web::post().to(user_controller::logout),)
             .service(fs::Files::new("/warehouse", "/Users/saya/warehouse"))
             .service(
                 web::scope("/backend/user")
@@ -59,6 +50,10 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/backend/log")
                     .service(log_controller::page)
                     .service(log_controller::query_log_type)
+            )
+            .service(
+                web::scope("/backend/oss")
+                    .service(file_controller::upload_base64_picture)
             )
     })
     .bind(&CONTEXT.config.server_url)?

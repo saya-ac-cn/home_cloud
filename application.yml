@@ -37,6 +37,6 @@ data_dir: /Users/saya/warehouse
 
 #接口白名单（免登陆直接访问）
 white_list_api:
- - "/"
  - "/login"
+ - "/logout"
  - "/warehouse/picture/*"
