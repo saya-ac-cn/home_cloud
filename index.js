@@ -51,14 +51,24 @@ export const uploadNewsPicture = `${backendAPI}/api/oss/picture/illustrated`;
 
 // 获取动态
 export const getNewsList = params => ajax(`${backendAPI}/api/message/news`, params, 'GET');
+//{{host}}:{{port}}/backend/content/news
+
 // 发布动态
 export const publishNews = params => ajax(`${backendAPI}/api/message/news/publish`, params, 'POST');
+// {{host}}:{{port}}/backend/content/news
+
 // 删除动态
 export const deleteNews = params => ajax(`${backendAPI}/api/message/news/delete`, params, 'DELETE');
+// {{host}}:{{port}}/backend/content/news/15
+
 // 查询动态
 export const getNews = params => ajax(`${backendAPI}/api/message/news/show`, params, 'GET');
+// {{host}}:{{port}}/backend/content/news/15
+
 // 修改动态
 export const editNews = params => ajax(`${backendAPI}/api/message/news/edit`, params, 'PUT');
+// {{host}}:{{port}}/backend/content/news
+
 // 查看分页后的图片
 export const getPictureList = params => ajax(`${backendAPI}/api/oss/picture`, params, 'GET');
 // 上传壁纸

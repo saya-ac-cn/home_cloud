@@ -49,8 +49,8 @@ impl LogService {
         extend.page_size = Some(result.page_size);
         let page_result = LogMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
         if page_result.is_err() {
-            error!("在用户分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
-            return Err(Error::from("用户分页查询异常"));
+            error!("在日志分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
+            return Err(Error::from("日志分页查询异常"));
         }
         let page_rows = page_result.unwrap();
         result.records = page_rows;

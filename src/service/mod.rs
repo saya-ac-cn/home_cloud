@@ -6,21 +6,26 @@ mod user_service;
 mod log_service;
 /// 文件资源服务
 mod file_service;
+/// 文本（消息）服务
+mod content_service;
 
 use rbatis::rbatis::Rbatis;
-pub use crate::config::config::ApplicationConfig;
 pub use user_service::*;
 pub use log_service::*;
 pub use file_service::*;
+pub use content_service::*;
 use crate::dao::DataSource;
+pub use crate::config::config::ApplicationConfig;
 
 pub struct ServiceContext {
     pub config: ApplicationConfig,
     pub primary_rbatis: Rbatis,
+    pub business_rbatis: Rbatis,
     pub financial_rbatis: Rbatis,
     pub user_service: UserService,
     pub log_service: LogService,
     pub file_service: FileService,
+    pub content_service: ContentService,
 }
 
 impl Default for ServiceContext {
@@ -31,6 +36,15 @@ impl Default for ServiceContext {
             database_url: config.primary_database_url.clone(),
             debug: config.debug,
             /// 逻辑删除字段
+            logic_column: config.logic_column.clone(),
+            logic_un_deleted: config.logic_un_deleted,
+            logic_deleted: config.logic_deleted,
+        };
+
+        // 业务数据源配置
+        let business_database_config = DataSource {
+            database_url: config.business_database_url.clone(),
+            debug: config.debug,
             logic_column: config.logic_column.clone(),
             logic_un_deleted: config.logic_un_deleted,
             logic_deleted: config.logic_deleted,
@@ -49,12 +63,16 @@ impl Default for ServiceContext {
             primary_rbatis: async_std::task::block_on(async {
                 crate::dao::init_rbatis(&primary_database_config).await
             }),
+            business_rbatis: async_std::task::block_on(async {
+                crate::dao::init_rbatis(&business_database_config).await
+            }),
             financial_rbatis: async_std::task::block_on(async {
                 crate::dao::init_rbatis(&financial_database_config).await
             }),
             user_service: UserService {},
             log_service: LogService {},
             file_service: FileService {},
+            content_service: ContentService{},
             config,
         }
     }

@@ -1,5 +1,6 @@
 use rbatis::DateTimeNative;
 
+/// 主数据库
 
 #[crud_table(table_name:user)]
 #[derive(Clone, Debug)]

@@ -1,4 +1,4 @@
-use home_cloud::controller::{user_controller, log_controller, file_controller};
+use home_cloud::controller::{user_controller, log_controller, file_controller, content_controller};
 use home_cloud::service::CONTEXT;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_files as fs;
@@ -54,6 +54,14 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/backend/oss")
                     .service(file_controller::upload_base64_picture)
+            )
+            .service(
+                web::scope("/backend/content")
+                    .service(content_controller::add_news)
+                    .service(content_controller::edit_news)
+                    .service(content_controller::delete_news)
+                    .service(content_controller::get_news)
+                    .service(content_controller::page_news)
             )
     })
     .bind(&CONTEXT.config.server_url)?
