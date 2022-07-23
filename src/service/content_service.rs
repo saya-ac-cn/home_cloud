@@ -100,7 +100,7 @@ impl ContentService {
         return Ok(NewsVO::from(news_exist))
     }
 
-    /// 日志分页
+    /// 动态分页
     pub async fn news_page(&self, req: &HttpRequest, param: &NewsPageDTO) -> Result<Page<NewsVO>>  {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,

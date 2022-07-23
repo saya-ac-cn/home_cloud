@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 /// 服务启动配置
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ApplicationConfig {
@@ -33,7 +35,9 @@ pub struct ApplicationConfig {
     /// 重试等待时间
     pub login_fail_retry_wait_sec: u64,
     /// 项目产生的数据目录
-    pub data_dir: String
+    pub data_dir: String,
+    pub file_type_map: HashMap<String, String>
+
 }
 
 /// 默认配置

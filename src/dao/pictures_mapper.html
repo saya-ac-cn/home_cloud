@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <select id="select_page">
+        select `id`,`category`, `file_name`, `descript`, `file_url`, `web_url`,`source`,`date` from `pictures`
+        <where>
+            <if test="!pictures.organize.is_empty()">
+                `source` in
+                <foreach collection="pictures.organize" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="pictures.id != 0">
+                and `id` = #{pictures.id}
+            </if>
+            <if test="pictures.category != 0">
+                and `category` = #{pictures.category}
+            </if>
+            <if test="pictures.file_name != ''">
+                and `file_name` like concat(#{pictures.file_name},'%')
+            </if>
+            <if test="pictures.descript != ''">
+                and `descript` like concat(#{pictures.descript},'%')
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
+        <trim prefix=" " suffix=";">
+            order by `id` desc limit #{extend.page_no},#{extend.page_size}
+        </trim>
+    </select>
+
+    <select id="select_count">
+        select count(1) from `pictures`
+        <where>
+            <if test="!pictures.organize.is_empty()">
+                `source` in
+                <foreach collection="pictures.organize" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="pictures.id != 0">
+                and `id` = #{pictures.id}
+            </if>
+            <if test="pictures.category != 0">
+                and `category` = #{pictures.category}
+            </if>
+            <if test="pictures.file_name != ''">
+                and `file_name` like concat(#{pictures.file_name},'%')
+            </if>
+            <if test="pictures.descript != ''">
+                and `descript` like concat(#{pictures.descript},'%')
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+    </select>
+
+</mapper>

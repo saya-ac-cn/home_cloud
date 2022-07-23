@@ -71,12 +71,20 @@ export const editNews = params => ajax(`${backendAPI}/api/message/news/edit`, pa
 
 // 查看分页后的图片
 export const getPictureList = params => ajax(`${backendAPI}/api/oss/picture`, params, 'GET');
+// {{host}}:{{port}}/backend/oss/picture/page
+
 // 上传壁纸
 export const uploadWallpaper = `${backendAPI}/api/oss/picture/wallpaper`;
+// {{host}}:{{port}}/backend/oss/picture/file
+
 // 删除壁纸/插图
 export const deletePicture = params => ajax(`${backendAPI}/api/oss/picture/delete`, params, 'DELETE');
+// {{host}}:{{port}}/backend/oss/picture/22
+
 // 上传文件
 export const uploadFile = `${backendAPI}/api/oss/files/upload`;
+// {{host}}:{{port}}/backend/oss/files/file
+
 // 查看分页后的文件
 export const getFileList = params => ajax(`${backendAPI}/api/oss/files`, params, 'GET');
 // 删除文件

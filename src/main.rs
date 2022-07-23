@@ -54,6 +54,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/backend/oss")
                     .service(file_controller::upload_base64_picture)
+                    .service(file_controller::upload_file_picture)
+                    .service(file_controller::page_picture)
+                    .service(file_controller::picture_delete)
+                    .service(file_controller::upload_file)
             )
             .service(
                 web::scope("/backend/content")

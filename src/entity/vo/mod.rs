@@ -12,6 +12,8 @@ pub mod user;
 pub mod log;
 pub mod log_type;
 pub mod news;
+pub mod pictures;
+pub mod files;
 
 /// http接口返回模型结构，提供基础的 code，msg，data 等json数据结构
 #[derive(Debug, Serialize, Deserialize, Clone)]
