@@ -1,5 +1,6 @@
 use actix_multipart::Multipart;
 use actix_web::{web, get, post, put, delete, HttpRequest, Responder};
+use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::sign_in::SignInDTO;
 use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::{RespVO};
@@ -19,45 +20,45 @@ pub async fn logout(req: HttpRequest) -> impl Responder {
 }
 
 /// 获取当前用户信息
-#[get("/")]
+#[get("/user")]
 pub async fn myself(req: HttpRequest) -> impl Responder {
     let user_data = CONTEXT.user_service.get_user_info_by_token(&req).await;
     return RespVO::from_result(&user_data).resp_json();
 }
 
 /// 添加用户
-#[post("/")]
-pub async fn add(arg: web::Json<UserDTO>) -> impl Responder {
+#[post("/user")]
+pub async fn user_add(arg: web::Json<UserDTO>) -> impl Responder {
     let vo = CONTEXT.user_service.add(&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 修改用户
-#[put("/")]
-pub async fn update(req: HttpRequest,arg: web::Json<UserDTO>) -> impl Responder {
+#[put("/user")]
+pub async fn user_update(req: HttpRequest, arg: web::Json<UserDTO>) -> impl Responder {
     let vo = CONTEXT.user_service.edit(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 修改密码
-#[put("/password")]
-pub async fn update_password(req: HttpRequest,arg: web::Json<UserDTO>) -> impl Responder {
+#[put("/user/password")]
+pub async fn user_update_password(req: HttpRequest, arg: web::Json<UserDTO>) -> impl Responder {
     let vo = CONTEXT.user_service.update_password(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 
 /// 删除用户
-#[delete("/{user}")]
-pub async fn remove(path: web::Path<String>) -> impl Responder {
+#[delete("/user/{user}")]
+pub async fn user_remove(path: web::Path<String>) -> impl Responder {
     let user = path.into_inner();
     let vo = CONTEXT.user_service.remove(&user).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 获取指定用户详情
-#[get("/detail/{user}")]
-pub async fn detail(path: web::Path<String>) -> impl Responder {
+#[get("/user/detail/{user}")]
+pub async fn user_detail(path: web::Path<String>) -> impl Responder {
     let user = path.into_inner();
     let mut user_dto = UserDTO::empty();
     user_dto.account = Some(user);
@@ -66,22 +67,36 @@ pub async fn detail(path: web::Path<String>) -> impl Responder {
 }
 
 /// 获取用户分页列表
-#[get("/page")]
-pub async fn page(arg: web::Json<UserPageDTO>) -> impl Responder {
+#[get("/user/page")]
+pub async fn user_page(arg: web::Json<UserPageDTO>) -> impl Responder {
     let vo = CONTEXT.user_service.page(&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 获取当前用户所在组织的用户列表
-#[get("/own/organize")]
+#[get("/user/own/organize")]
 pub async fn own_organize_user(req: HttpRequest) -> impl Responder {
     let user_data = CONTEXT.user_service.get_own_organize_user(&req).await;
     return RespVO::from_result(&user_data).resp_json();
 }
 
 /// 上传logo
-#[post("/logo")]
-pub async fn upload_logo(req: HttpRequest,payload: Multipart) -> impl Responder {
+#[post("/user/logo")]
+pub async fn user_upload_logo(req: HttpRequest, payload: Multipart) -> impl Responder {
     let vo = CONTEXT.file_service.upload_logo(&req,payload).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 获取日志类别列表
+#[get("/log/type")]
+pub async fn log_type() -> impl Responder {
+    let vo = CONTEXT.log_service.query_log_type().await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 获取用户分页列表
+#[get("/log/page")]
+pub async fn log_page(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Responder {
+    let vo = CONTEXT.log_service.page(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }

@@ -19,30 +19,30 @@ export const requestLogout = params => ajax(`${backendAPI}/logout`, params, 'POS
 
 // 获取日志接口
 export const getLogList = params => ajax(`${backendAPI}/api/set/log`, params, 'POST');
-// {{host}}:{{port}}/backend/log/page
+// {{host}}:{{port}}/backend/system/log/page
 
 // 获取日志类别接口
 export const getLogType = params => ajax(`${backendAPI}/api/set/logtype`, params, 'POST');
-// {{host}}:{{port}}/backend/log/type
+// {{host}}:{{port}}/backend/system/log/type
 
 // 导出日志
 export const downloadLogExcel = `${backendAPI}/api/set/log/excel`;
 
 // 上传头像
 export const uploadLogo = params => ajax(`${backendAPI}/api/set/uploadlogo`, params, 'POST');
-// {{host}}:{{port}}/backend/user/logo
+// {{host}}:{{port}}/backend/system/user/logo
 
 // 获取个人信息
 export const getPersonal = params => ajax(`${backendAPI}/api/set/personal`, params, 'GET');
-// {{host}}:{{port}}/backend/user/
+// {{host}}:{{port}}/backend/system/user
 
 // 修改密码
 export const setPassword = params => ajax(`${backendAPI}/api/set/password`, params, 'PUT');
-// {{host}}:{{port}}/backend/user/password
+// {{host}}:{{port}}/backend/system/user/password
 
 // 修改用户信息
 export const setUserInfo = params => ajax(`${backendAPI}/api/set/update`, params, 'PUT');
-// {{host}}:{{port}}/backend/user/
+// {{host}}:{{port}}/backend/system/user
 
 
 // 上传笔记、消息图片
