@@ -1,6 +1,6 @@
-use home_cloud::controller::{system_controller, file_controller, content_controller};
+use home_cloud::controller::{system_controller, oss_controller, content_controller};
 use home_cloud::service::CONTEXT;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpServer};
 use actix_files as fs;
 use log::info;
 
@@ -36,11 +36,15 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::scope("/backend/oss")
-                    .service(file_controller::upload_base64_picture)
-                    .service(file_controller::upload_file_picture)
-                    .service(file_controller::page_picture)
-                    .service(file_controller::picture_delete)
-                    .service(file_controller::upload_file)
+                    .service(oss_controller::upload_base64_picture)
+                    .service(oss_controller::upload_file_picture)
+                    .service(oss_controller::page_picture)
+                    .service(oss_controller::picture_delete)
+                    .service(oss_controller::upload_file)
+                    .service(oss_controller::page_files)
+                    .service(oss_controller::files_download)
+                    .service(oss_controller::files_edit)
+                    .service(oss_controller::files_delete)
             )
             .service(
                 web::scope("/backend/content")

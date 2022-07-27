@@ -1,18 +1,15 @@
 /// 服务层
 ///
 /// 系统用户服务
-mod user_service;
-/// 日子相关服务
-mod log_service;
+mod system_service;
 /// 文件资源服务
-mod file_service;
+mod oss_service;
 /// 文本（消息）服务
 mod content_service;
 
 use rbatis::rbatis::Rbatis;
-pub use user_service::*;
-pub use log_service::*;
-pub use file_service::*;
+pub use system_service::*;
+pub use oss_service::*;
 pub use content_service::*;
 use crate::dao::DataSource;
 pub use crate::config::config::ApplicationConfig;
@@ -22,9 +19,8 @@ pub struct ServiceContext {
     pub primary_rbatis: Rbatis,
     pub business_rbatis: Rbatis,
     pub financial_rbatis: Rbatis,
-    pub user_service: UserService,
-    pub log_service: LogService,
-    pub file_service: FileService,
+    pub system_service: SystemService,
+    pub oss_service: OssService,
     pub content_service: ContentService,
 }
 
@@ -69,9 +65,8 @@ impl Default for ServiceContext {
             financial_rbatis: async_std::task::block_on(async {
                 crate::dao::init_rbatis(&financial_database_config).await
             }),
-            user_service: UserService {},
-            log_service: LogService {},
-            file_service: FileService {},
+            system_service: SystemService {},
+            oss_service: OssService {},
             content_service: ContentService{},
             config,
         }

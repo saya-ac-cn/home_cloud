@@ -18,6 +18,7 @@ impl LogMapper {
     pub async fn record_log_by_jwt(rbatis: &Rbatis,jwt:&JWTToken, category: String) -> Result<rbatis::Result<DBExecResult>, Error> {
         let log = Log{
             id:None,
+            organize:Some(jwt.organize),
             user:Some(jwt.account.clone()),
             category:Some(category),
             ip:Some(jwt.ip.clone()),

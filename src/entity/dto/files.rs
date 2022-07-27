@@ -7,9 +7,11 @@ pub struct FilesDTO {
     pub file_name:Option<String>,
     pub file_url:Option<String>,
     pub file_type:Option<String>,
+    pub organize:Option<u64>,
     pub source:Option<String>,
-    pub status:Option<String>,
-    pub date:Option<String>
+    pub status:Option<u32>,
+    pub create_time:Option<String>,
+    pub update_time:Option<String>
 }
 
 
@@ -22,12 +24,11 @@ pub struct FilesPageDTO{
     pub file_url:Option<String>,
     pub file_type:Option<String>,
     pub source:Option<String>,
-    pub status:Option<String>,
-    pub date:Option<String>,
+    pub status:Option<u32>,
 
     pub page_no: Option<u64>,
     pub page_size: Option<u64>,
     pub begin_time: Option<rbatis::DateTimeNative>,
     pub end_time: Option<rbatis::DateTimeNative>,
-    pub organize: Option<Vec<String>>
+    pub organize: Option<u64>
 }

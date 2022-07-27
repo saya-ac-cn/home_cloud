@@ -5,6 +5,7 @@ pub mod log_mapper;
 pub mod log_type_mapper;
 pub mod news_mapper;
 pub mod pictures_mapper;
+pub mod files_mapper;
 
 pub struct DataSource {
     /// 数据库地址

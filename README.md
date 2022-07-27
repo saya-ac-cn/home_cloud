@@ -29,3 +29,11 @@
 
     PS：Rust也不建议以“-rs”或“_rs”为后缀来命名包名，如果以此来命名，会强制性的将此后缀去掉。
 
+
+#### 遇到的疑难问题
+
+* 下载文件乱码
+
+  1）先对文件名进行urlencode，
+  
+  2）然后加上*=utf-8，参考：https://www.iefans.net/xiazai-wenjian-http-bianma-content-disposition/

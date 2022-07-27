@@ -44,6 +44,7 @@ impl_field_name_method!(User{account,name,password,sex,qq,email,phone,birthday,h
 #[derive(Clone, Debug)]
 pub struct Log{
     pub id:Option<u64>,
+    pub organize:Option<u64>,
     pub user:Option<String>,
     pub category:Option<String>,
     pub ip:Option<String>,

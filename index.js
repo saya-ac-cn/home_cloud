@@ -44,7 +44,6 @@ export const setPassword = params => ajax(`${backendAPI}/api/set/password`, para
 export const setUserInfo = params => ajax(`${backendAPI}/api/set/update`, params, 'PUT');
 // {{host}}:{{port}}/backend/system/user
 
-
 // 上传笔记、消息图片
 export const uploadNewsPicture = `${backendAPI}/api/oss/picture/illustrated`;
 // {{host}}:{{port}}/backend/oss/picture/base64
@@ -87,10 +86,16 @@ export const uploadFile = `${backendAPI}/api/oss/files/upload`;
 
 // 查看分页后的文件
 export const getFileList = params => ajax(`${backendAPI}/api/oss/files`, params, 'GET');
+// {{host}}:{{port}}/backend/oss/files/page
+
 // 删除文件
 export const deleteFile = params => ajax(`${backendAPI}/api/oss/files/delete`, params, 'DELETE');
+// {{host}}:{{port}}/backend/oss/files/27
+
 // 修改文件
 export const editFile = params => ajax(`${backendAPI}/api/oss/files/edit`, params, 'PUT');
+// {{host}}:{{port}}/backend/oss/files/file
+
 // 下载文件
 export const downloadFileForAdmin = `${backendAPI}/api/oss/files/download/`;
 // 创建笔记簿
@@ -99,12 +104,8 @@ export const createNoteBook = params => ajax(`${backendAPI}/api/message/notebook
 export const updateNoteBook = params => ajax(`${backendAPI}/api/message/notebook/edit`, params, 'PUT');
 // 删除笔记簿
 export const deleteNoteBook = params => ajax(`${backendAPI}/api/message/notebook/delete`, params, 'DELETE');
-// 获取笔记簿列表
-export const getNoteBookList = params => ajax(`${backendAPI}/api/message/notebook`, params, 'GET');
 // 获取笔记簿
 export const getNoteBookGroup = params => ajax(`${backendAPI}/api/message/notebook/group`, params, 'GET');
-// 查询单条笔记簿
-export const getNoteBook = params => ajax(`${backendAPI}/api/message/notebook/show`, params, 'GET');
 // 创建笔记
 export const createNotes = params => ajax(`${backendAPI}/api/message/notes/create`, params, 'POST');
 // 修改笔记
@@ -143,8 +144,6 @@ export const deleteTransaction = params => ajax(`${backendAPI}/api/financial/del
 export const downTransaction = `${backendAPI}/api/financial/outTransactionListExcel`;
 // 导出流水明细
 export const outTransactionInfoExcel = `${backendAPI}/api/financial/outTransactionInfoExcel`;
-// 获取流水明细
-export const getTransactionInfo = params => ajax(`${backendAPI}/api/financial/transactionInfo`, params, 'GET');
 // 添加流水明细
 export const insertTransactioninfo = params => ajax(`${backendAPI}/api/financial/insertTransactioninfo`, params, 'POST');
 // 修改流水明细

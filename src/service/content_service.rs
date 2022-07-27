@@ -2,15 +2,11 @@ use actix_web::HttpRequest;
 use log::error;
 use rbatis::crud::CRUD;
 use crate::dao::log_mapper::LogMapper;
-use crate::dao::log_type_mapper::LogTypeMapper;
 use crate::dao::news_mapper::NewsMapper;
 use crate::entity::domain::business_database_tables::News;
-use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::news::{NewsDTO, NewsPageDTO};
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::jwt::JWTToken;
-use crate::entity::vo::log::LogVO;
-use crate::entity::vo::log_type::LogTypeVO;
 use crate::entity::vo::news::NewsVO;
 use crate::util::Page;
 use crate::service::CONTEXT;
@@ -41,6 +37,7 @@ impl ContentService {
             topic:arg.topic.clone(),
             label:arg.label.clone(),
             content:arg.content.clone(),
+            organize: Some(user_info.organize),
             source:Some(user_info.account.clone()),
             create_time:Some(rbatis::DateTimeNative::now()),
             update_time:None,
@@ -60,14 +57,23 @@ impl ContentService {
         if check_flag{
             return Err(Error::from(("动态标题和内容不能为空!",util::NOT_PARAMETER)));
         }
-        let news_option: Option<News> = CONTEXT.business_rbatis.fetch_by_wrapper(CONTEXT.business_rbatis.new_wrapper().eq(News::id(), &arg.id)).await?;
+        let token = req.headers().get("access_token");
+        let extract_result = &JWTToken::extract_token_by_header(token);
+        if extract_result.is_err() {
+            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
+            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
+        }
+        let user_info = extract_result.clone().unwrap();
+        let query_where = CONTEXT.business_rbatis.new_wrapper().eq(News::id(), &arg.id).and().eq(News::organize(),user_info.organize);
+        let news_option: Option<News> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
         let news_exist = news_option.ok_or_else(|| Error::from((format!("id={} 的动态不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         let news = News{
             id:arg.id,
             topic: arg.topic.clone(),
             label: arg.label.clone(),
             content: arg.content.clone(),
-            source: arg.source.clone(),
+            organize: news_exist.organize,
+            source: Some(user_info.account.clone()),
             create_time: None,
             update_time: None
         };
@@ -76,20 +82,27 @@ impl ContentService {
             error!("在修改id={}的动态时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("动态修改失败"));
         }
-        let token = req.headers().get("access_token");
-        LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX009")).await;
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX009")).await;
         return Ok(result?.rows_affected);
     }
 
     /// 删除消息动态
     pub async fn delete_news(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let token = req.headers().get("access_token");
-        let write_result = CONTEXT.business_rbatis.remove_by_column::<News, _>(News::id(),id ).await;
+        let extract_result = &JWTToken::extract_token_by_header(token);
+        if extract_result.is_err() {
+            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
+            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
+        }
+        let user_info = extract_result.clone().unwrap();
+        // 只能删除自己组织机构下的数据
+        let delete_where = CONTEXT.business_rbatis.new_wrapper().eq(News::id(),id).and().eq(News::organize(),user_info.organize);
+        let write_result = CONTEXT.business_rbatis.remove_by_wrapper::<News>(delete_where).await;
         if write_result.is_err(){
             error!("删除消息动态时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除消息动态失败!"));
         }
-        LogMapper::record_log_by_token(&CONTEXT.primary_rbatis,token,String::from("OX010")).await;
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX010")).await;
         return Ok(write_result?);
     }
 
@@ -108,17 +121,16 @@ impl ContentService {
             begin_time:param.begin_time,
             end_time:param.end_time
         };
-        let mut arg= param.clone();
-        if arg.organize.is_none() || arg.organize.as_ref().unwrap().len() == 0 {
-            let token = req.headers().get("access_token");
-            let extract_result = &JWTToken::extract_token_by_header(token);
-            if extract_result.is_err() {
-                log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-                return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-            }
-            let user_info = extract_result.clone().unwrap();
-            arg.organize = Some(vec![user_info.account])
+        let token = req.headers().get("access_token");
+        let extract_result = &JWTToken::extract_token_by_header(token);
+        if extract_result.is_err() {
+            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
+            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
         }
+        let user_info = extract_result.clone().unwrap();
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
 
         let count_result = NewsMapper::select_count(&mut CONTEXT.business_rbatis.as_executor(), &arg,&extend).await;
         if count_result.is_err(){

@@ -11,9 +11,11 @@ pub struct FilesVO{
     pub file_name:Option<String>,
     pub file_url:Option<String>,
     pub file_type:Option<String>,
+    pub organize:Option<u64>,
     pub source:Option<String>,
-    pub status:Option<String>,
-    pub date:Option<String>
+    pub status:Option<u32>,
+    pub create_time:Option<String>,
+    pub update_time:Option<String>
 }
 
 impl From<Files> for FilesVO {
@@ -24,9 +26,11 @@ impl From<Files> for FilesVO {
             file_name:arg.file_name,
             file_url:arg.file_url,
             file_type:arg.file_type,
+            organize: arg.organize,
             source:arg.source,
             status:arg.status,
-            date: DateTimeUtil::naive_date_time_to_str(&arg.date,&util::FORMAT_Y_M_D_H_M_S),
+            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
+            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S)
         }
     }
 }

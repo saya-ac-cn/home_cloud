@@ -6,6 +6,7 @@ pub struct NewsDTO {
     pub topic:Option<String>,
     pub label:Option<String>,
     pub content:Option<String>,
+    pub organize:Option<u64>,
     pub source:Option<String>,
     pub create_time:Option<String>,
     pub update_time:Option<String>,
@@ -24,5 +25,5 @@ pub struct NewsPageDTO{
     pub page_size: Option<u64>,
     pub begin_time: Option<rbatis::DateTimeNative>,
     pub end_time: Option<rbatis::DateTimeNative>,
-    pub organize: Option<Vec<String>>
+    pub organize: Option<u64>
 }

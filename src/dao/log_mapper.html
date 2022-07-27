@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
 <mapper>
     <insert id="insert_log">
-        insert into `log`(`user`, `category`, `ip`, `city`, `date`) values (#{log.user},#{log.category},#{log.ip},#{log.city}, now());
+        insert into `log`(`organize`,`user`, `category`, `ip`, `city`, `date`) values (#{log.organize},#{log.user},#{log.category},#{log.ip},#{log.city}, now());
     </insert>
 
     <select id="select_one">
@@ -9,6 +9,9 @@
         <where>
             <if test="log.id != 0">
                 and `id` = #{log.id}
+            </if>
+            <if test="log.organize != 0">
+                and `organize` = #{log.organize}
             </if>
             <if test="log.user != ''">
                 and `user` = #{log.user}
@@ -24,13 +27,13 @@
     </select>
 
     <select id="select_page">
-        select a.`id`,a.`user`, a.`category`, a.`ip`, a.`city`, a.`date`,b.`describe` as detail from `log` a left join `log_type` b on a.`category` = b.`category`
+        select a.`id`,a.`organize`,a.`user`, a.`category`, a.`ip`, a.`city`, a.`date`,b.`describe` as detail from `log` a left join `log_type` b on a.`category` = b.`category`
         <where>
-            <if test="!log.organize.is_empty()">
-                a.`user` in
-                <foreach collection="log.organize" item="item" open="(" close=")" separator=",">
-                    #{item}
-                </foreach>
+            <if test="log.organize != 0">
+                `organize` = #{log.organize}
+            </if>
+            <if test="log.source != ''">
+                and `source` = #{log.source}
             </if>
             <if test="log.id != 0">
                 and a.`id` = #{log.id}
@@ -51,11 +54,11 @@
     <select id="select_count">
         select count(1) from `log`
         <where>
-            <if test="!log.organize.is_empty()">
-                `user` in
-                <foreach collection="log.organize" item="item" open="(" close=")" separator=",">
-                    #{item}
-                </foreach>
+            <if test="log.organize != 0">
+                `organize` = #{log.organize}
+            </if>
+            <if test="log.source != ''">
+                and `source` = #{log.source}
             </if>
             <if test="log.id != 0">
                 and `id` = #{log.id}

@@ -1,5 +1,4 @@
 use actix_web::{web, post,get,put,delete, Responder, HttpRequest};
-use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::news::{NewsDTO, NewsPageDTO};
 use crate::entity::vo::{RespVO};
 use crate::service::CONTEXT;
@@ -7,7 +6,7 @@ use crate::service::CONTEXT;
 /// 添加动态
 #[post("/news")]
 pub async fn add_news(req: HttpRequest,arg: web::Json<NewsDTO>) -> impl Responder {
-    log::info!("news:{:?}", arg.0);
+    log::info!("add_news:{:?}", arg.0);
     let vo = CONTEXT.content_service.add_news(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
@@ -15,7 +14,7 @@ pub async fn add_news(req: HttpRequest,arg: web::Json<NewsDTO>) -> impl Responde
 /// 修改动态
 #[put("/news")]
 pub async fn edit_news(req: HttpRequest,arg: web::Json<NewsDTO>) -> impl Responder {
-    log::info!("news:{:?}", arg.0);
+    log::info!("edit_news:{:?}", arg.0);
     let vo = CONTEXT.content_service.edit_news(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
@@ -40,7 +39,6 @@ pub async fn get_news(path: web::Path<u64>) -> impl Responder {
 /// 获取动态分页列表
 #[get("/news")]
 pub async fn page_news(req: HttpRequest,arg: web::Json<NewsPageDTO>) -> impl Responder {
-    log::info!("news:{:?}", arg.0);
     let vo = CONTEXT.content_service.news_page(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }

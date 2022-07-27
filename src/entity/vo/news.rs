@@ -10,6 +10,7 @@ pub struct NewsVO{
     pub topic:Option<String>,
     pub label:Option<String>,
     pub content:Option<String>,
+    pub organize:Option<u64>,
     pub source:Option<String>,
     pub create_time:Option<String>,
     pub update_time:Option<String>
@@ -22,9 +23,10 @@ impl From<News> for NewsVO {
             topic: arg.topic,
             label: arg.label,
             content: arg.content,
+            organize: arg.organize,
             source: arg.source,
             create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
-            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S),
+            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S)
         }
     }
 }

@@ -12,8 +12,10 @@ pub struct PicturesVO{
     pub descript:Option<String>,
     pub file_url:Option<String>,
     pub web_url:Option<String>,
+    pub organize:Option<u64>,
     pub source:Option<String>,
-    pub date:Option<String>,
+    pub create_time:Option<String>,
+    pub update_time:Option<String>
 }
 
 impl From<Pictures> for PicturesVO {
@@ -25,8 +27,10 @@ impl From<Pictures> for PicturesVO {
             descript:arg.descript,
             file_url:arg.file_url,
             web_url:arg.web_url,
+            organize:arg.organize,
             source:arg.source,
-            date: DateTimeUtil::naive_date_time_to_str(&arg.date,&util::FORMAT_Y_M_D_H_M_S),
+            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time, &util::FORMAT_Y_M_D_H_M_S),
+            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time, &util::FORMAT_Y_M_D_H_M_S)
         }
     }
 }

@@ -12,6 +12,8 @@ pub struct JWTToken {
     pub account: String,
     /// 姓名
     pub name: String,
+    /// 组织
+    pub organize: u64,
     /// 登录ip
     pub ip: String,
     /// 登录城市
@@ -92,6 +94,7 @@ mod test {
     use std::thread::sleep;
     use std::time::Duration;
     use rbatis::DateTimeNative;
+    use crate::entity::vo::jwt::JWTToken;
     use crate::entity::vo::JWTToken;
 
     #[test]
@@ -99,6 +102,7 @@ mod test {
         let j = JWTToken {
             account: "189".to_string(),
             name: "1".to_string(),
+            organize: 1,
             ip:String::from("127.0.0.1"),
             city:String::from("局域网"),
             exp: DateTimeNative::now().timestamp() as usize,

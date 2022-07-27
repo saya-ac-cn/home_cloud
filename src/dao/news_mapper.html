@@ -16,6 +16,9 @@
             <if test="news.content != ''">
                 and `content` like concat(#{news.content},'%')
             </if>
+            <if test="news.organize != 0">
+                and `organize` = #{news.organize}
+            </if>
             <if test="news.source != ''">
                 and `source` = #{news.source}
             </if>
@@ -44,18 +47,18 @@
             </if>
             `update_time` = now()
         </set>
-        where `id` = #{news.id}
+        where `id` = #{news.id} and `organize` = #{news.organize}
     </update>
 
 
     <select id="select_page">
         select `id`,`topic`, `label`, `content`, `source`, `create_time`,`update_time` from `news`
         <where>
-            <if test="!news.organize.is_empty()">
-                `source` in
-                <foreach collection="news.organize" item="item" open="(" close=")" separator=",">
-                    #{item}
-                </foreach>
+            <if test="news.organize != 0">
+                `organize` = #{news.organize}
+            </if>
+            <if test="news.source != ''">
+                and `source` = #{news.source}
             </if>
             <if test="news.id != 0">
                 and `id` = #{news.id}
@@ -82,11 +85,11 @@
     <select id="select_count">
         select count(1) from `news`
         <where>
-            <if test="!news.organize.is_empty()">
-                `source` in
-                <foreach collection="news.organize" item="item" open="(" close=")" separator=",">
-                    #{item}
-                </foreach>
+            <if test="news.organize != 0">
+                `organize` = #{news.organize}
+            </if>
+            <if test="news.source != ''">
+                and `source` = #{news.source}
             </if>
             <if test="news.id != 0">
                 and `id` = #{news.id}

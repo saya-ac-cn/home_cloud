@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogVO{
     pub id:Option<u64>,
+    pub organize: Option<u64>,
     pub user:Option<String>,
     pub category:Option<String>,
     pub ip:Option<String>,

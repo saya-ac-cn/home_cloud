@@ -8,8 +8,10 @@ pub struct PicturesDTO {
     pub descript:Option<String>,
     pub file_url:Option<String>,
     pub web_url:Option<String>,
+    pub organize:Option<u64>,
     pub source:Option<String>,
-    pub date:Option<String>,
+    pub create_time:Option<String>,
+    pub update_time:Option<String>,
 }
 
 /// 图片分页数据传输层
@@ -27,5 +29,5 @@ pub struct PicturesPageDTO{
     pub page_size: Option<u64>,
     pub begin_time: Option<rbatis::DateTimeNative>,
     pub end_time: Option<rbatis::DateTimeNative>,
-    pub organize: Option<Vec<String>>
+    pub organize: Option<u64>,
 }

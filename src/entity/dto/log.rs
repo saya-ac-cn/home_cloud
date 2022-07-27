@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LogDTO {
     pub id:Option<u64>,
+    pub organize: Option<u64>,
     pub user:Option<String>,
     pub category:Option<String>,
     pub ip:Option<String>,
@@ -14,14 +15,14 @@ pub struct LogDTO {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LogPageDTO{
     pub id:Option<u64>,
+    pub organize: Option<u64>,
     pub user:Option<String>,
     pub category:Option<String>,
     pub ip:Option<String>,
     pub city:Option<String>,
-    pub date:Option<String>,
+
     pub page_no: Option<u64>,
     pub page_size: Option<u64>,
     pub begin_time: Option<rbatis::DateTimeNative>,
     pub end_time: Option<rbatis::DateTimeNative>,
-    pub organize: Option<Vec<String>>
 }
