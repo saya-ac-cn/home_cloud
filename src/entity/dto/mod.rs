@@ -7,6 +7,9 @@ pub mod picture_base64;
 pub mod news;
 pub mod pictures;
 pub mod files;
+pub mod memo;
+pub mod notes;
+pub mod notebook;
 
 use serde::{Deserialize, Serialize};
 

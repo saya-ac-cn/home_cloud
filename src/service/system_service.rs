@@ -329,13 +329,7 @@ impl SystemService {
             begin_time:param.begin_time,
             end_time:param.end_time
         };
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
         arg.organize = Some(user_info.organize);
 

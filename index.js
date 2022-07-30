@@ -98,24 +98,44 @@ export const editFile = params => ajax(`${backendAPI}/api/oss/files/edit`, param
 
 // 下载文件
 export const downloadFileForAdmin = `${backendAPI}/api/oss/files/download/`;
+// {{host}}:{{port}}/backend/oss/files/download/29
+
 // 创建笔记簿
 export const createNoteBook = params => ajax(`${backendAPI}/api/message/notebook/create`, params, 'POST');
+// {{host}}:{{port}}/backend/content/notebook
+
 // 修改笔记簿
 export const updateNoteBook = params => ajax(`${backendAPI}/api/message/notebook/edit`, params, 'PUT');
+// {{host}}:{{port}}/backend/content/notebook
+
 // 删除笔记簿
 export const deleteNoteBook = params => ajax(`${backendAPI}/api/message/notebook/delete`, params, 'DELETE');
-// 获取笔记簿
+// {{host}}:{{port}}/backend/content/notebook/14
+
+// 获取笔记簿列表
 export const getNoteBookGroup = params => ajax(`${backendAPI}/api/message/notebook/group`, params, 'GET');
+// {{host}}:{{port}}/backend/content/notebook
+
 // 创建笔记
 export const createNotes = params => ajax(`${backendAPI}/api/message/notes/create`, params, 'POST');
+// {{host}}:{{port}}/backend/content/notes
+
 // 修改笔记
 export const updateNotes = params => ajax(`${backendAPI}/api/message/notes/edit`, params, 'PUT');
+// {{host}}:{{port}}/backend/content/notes
+
 // 删除笔记
 export const deleteNotes = params => ajax(`${backendAPI}/api/message/notes/delete`, params, 'DELETE');
-// 获取笔记
+// {{host}}:{{port}}/backend/content/notes/15
+
+// 笔记分页
 export const getNotesList = params => ajax(`${backendAPI}/api/message/notes`, params, 'GET');
+// {{host}}:{{port}}/backend/content/notes
+
 // 查询单条笔记
 export const getNotes = params => ajax(`${backendAPI}/api/message/notes/show`, params, 'GET');
+// {{host}}:{{port}}/backend/content/notes/15
+
 // 获取该月计划
 export const getPlanList = params => ajax(`${backendAPI}/api/set/plan`, params, 'GET');
 // 添加计划
@@ -162,6 +182,8 @@ export const outTransactionForMonthExcel = `${backendAPI}/api/financial/outTrans
 export const totalTransactionForYear = params => ajax(`${backendAPI}/api/financial/totalTransactionForYear`, params, 'GET');
 // 导出按月统计的报表
 export const outTransactionForYearExcel = `${backendAPI}/api/financial/outTransactionForYearExcel`;
+
+
 // 查看数据库备份执行列表
 export const getBackUpDBList = params => ajax(`${backendAPI}/api/oss/db`, params, 'GET');
 // 下载备份的数据库文件
@@ -180,13 +202,23 @@ export const getIncomePercentage = params => ajax(`${backendAPI}/api/financial/i
 export const getOrderByAmount = params => ajax(`${backendAPI}/api/financial/orderByAmount/${params}`, {}, 'GET');
 // 统计指定指定日期月份前6个月的账单
 export const getPreSixMonthBill = params => ajax(`${backendAPI}/api/financial/preSixMonthBill/${params}`, {}, 'GET');
+
 // 查询单条便笺
 export const getMemo = params => ajax(`${backendAPI}/api/message/memo/show`, params, 'GET');
+// {{host}}:{{port}}/backend/content/memo/6
+
 // 获取分页便笺
 export const getMemoList = params => ajax(`${backendAPI}/api/message/memo`, params, 'GET');
+// {{host}}:{{port}}/backend/content/memo
+
 // 添加便笺
 export const createMemo = params => ajax(`${backendAPI}/api/message/memo/create`, params, 'POST');
+// {{host}}:{{port}}/backend/content/memo
+
 // 修改便笺
 export const updateMemo = params => ajax(`${backendAPI}/api/message/memo/edit`, params, 'PUT');
+// {{host}}:{{port}}/backend/content/memo
+
 // 删除便笺
 export const deleteMemo = params => ajax(`${backendAPI}/api/message/memo/delete`, params, 'DELETE');
+// {{host}}:{{port}}/backend/content/memo/6

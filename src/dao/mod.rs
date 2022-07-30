@@ -6,6 +6,9 @@ pub mod log_type_mapper;
 pub mod news_mapper;
 pub mod pictures_mapper;
 pub mod files_mapper;
+pub mod memo_mapper;
+pub mod notebook_mapper;
+pub mod notes_mapper;
 
 pub struct DataSource {
     /// 数据库地址

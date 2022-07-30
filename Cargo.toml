@@ -23,8 +23,6 @@ lazy_static = "1.4.0"
 #log
 log = "0.4"
 fast_log = { version="1.4.16", features = ["lz4","zip", "gzip"]}
-#futures
-# futures = "0.3"
 futures-util = { version = "0.3.7", default-features = false, features = ["std"] }
 #web server
 actix-web = "4.0"
@@ -33,15 +31,8 @@ actix-multipart = "0.4"
 actix-files = "0.6.0"
 #jwt
 jsonwebtoken = "7"
-#snowflake
-rustflake = "0.1.0"
+# 生成密码要用
 md5 = "0.7.0"
-#captcha
-captcha = "0.0.8"
-#http client,use rust-tls replace to native tls
-reqwest = { version = "0.11",default-features = false, features = ["json","rustls-tls"] }
-#image code
-image = "0.23"
 #async trait
 async-trait = "0.1"
 #map

@@ -14,6 +14,7 @@ use crate::util::string::IsEmptyString;
 use log::error;
 use rand::Rng;
 use rbatis::crud::CRUD;
+use rbatis::Decimal;
 use rbatis::value::DateTimeNow;
 use crate::dao::files_mapper::FilesMapper;
 use crate::dao::log_mapper::LogMapper;
@@ -38,6 +39,7 @@ pub struct OssService {}
 
 impl OssService {
 
+    /// 文件下载
     pub async fn files_download(&self,id:u64) -> HttpResponse {
         let mut response = HttpResponse::Ok();
         let query_where = FilesDTO{
@@ -64,7 +66,7 @@ impl OssService {
             return response.finish()
         }
         let files = files_op.unwrap();
-        // 判断文件是否存在，存在才删除
+        // 判断文件是否存在，存在才下载
         if files.file_url.is_none() || files.file_url.as_ref().unwrap().is_empty() {
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
@@ -101,15 +103,8 @@ impl OssService {
         if arg.id.is_none() || arg.status.is_none(){
             return Err(Error::from(("文件id不能为空!",util::NOT_PARAMETER)));
         }
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let query_where = CONTEXT.business_rbatis.new_wrapper().eq(Files::id(), &arg.id).and().eq(Files::organize(),user_info.organize);
-
         let files_option: Option<Files> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
         let files_exist = files_option.ok_or_else(|| Error::from((format!("id={} 的文件不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         let files = Files{
@@ -135,13 +130,7 @@ impl OssService {
 
     /// 删除文件
     pub async fn files_delete(&self, req: &HttpRequest,id:u64) -> Result<u64>{
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 只能查看自己组织机构下的数据
         let query_where = CONTEXT.business_rbatis.new_wrapper().eq(Files::id(),id).and().eq(Files::organize(),user_info.organize);
         let files_op: Option<Files> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
@@ -172,13 +161,7 @@ impl OssService {
             begin_time:param.begin_time,
             end_time:param.end_time
         };
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -208,13 +191,7 @@ impl OssService {
 
     /// 删除图片或壁纸
     pub async fn picture_delete(&self, req: &HttpRequest,id:u64) -> Result<u64>{
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 只能查看自己组织机构下的数据
         let query_where = CONTEXT.business_rbatis.new_wrapper().eq(Pictures::id(),id).and().eq(Pictures::organize(),user_info.organize);
         let picture_op: Option<Pictures> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
@@ -245,16 +222,9 @@ impl OssService {
             begin_time:param.begin_time,
             end_time:param.end_time
         };
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
         arg.organize = Some(user_info.organize);
-
         let count_result = PicturesMapper::select_count(&mut CONTEXT.business_rbatis.as_executor(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在用户分页统计时，发生异常:{}",count_result.unwrap_err());
@@ -280,13 +250,7 @@ impl OssService {
 
     /// 修改用户头像
     pub async fn upload_logo(&self,req: &HttpRequest,arg:&Base64PictureDTO) -> Result<String> {
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 首先判断要修改的用户是否存在
         let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &user_info.account)).await?;
         let mut user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &user_info.account.clone()),util::NOT_EXIST)))?;
@@ -322,13 +286,7 @@ impl OssService {
 
     /// 上传文件类型的图片
     pub async fn upload_file_picture(&self,req: &HttpRequest,mut payload: Multipart) -> Result<String>{
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 首先判断要修改的用户是否存在
         let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &user_info.account)).await?;
         let user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &user_info.account.clone()),util::NOT_EXIST)))?;
@@ -391,7 +349,6 @@ impl OssService {
         Err(crate::error::Error::from(String::from("图片上传失败")))
     }
 
-
     /// 上传base64类型的图片
     /// 处理过程，将base64字符串进行切割（"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/"），然后将后
     /// 半部分进行base64解码成byte数组保存到文件
@@ -407,13 +364,7 @@ impl OssService {
         if !image_arr[0].starts_with("data:image"){
             return Err(Error::from(("非法的Base64图片!",util::NOT_PARAMETER)));
         }
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let today_op = DateTimeUtil::naive_date_time_to_str(&Some(NaiveDateTime::now().date()), util::FORMAT_YMD);
         let today = today_op.unwrap();
         let file_name = format!("{}{}.png", today.clone(),rand::thread_rng().gen_range(10000..=99999));
@@ -446,6 +397,7 @@ impl OssService {
         return Ok(picture.web_url.unwrap());
     }
 
+    /// 执行文件上传
     pub async fn upload_file(&self, req: &HttpRequest,mut payload: Multipart) -> Result<String> {
         // 默认的一些回填值
         let mut uid = String::from("null");
@@ -453,14 +405,7 @@ impl OssService {
         let mut origin_name_copy:String = String::new();
         let mut local_path:Option<String> = None;
         let mut file_belong_type:Option<&String> = None;
-
-        let token = req.headers().get("access_token");
-        let extract_result = &JWTToken::extract_token_by_header(token);
-        if extract_result.is_err() {
-            error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
-            return Err(crate::error::Error::from(String::from("获取用户信息失败")));
-        }
-        let user_info = extract_result.clone().unwrap();
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 首先判断要修改的用户是否存在
         let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &user_info.account)).await?;
         let user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &user_info.account.clone()),util::NOT_EXIST)))?;
@@ -554,7 +499,7 @@ impl OssService {
         return result;
     }
 
-    // 保存文件
+    /// 保存文件
     pub async fn save_file(&self,save_path:&Path, file_name:&String, mut field: Field) -> Result<String>{
         let path_check_result = self.mkdir_if_not_exists(save_path).await;
         if path_check_result.is_err() {

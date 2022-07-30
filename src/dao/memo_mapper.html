@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <!-- 修改便笺  -->
+    <update id="update_memo">
+        update `memo`
+        <set>
+            <if test="memo.title != ''">
+                `title` = #{memo.title},
+            </if>
+            <if test="memo.content != ''">
+                `content` = #{memo.content},
+            </if>
+            <if test="memo.source != ''">
+                `source` = #{memo.source},
+            </if>
+            `update_time` = now()
+        </set>
+        where `id` = #{memo.id} and `organize` = #{memo.organize}
+    </update>
+
+
+    <select id="select_page">
+        select `id`,`organize`,`source`,  `title`, `create_time`,`update_time` from `memo`
+        <where>
+            <if test="memo.organize != 0">
+                `organize` = #{memo.organize}
+            </if>
+            <if test="memo.source != ''">
+                and `source` = #{memo.source}
+            </if>
+            <if test="memo.id != 0">
+                and `id` = #{memo.id}
+            </if>
+            <if test="memo.title != ''">
+                and `topic`  like concat(#{memo.title},'%')
+            </if>
+            <if test="memo.content != ''">
+                and `content` like concat(#{memo.content},'%')
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
+        <trim prefix=" " suffix=";">
+            order by `id` desc limit #{extend.page_no},#{extend.page_size}
+        </trim>
+    </select>
+
+    <select id="select_count">
+        select count(1) from `memo`
+        <where>
+            <if test="memo.organize != 0">
+                `organize` = #{memo.organize}
+            </if>
+            <if test="memo.source != ''">
+                and `source` = #{memo.source}
+            </if>
+            <if test="memo.id != 0">
+                and `id` = #{memo.id}
+            </if>
+            <if test="memo.title != ''">
+                and `topic`  like concat(#{memo.title},'%')
+            </if>
+            <if test="memo.content != ''">
+                and `content` like concat(#{memo.content},'%')
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+    </select>
+
+</mapper>

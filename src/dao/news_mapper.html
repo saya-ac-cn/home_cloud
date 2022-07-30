@@ -1,34 +1,5 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
 <mapper>
-
-    <select id="select_news">
-        select `id`,`topic`, `label`, `content`, `source`, `date`,`create_time`,`update_time` from `news`
-        <where>
-            <if test="news.id != 0">
-                and `id` = #{news.id}
-            </if>
-            <if test="news.topic != ''">
-                and `topic`  like concat(#{news.topic},'%')
-            </if>
-            <if test="news.label != ''">
-                and `label` like concat(#{news.label},'%')
-            </if>
-            <if test="news.content != ''">
-                and `content` like concat(#{news.content},'%')
-            </if>
-            <if test="news.organize != 0">
-                and `organize` = #{news.organize}
-            </if>
-            <if test="news.source != ''">
-                and `source` = #{news.source}
-            </if>
-        </where>
-        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
-        <trim prefix=" " suffix=";">
-            order by id desc limit #{news.id}
-        </trim>
-    </select>
-
     <!-- 修改动态  -->
     <update id="update_news">
         update `news`
@@ -52,7 +23,7 @@
 
 
     <select id="select_page">
-        select `id`,`topic`, `label`, `content`, `source`, `create_time`,`update_time` from `news`
+        select `id`,`topic`, `label`, `source`, `create_time`,`update_time` from `news`
         <where>
             <if test="news.organize != 0">
                 `organize` = #{news.organize}

@@ -1,4 +1,5 @@
 use actix_http::header::HeaderValue;
+use actix_web::HttpRequest;
 use crate::error::Error;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation, Algorithm};
@@ -46,6 +47,25 @@ impl JWTToken {
                 Err(Error::from(format!("access_token is empty!")))
             }
         }
+    }
+
+    /// extract token detail
+    /// secret: your secret string
+    pub fn extract_user_by_header(token:Option<&HeaderValue>) -> Option<JWTToken>{
+        let extract_result = &JWTToken::extract_token_by_header(token);
+        if extract_result.is_err() {
+            log::error!("在获取用户信息时，发生异常:{}",extract_result.clone().unwrap_err().to_string());
+            return None;
+        }
+        let user_session = extract_result.clone().unwrap();
+        return Some(user_session);
+    }
+
+    /// extract token detail
+    /// secret: your secret string
+    pub fn extract_user_by_request(req: &HttpRequest) -> Option<JWTToken>{
+        let token = req.headers().get("access_token");
+        JWTToken::extract_user_by_header(token)
     }
 
 
