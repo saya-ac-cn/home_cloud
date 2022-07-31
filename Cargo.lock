@@ -1232,6 +1232,7 @@ dependencies = [
  "rand 0.8.5",
  "rbatis",
  "rbson",
+ "rust_decimal",
  "serde",
  "serde_json",
  "serde_yaml",

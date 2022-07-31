@@ -10,6 +10,8 @@ pub mod files;
 pub mod memo;
 pub mod notes;
 pub mod notebook;
+pub mod general_journal;
+pub mod journal;
 
 use serde::{Deserialize, Serialize};
 

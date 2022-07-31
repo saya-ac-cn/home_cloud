@@ -1,0 +1,24 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <!-- 修改流水明细  -->
+    <update id="update_general_journal">
+        update `general_journal`
+        <set>
+            <if test="general_journal.flag != 0">
+                `flag` = #{general_journal.flag},
+            </if>
+            <if test="general_journal.amount != ''">
+                `amount` =  #{general_journal.amount},
+            </if>
+            <if test="general_journal.remarks != ''">
+                `remarks` = #{general_journal.remarks},
+            </if>
+        </set>
+        where `id` = #{general_journal.id} and `journal_id` =  #{general_journal.journal_id}
+    </update>
+
+    <delete id="delete_general_journal">
+        delete from `general_journal` where `id` = #{id}
+    </delete>
+
+</mapper>

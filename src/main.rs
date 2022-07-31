@@ -1,4 +1,4 @@
-use home_cloud::controller::{system_controller, oss_controller, content_controller};
+use home_cloud::controller::{system_controller, oss_controller, content_controller, financial_controller};
 use home_cloud::service::CONTEXT;
 use actix_web::{web, App, HttpServer};
 use actix_files as fs;
@@ -67,6 +67,15 @@ async fn main() -> std::io::Result<()> {
                     .service(content_controller::delete_notes)
                     .service(content_controller::get_notes)
                     .service(content_controller::page_notes)
+            )
+            .service(
+                web::scope("/backend/financial")
+                    .service(financial_controller::add_journal)
+                    .service(financial_controller::edit_journal)
+                    .service(financial_controller::delete_journal)
+                    .service(financial_controller::add_general_journal)
+                    .service(financial_controller::edit_general_journal)
+                    .service(financial_controller::delete_general_journal)
             )
     })
     .bind(&CONTEXT.config.server_url)?

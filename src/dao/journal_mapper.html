@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <!-- 修改流水  -->
+    <update id="update_journal">
+        update `journal`
+        <set>
+            <if test="journal.monetary_id != 0">
+                `monetary_id` = #{journal.monetary_id},
+            </if>
+            <if test="journal.income != ''">
+                `income` = #{journal.income},
+            </if>
+            <if test="journal.outlay != ''">
+                `outlay` =  #{journal.outlay},
+            </if>
+            <if test="journal.means_id != 0">
+                `means_id` = #{journal.means_id},
+            </if>
+            <if test="journal.amount_id != 0">
+                `amount_id` = #{journal.amount_id},
+            </if>
+            <if test="journal.total != ''">
+                `total` = #{journal.total},
+            </if>
+            <if test="journal.remarks != ''">
+                `remarks` = #{journal.remarks},
+            </if>
+            <if test="journal.archive_date != ''">
+                `archive_date` =  #{journal.archive_date},
+            </if>
+            <if test="journal.source != ''">
+                `source` = #{journal.source},
+            </if>
+            `update_time` = now()
+        </set>
+        where `id` = #{journal.id} and `organize` = #{journal.organize}
+    </update>
+
+</mapper>

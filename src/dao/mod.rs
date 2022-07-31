@@ -9,6 +9,8 @@ pub mod files_mapper;
 pub mod memo_mapper;
 pub mod notebook_mapper;
 pub mod notes_mapper;
+pub mod journal_mapper;
+pub mod general_journal_mapper;
 
 pub struct DataSource {
     /// 数据库地址

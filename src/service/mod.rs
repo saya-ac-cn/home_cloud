@@ -6,6 +6,8 @@ mod system_service;
 mod oss_service;
 /// 文本（消息）服务
 mod content_service;
+/// 财政金融服务
+mod financial_service;
 
 use rbatis::rbatis::Rbatis;
 pub use system_service::*;
@@ -13,6 +15,7 @@ pub use oss_service::*;
 pub use content_service::*;
 use crate::dao::DataSource;
 pub use crate::config::config::ApplicationConfig;
+use crate::service::financial_service::FinancialService;
 
 pub struct ServiceContext {
     pub config: ApplicationConfig,
@@ -22,6 +25,7 @@ pub struct ServiceContext {
     pub system_service: SystemService,
     pub oss_service: OssService,
     pub content_service: ContentService,
+    pub financial_service:FinancialService
 }
 
 impl Default for ServiceContext {
@@ -68,6 +72,7 @@ impl Default for ServiceContext {
             system_service: SystemService {},
             oss_service: OssService {},
             content_service: ContentService{},
+            financial_service:FinancialService{},
             config,
         }
     }

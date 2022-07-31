@@ -154,22 +154,34 @@ export const getTransactionList = params => ajax(`${backendAPI}/api/financial/tr
 export const getTransactionDetail = params => ajax(`${backendAPI}/api/financial/transactionDetail`, params, 'GET');
 // 分页查看收支明细（明细记录折叠存）
 export const getTransactionDetailPage = params => ajax(`${backendAPI}/api/financial/transactionDetailPage`, params, 'GET');
-// 财政申报
+// 申报流水
 export const applyTransaction = params => ajax(`${backendAPI}/api/financial/insertTransaction`, params, 'POST');
+// {{host}}:{{port}}/backend/financial/journal
+
 // 修改流水
 export const updateTransaction = params => ajax(`${backendAPI}/api/financial/updateTransaction`, params, 'PUT');
+// {{host}}:{{port}}/backend/financial/journal
+
 // 删除流水
 export const deleteTransaction = params => ajax(`${backendAPI}/api/financial/deleteTransaction`, params, 'DELETE');
+// {{host}}:{{port}}/backend/financial/journal/825
+
 // 导出流水
 export const downTransaction = `${backendAPI}/api/financial/outTransactionListExcel`;
 // 导出流水明细
 export const outTransactionInfoExcel = `${backendAPI}/api/financial/outTransactionInfoExcel`;
 // 添加流水明细
 export const insertTransactioninfo = params => ajax(`${backendAPI}/api/financial/insertTransactioninfo`, params, 'POST');
+// {{host}}:{{port}}/backend/financial/general/journal
+
 // 修改流水明细
 export const updateTransactioninfo = params => ajax(`${backendAPI}/api/financial/updateTransactioninfo`, params, 'PUT');
+// {{host}}:{{port}}/backend/financial/general/journal
+
 // 删除流水明细
 export const deleteTransactioninfo = params => ajax(`${backendAPI}/api/financial/deleteTransactioninfo`, params, 'DELETE');
+// {{host}}:{{port}}/backend/financial/general/journal/11
+
 // 按天统计流水
 export const totalTransactionForDay = params => ajax(`${backendAPI}/api/financial/totalTransactionForDay`, params, 'GET');
 // 导出按天统计的报表
