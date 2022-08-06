@@ -17,6 +17,11 @@ pub mod files;
 pub mod memo;
 pub mod notebook;
 pub mod notes;
+pub mod monetary;
+pub mod abstracts;
+pub mod payment_means;
+pub mod journal;
+pub mod general_journal;
 
 /// http接口返回模型结构，提供基础的 code，msg，data 等json数据结构
 #[derive(Debug, Serialize, Deserialize, Clone)]

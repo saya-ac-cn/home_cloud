@@ -1236,6 +1236,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "simple_excel_writer",
  "urlencoding",
 ]
 
@@ -2370,6 +2371,15 @@ dependencies = [
  "chrono",
  "num-bigint 0.2.6",
  "num-traits",
+]
+
+[[package]]
+name = "simple_excel_writer"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5915e32350e15d125e0beb01a6c84c889ad0b3f15401ed88a4bedc92a10176a8"
+dependencies = [
+ "zip",
 ]
 
 [[package]]

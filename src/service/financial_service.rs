@@ -1,6 +1,7 @@
-use std::borrow::{Borrow, BorrowMut};
+use std::collections::HashMap;
 use std::ops::{Add, Sub};
-use actix_web::HttpRequest;
+use actix_http::StatusCode;
+use actix_web::{HttpRequest, HttpResponse};
 use chrono::Datelike;
 use log::error;
 use rbatis::crud::{CRUD, CRUDMut};
@@ -10,14 +11,24 @@ use rust_decimal::prelude::ToPrimitive;
 use crate::dao::general_journal_mapper::GeneralJournalMapper;
 use crate::dao::journal_mapper::JournalMapper;
 use crate::dao::log_mapper::LogMapper;
-use crate::entity::domain::financial_database_tables::{GeneralJournal, Journal};
+use crate::entity::domain::financial_database_tables::{Abstracts, GeneralJournal, Journal, Monetary, PaymentMeans};
 use crate::entity::dto::general_journal::GeneralJournalDTO;
-use crate::entity::dto::journal::JournalDTO;
+use crate::entity::dto::journal::{JournalDTO, JournalPageDTO};
+use crate::entity::dto::page::ExtendPageDTO;
+use crate::entity::vo::abstracts::AbstractsVO;
+use crate::entity::vo::general_journal::GeneralJournalVO;
+use crate::entity::vo::journal::JournalVO;
 use crate::entity::vo::jwt::JWTToken;
+use crate::entity::vo::monetary::MonetaryVO;
+use crate::entity::vo::payment_means::PaymentMeansVO;
 use crate::error::Result;
 use crate::service::CONTEXT;
 use crate::error::Error;
 use crate::util;
+use crate::util::Page;
+extern crate simple_excel_writer as excel;
+
+use excel::*;
 
 /// 财政服务
 pub struct FinancialService {}
@@ -26,7 +37,7 @@ impl FinancialService {
 
     /// 添加流水（主+子）
     pub async fn add_journal(&self, req: &HttpRequest,arg: &JournalDTO) -> Result<u64> {
-        let check_flag = arg.monetary_id.is_none() || arg.means_id.is_none() || arg.amount_id.is_none() || arg.details.is_none() || arg.archive_date.is_none();
+        let check_flag = arg.monetary_id.is_none() || arg.means_id.is_none() || arg.abstract_id.is_none() || arg.details.is_none() || arg.archive_date.is_none();
         if check_flag{
             return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER)));
         }
@@ -60,7 +71,7 @@ impl FinancialService {
             income: Some(income),
             outlay: Some(outlay),
             means_id: arg.means_id,
-            amount_id: arg.amount_id,
+            abstract_id: arg.abstract_id,
             total: Some(total),
             remarks: arg.remarks.clone(),
             archive_date: arg.archive_date,
@@ -104,7 +115,7 @@ impl FinancialService {
 
     /// 修改流水（父记录）
     pub async fn edit_journal(&self, req: &HttpRequest,arg: &JournalDTO) -> Result<u64> {
-        let check_flag = arg.id.is_none() || arg.monetary_id.is_none() || arg.means_id.is_none() || arg.amount_id.is_none() || arg.archive_date.is_none();
+        let check_flag = arg.id.is_none() || arg.monetary_id.is_none() || arg.means_id.is_none() || arg.abstract_id.is_none() || arg.archive_date.is_none();
         if check_flag{
             return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER)));
         }
@@ -125,7 +136,7 @@ impl FinancialService {
             income: None,
             outlay: None,
             means_id: arg.means_id,
-            amount_id: arg.amount_id,
+            abstract_id: arg.abstract_id,
             total: None,
             remarks: arg.remarks.clone(),
             archive_date: arg.archive_date,
@@ -206,7 +217,7 @@ impl FinancialService {
             income: Some(income),
             outlay: Some(outlay),
             means_id: None,
-            amount_id: None,
+            abstract_id: None,
             total: Some(total),
             remarks: None,
             archive_date: None,
@@ -233,7 +244,7 @@ impl FinancialService {
         };
 
         // 添加流水明细
-        let add_general_journal_result =  tx.save(&general_journal, &[]).await;;
+        let add_general_journal_result =  tx.save(&general_journal, &[]).await;
         if add_general_journal_result.is_err() {
             error!("在保存流水时，发生异常:{}",add_general_journal_result.unwrap_err());
             tx.rollback();
@@ -298,7 +309,7 @@ impl FinancialService {
             income: Some(income),
             outlay: Some(outlay),
             means_id: None,
-            amount_id: None,
+            abstract_id: None,
             total: Some(total),
             remarks: None,
             archive_date: None,
@@ -389,7 +400,7 @@ impl FinancialService {
                 income: Some(income),
                 outlay: Some(outlay),
                 means_id: None,
-                amount_id: None,
+                abstract_id: None,
                 total: Some(total),
                 remarks: None,
                 archive_date: None,
@@ -419,4 +430,299 @@ impl FinancialService {
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX030")).await;
         Ok(1)
     }
+
+    /// 货币列表
+    pub async fn get_monetary_list(&self) -> Result<Vec<MonetaryVO>> {
+        let query_wrap_result = CONTEXT.financial_rbatis.fetch_list().await;
+        if query_wrap_result.is_err() {
+            error!("在查询货币列表时，发生异常:{}",query_wrap_result.unwrap_err());
+            return Err(Error::from(("货币列表查询失败",util::CODE_FAIL)));
+        }
+        let query_result: Vec<Monetary> = query_wrap_result.unwrap();
+        if query_result.is_empty() {
+            return Err(Error::from(("货币数据不存在",util::NOT_EXIST)));
+        }
+        let mut result:Vec<MonetaryVO> = Vec::new();
+        for item in query_result {
+            result.push(MonetaryVO::from(item))
+        }
+        return Ok(result);
+    }
+
+    /// 摘要列表
+    pub async fn get_abstracts_list(&self) -> Result<Vec<AbstractsVO>> {
+        let query_wrap_result = CONTEXT.financial_rbatis.fetch_list().await;
+        if query_wrap_result.is_err() {
+            error!("在查询摘要时，发生异常:{}",query_wrap_result.unwrap_err());
+            return Err(Error::from(("摘要查询失败",util::CODE_FAIL)));
+        }
+        let query_result: Vec<Abstracts> = query_wrap_result.unwrap();
+        if query_result.is_empty() {
+            return Err(Error::from(("摘要数据不存在",util::NOT_EXIST)));
+        }
+        let mut result:Vec<AbstractsVO> = Vec::new();
+        for item in query_result {
+            result.push(AbstractsVO::from(item))
+        }
+        return Ok(result);
+    }
+
+    /// 收支方式列表
+    pub async fn get_payment_means_list(&self) -> Result<Vec<PaymentMeansVO>> {
+        let query_wrap_result = CONTEXT.financial_rbatis.fetch_list().await;
+        if query_wrap_result.is_err() {
+            error!("在查询收支方式时，发生异常:{}",query_wrap_result.unwrap_err());
+            return Err(Error::from(("收支方式查询失败",util::CODE_FAIL)));
+        }
+        let query_result : Vec<PaymentMeans> = query_wrap_result.unwrap();
+        if query_result.is_empty() {
+            return Err(Error::from(("摘要数据不存在",util::NOT_EXIST)));
+        }
+        let mut result:Vec<PaymentMeansVO> = Vec::new();
+        for item in query_result {
+            result.push(PaymentMeansVO::from(item))
+        }
+        return Ok(result);
+    }
+
+    /// 流水分页
+    pub async fn journal_page(&self, req: &HttpRequest, param: &JournalPageDTO) -> Result<Page<JournalVO>>  {
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+
+        let count_result = JournalMapper::select_count(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在流水分页统计时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("流水分页查询异常"));
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(result.page_size);
+        let page_result = JournalMapper::select_page(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if page_result.is_err() {
+            error!("在流水分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
+            return Err(Error::from("流水分页查询异常"));
+        }
+        let page_rows = page_result.unwrap();
+        result.records = page_rows;
+        return Ok(result);
+    }
+
+    pub async fn general_journal_detail(&self, req: &HttpRequest, param: &JournalPageDTO)-> Result<Vec<GeneralJournalVO>>  {
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+
+        let wrap_result = GeneralJournalMapper::select_detail(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if wrap_result.is_err(){
+            error!("在查询流水明细时，发生异常:{}",wrap_result.unwrap_err());
+            return Err(Error::from("流水明细查询异常"));
+        }
+        let result = wrap_result.unwrap().unwrap();
+        return Ok(result)
+    }
+
+    pub async fn journal_excel(&self, req: &HttpRequest, param: &JournalPageDTO) -> HttpResponse {
+        let mut response = HttpResponse::Ok();
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+        let count_result = JournalMapper::select_count(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在流水分页统计时，发生异常:{}",count_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            response.status(StatusCode::NOT_FOUND);
+            return response.finish()
+        }
+        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(total_row);
+        let page_result = JournalMapper::select_page(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if page_result.is_err() {
+            error!("在导出流水数据时，发生异常:{}",page_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let rows = page_result.unwrap().unwrap();
+        let mut wb = Workbook::create_in_memory();
+        let mut sheet = wb.create_sheet("流水报表");
+        // 设置列宽
+        sheet.add_column(Column { width: 12.0 });
+        sheet.add_column(Column { width: 20.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        wb.write_sheet(&mut sheet, |sheet_writer| {
+            let sw = sheet_writer;
+            // 写入标题行
+            sw.append_row(row!["流水号", "币种","收入","总收支","支出","收支方式","摘要","备注","归档时间","申报用户","申报时间", "修改时间"]);
+            for item in rows {
+                //item.id
+                sw.append_row(row![item.id.unwrap().to_f64().unwrap(),item.monetary_name.unwrap(), item.income.unwrap().parse::<f64>().unwrap(), item.outlay.unwrap().parse::<f64>().unwrap(),item.total.unwrap().parse::<f64>().unwrap(),item.payment_means_name.unwrap(),item.abstracts_name.unwrap(),item.remarks.unwrap(),item.archive_date.unwrap(),item.source.unwrap(),item.create_time.unwrap(),item.update_time.unwrap()]);
+            }
+            Ok(())
+        }).expect("write excel error!");
+        // 这里面是直接返回流的
+        let excel_stream = wb.close().expect("close excel error!");
+        response.content_type("application/octet-stream;charset=UTF-8");
+        response.insert_header((actix_web::http::header::CONTENT_DISPOSITION, "attachment;filename=journal.xlsx"));
+        response.body(excel_stream.unwrap())
+    }
+
+    pub async fn general_journal_excel(&self, req: &HttpRequest, param: &JournalPageDTO) -> HttpResponse {
+        let mut response = HttpResponse::Ok();
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+        let count_result = JournalMapper::select_count(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在流水分页统计时，发生异常:{}",count_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            response.status(StatusCode::NOT_FOUND);
+            return response.finish()
+        }
+        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(total_row);
+        let journal_result = JournalMapper::select_page(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if journal_result.is_err() {
+            error!("在导出流水数据时，发生异常:{}",journal_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let journal_rows = journal_result.unwrap().unwrap();
+        // 联动查询明细
+        let general_journal_result = GeneralJournalMapper::select_detail(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if general_journal_result.is_err(){
+            error!("在导出流水数据时，发生异常:{}",general_journal_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let general_journal_rows = general_journal_result.unwrap().unwrap();
+        // 对数据按照流水号进行分组
+        let mut map:HashMap<u64,Vec<GeneralJournalVO>> = HashMap::new();
+        for item in general_journal_rows {
+            let journal_id = item.journal_id.unwrap();
+            if map.contains_key(&journal_id) {
+                let mut list = map.get(&journal_id).unwrap().to_vec();
+                list.push(item);
+                map.insert(journal_id, list);
+            }else {
+                map.insert(journal_id, vec![item]);
+            }
+        }
+
+        let mut wb = Workbook::create_in_memory();
+        let mut sheet = wb.create_sheet("流水明细报表");
+        // 设置列宽
+        sheet.add_column(Column { width: 12.0 });
+        sheet.add_column(Column { width: 20.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        // 第一行是表头
+        let mut line_num:usize = 2;
+        wb.write_sheet(&mut sheet, |sheet_writer| {
+            let sw = sheet_writer;
+            // 写入标题行
+            sw.append_row(row!["流水号", "币种","收入","总收支","支出","收支方式","摘要","备注","归档时间","申报用户","申报时间", "修改时间","明细","收支类型","金额"]);
+            for item in journal_rows {
+                let journal_id = item.id.unwrap();
+                if map.contains_key(&journal_id) {
+                    let list = map.get(&journal_id).unwrap().to_vec();
+                    let size = list.len();
+                    if 1 != size {
+                        // 不为1时，才发生合并
+                        // 列,行；从1开始
+                        let end_rows = line_num + size - 1;
+                        for cell_num in 1..13 {
+                            sw.merge_cells((cell_num,line_num),(cell_num,end_rows));
+                        }
+                    }
+                    line_num = line_num + size;
+                    // 写入数据
+                    let mut general_journal_line = 1;
+                    for general_journal in list {
+                        let flag_name =  if "1" == general_journal.flag.unwrap(){"收入"}else { "支出" };
+                        if 1 == general_journal_line {
+                            sw.append_row(row![journal_id.to_f64().unwrap(),item.monetary_name.clone().unwrap(), item.income.clone().unwrap().parse::<f64>().unwrap(), item.outlay.clone().unwrap().parse::<f64>().unwrap(),item.total.clone().unwrap().parse::<f64>().unwrap(),item.payment_means_name.clone().unwrap(),item.abstracts_name.clone().unwrap(),item.remarks.clone().unwrap(),item.archive_date.clone().unwrap(),item.source.clone().unwrap(),item.create_time.clone().unwrap(),item.update_time.clone().unwrap(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                        }else {
+                            sw.append_row(row![(),(),(),(),(),(),(),(),(),(),(),(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                        }
+                        general_journal_line = general_journal_line + 1;
+                    }
+                }else{
+                    // 没有明细，直接判断为脏数据，因为业务不可能有空壳流水
+                }
+            }
+            Ok(())
+        }).expect("write excel error!");
+        // 这里面是直接返回流的
+        let excel_stream = wb.close().expect("close excel error!");
+        response.content_type("application/octet-stream;charset=UTF-8");
+        response.insert_header((actix_web::http::header::CONTENT_DISPOSITION, "attachment;filename=general_journal.xlsx"));
+        response.body(excel_stream.unwrap())
+    }
+
 }

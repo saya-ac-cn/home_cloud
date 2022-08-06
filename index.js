@@ -144,16 +144,25 @@ export const createPlan = params => ajax(`${backendAPI}/api/set/plan/create`, pa
 export const updatePlan = params => ajax(`${backendAPI}/api/set/plan/edit`, params, 'PUT');
 // 删除计划
 export const deletePlan = params => ajax(`${backendAPI}/api/set/plan/delete`, params, 'DELETE');
+
+// 查询货币列表
+// {{host}}:{{port}}/backend/financial/dictionary/monetary
+
 // 获取所有的支付类别
 export const getFinancialType = params => ajax(`${backendAPI}/api/financial/transactionType`, params, 'GET');
+// {{host}}:{{port}}/backend/financial/dictionary/payment/means
+
 // 获取所有的交易摘要
 export const getFinancialAmount = params => ajax(`${backendAPI}/api/financial/transactionAmount`, params, 'GET');
+// {{host}}:{{port}}/backend/financial/dictionary/abstracts
+
 // 获取财政流水
 export const getTransactionList = params => ajax(`${backendAPI}/api/financial/transaction`, params, 'GET');
+// {{host}}:{{port}}/backend/financial/journal
+
 // 查看收支明细（明细记录折叠存）
 export const getTransactionDetail = params => ajax(`${backendAPI}/api/financial/transactionDetail`, params, 'GET');
-// 分页查看收支明细（明细记录折叠存）
-export const getTransactionDetailPage = params => ajax(`${backendAPI}/api/financial/transactionDetailPage`, params, 'GET');
+
 // 申报流水
 export const applyTransaction = params => ajax(`${backendAPI}/api/financial/insertTransaction`, params, 'POST');
 // {{host}}:{{port}}/backend/financial/journal
@@ -170,6 +179,7 @@ export const deleteTransaction = params => ajax(`${backendAPI}/api/financial/del
 export const downTransaction = `${backendAPI}/api/financial/outTransactionListExcel`;
 // 导出流水明细
 export const outTransactionInfoExcel = `${backendAPI}/api/financial/outTransactionInfoExcel`;
+
 // 添加流水明细
 export const insertTransactioninfo = params => ajax(`${backendAPI}/api/financial/insertTransactioninfo`, params, 'POST');
 // {{host}}:{{port}}/backend/financial/general/journal
@@ -186,10 +196,12 @@ export const deleteTransactioninfo = params => ajax(`${backendAPI}/api/financial
 export const totalTransactionForDay = params => ajax(`${backendAPI}/api/financial/totalTransactionForDay`, params, 'GET');
 // 导出按天统计的报表
 export const outTransactionForDayExcel = `${backendAPI}/api/financial/outTransactionForDayExcel`;
+
 // 按月统计流水
 export const totalTransactionForMonth = params => ajax(`${backendAPI}/api/financial/totalTransactionForMonth`, params, 'GET');
 // 导出按月统计的报表
 export const outTransactionForMonthExcel = `${backendAPI}/api/financial/outTransactionForMonthExcel`;
+
 // 按年统计流水
 export const totalTransactionForYear = params => ajax(`${backendAPI}/api/financial/totalTransactionForYear`, params, 'GET');
 // 导出按月统计的报表

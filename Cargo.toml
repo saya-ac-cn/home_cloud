@@ -46,3 +46,5 @@ base64 = "0.13.0"
 urlencoding = "0.2.0"
 #用于货币金额
 rust_decimal = "1.25.0"
+# Excel工具
+simple_excel_writer = "0.2.0"
