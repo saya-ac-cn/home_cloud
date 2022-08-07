@@ -100,3 +100,17 @@ pub async fn get_payment_means_list() -> impl Responder {
     let vo = CONTEXT.financial_service.get_payment_means_list().await;
     return RespVO::from_result(&vo).resp_json();
 }
+
+/// 分页按天流水汇总数据
+#[get("/journal/day")]
+pub async fn page_journal_collect(req: HttpRequest,arg: web::Json<JournalPageDTO>) -> impl Responder {
+    let vo = CONTEXT.financial_service.journal_collect_page(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 导出流水明细汇总
+#[get("/journal/collect/excel")]
+pub async fn excel_journal_collect(req: HttpRequest,arg: web::Json<JournalPageDTO>) -> impl Responder {
+    let result = CONTEXT.financial_service.journal_collect_excel(&req,&arg.0).await;
+    return result;
+}

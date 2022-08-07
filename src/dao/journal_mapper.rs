@@ -21,4 +21,12 @@ impl JournalMapper {
     #[html_sql("./src/dao/journal_mapper.html")]
     pub async fn select_count(rb: &mut RbatisExecutor<'_,'_>,journal:&JournalPageDTO,extend:&ExtendPageDTO) -> Result<Option<u64>,Error> { impled!() }
 
+    /// 分页查询流水汇总
+    #[html_sql("./src/dao/journal_mapper.html")]
+    pub async fn select_day_page(rb: &mut RbatisExecutor<'_,'_>,journal:&JournalPageDTO,extend:&ExtendPageDTO) -> Result<Option<Vec<JournalVO>>,Error> { impled!() }
+
+    /// 查询流水汇总总数
+    #[html_sql("./src/dao/journal_mapper.html")]
+    pub async fn select_day_count(rb: &mut RbatisExecutor<'_,'_>,journal:&JournalPageDTO,extend:&ExtendPageDTO) -> Result<Option<u64>,Error> { impled!() }
+
 }

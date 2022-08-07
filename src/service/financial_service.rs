@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
+use std::str::FromStr;
 use actix_http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse};
-use chrono::Datelike;
+use chrono::{Datelike, NaiveDate};
 use log::error;
 use rbatis::crud::{CRUD, CRUDMut};
 use rbatis::DateNative;
@@ -16,7 +17,7 @@ use crate::entity::dto::general_journal::GeneralJournalDTO;
 use crate::entity::dto::journal::{JournalDTO, JournalPageDTO};
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::abstracts::AbstractsVO;
-use crate::entity::vo::general_journal::GeneralJournalVO;
+use crate::entity::vo::general_journal::{GeneralJournalCollectVO, GeneralJournalVO};
 use crate::entity::vo::journal::JournalVO;
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::monetary::MonetaryVO;
@@ -521,6 +522,7 @@ impl FinancialService {
         return Ok(result);
     }
 
+    /// 流水明细
     pub async fn general_journal_detail(&self, req: &HttpRequest, param: &JournalPageDTO)-> Result<Vec<GeneralJournalVO>>  {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
@@ -542,6 +544,7 @@ impl FinancialService {
         return Ok(result)
     }
 
+    /// 导出流水
     pub async fn journal_excel(&self, req: &HttpRequest, param: &JournalPageDTO) -> HttpResponse {
         let mut response = HttpResponse::Ok();
         let mut extend = ExtendPageDTO{
@@ -594,7 +597,7 @@ impl FinancialService {
         wb.write_sheet(&mut sheet, |sheet_writer| {
             let sw = sheet_writer;
             // 写入标题行
-            sw.append_row(row!["流水号", "币种","收入","总收支","支出","收支方式","摘要","备注","归档时间","申报用户","申报时间", "修改时间"]);
+            sw.append_row(row!["流水号", "币种","收入","支出","总收支","收支方式","摘要","备注","归档日期","申报用户","申报时间", "修改时间"]);
             for item in rows {
                 //item.id
                 sw.append_row(row![item.id.unwrap().to_f64().unwrap(),item.monetary_name.unwrap(), item.income.unwrap().parse::<f64>().unwrap(), item.outlay.unwrap().parse::<f64>().unwrap(),item.total.unwrap().parse::<f64>().unwrap(),item.payment_means_name.unwrap(),item.abstracts_name.unwrap(),item.remarks.unwrap(),item.archive_date.unwrap(),item.source.unwrap(),item.create_time.unwrap(),item.update_time.unwrap()]);
@@ -608,6 +611,7 @@ impl FinancialService {
         response.body(excel_stream.unwrap())
     }
 
+    /// 导出流水明细
     pub async fn general_journal_excel(&self, req: &HttpRequest, param: &JournalPageDTO) -> HttpResponse {
         let mut response = HttpResponse::Ok();
         let mut extend = ExtendPageDTO{
@@ -686,7 +690,7 @@ impl FinancialService {
         wb.write_sheet(&mut sheet, |sheet_writer| {
             let sw = sheet_writer;
             // 写入标题行
-            sw.append_row(row!["流水号", "币种","收入","总收支","支出","收支方式","摘要","备注","归档时间","申报用户","申报时间", "修改时间","明细","收支类型","金额"]);
+            sw.append_row(row!["流水号", "币种","收入","支出","总收支","收支方式","摘要","备注","归档日期","申报用户","申报时间", "修改时间","明细","收支类型","金额"]);
             for item in journal_rows {
                 let journal_id = item.id.unwrap();
                 if map.contains_key(&journal_id) {
@@ -725,4 +729,170 @@ impl FinancialService {
         response.body(excel_stream.unwrap())
     }
 
+    /// 流水汇总分页
+    pub async fn journal_collect_page(&self, req: &HttpRequest, param: &JournalPageDTO) -> Result<Page<JournalVO>>  {
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+
+        let count_result = JournalMapper::select_day_count(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在流水汇总分页统计时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("流水分页查询异常"));
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(result.page_size);
+        let page_result = JournalMapper::select_day_page(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if page_result.is_err() {
+            error!("在流水汇总分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
+            return Err(Error::from("流水汇总分页查询异常"));
+        }
+        let page_rows = page_result.unwrap();
+        result.records = page_rows;
+        return Ok(result);
+    }
+
+    /// 导出流水明细汇总
+    pub async fn journal_collect_excel(&self, req: &HttpRequest, param: &JournalPageDTO) -> HttpResponse {
+        let mut response = HttpResponse::Ok();
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+        let count_result = JournalMapper::select_day_count(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在流水汇总分页统计时，发生异常:{}",count_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            response.status(StatusCode::NOT_FOUND);
+            return response.finish()
+        }
+        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(total_row);
+        let journal_result = JournalMapper::select_day_page(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if journal_result.is_err() {
+            error!("在导出流水汇总数据时，发生异常:{}",journal_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let journal_rows = journal_result.unwrap().unwrap();
+        // 联动查询明细
+        let general_journal_result = GeneralJournalMapper::select_day_collect(&mut CONTEXT.financial_rbatis.as_executor(), &arg,&extend).await;
+        if general_journal_result.is_err(){
+            error!("在导出流水汇总数据时，发生异常:{}",general_journal_result.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let general_journal_rows = general_journal_result.unwrap().unwrap();
+        // 对数据按照流水号进行分组
+        let mut map:HashMap<String,Vec<GeneralJournalCollectVO>> = HashMap::new();
+        for item in general_journal_rows {
+            let archive_date = item.archive_date.clone().unwrap();
+            if map.contains_key(&archive_date) {
+                let mut list = map.get(&archive_date).unwrap().to_vec();
+                list.push(item);
+                map.insert(archive_date, list);
+            }else {
+                map.insert(archive_date, vec![item]);
+            }
+        }
+
+        let mut wb = Workbook::create_in_memory();
+        let mut sheet = wb.create_sheet("流水汇总报表");
+        // 设置列宽
+        sheet.add_column(Column { width: 12.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        sheet.add_column(Column { width: 25.0 });
+        // 第一行是表头
+        let mut line_num:usize = 2;
+        wb.write_sheet(&mut sheet, |sheet_writer| {
+            let sw = sheet_writer;
+            // 写入标题行
+            sw.append_row(row!["归档日期","支出","收入","总收支","明细","收支类型","金额"]);
+            for item in journal_rows {
+                let archive_date = item.archive_date.unwrap();
+                //let archive_date = archive_date_str.as_str();
+                if map.contains_key(&archive_date) {
+                    let list = map.get(&archive_date).unwrap().to_vec();
+                    let size = list.len();
+                    if 1 != size {
+                        // 不为1时，才发生合并
+                        // 列,行；从1开始
+                        let end_rows = line_num + size - 1;
+                        for cell_num in 1..5 {
+                            sw.merge_cells((cell_num,line_num),(cell_num,end_rows));
+                        }
+                    }
+                    line_num = line_num + size;
+                    // 写入数据
+                    let mut general_journal_line = 1;
+                    for general_journal in list {
+                        let flag_name =  if "1" == general_journal.flag.unwrap(){"收入"}else { "支出" };
+                        if 1 == general_journal_line {
+                            sw.append_row(row![general_journal.archive_date.unwrap(), item.income.clone().unwrap().parse::<f64>().unwrap(), item.outlay.clone().unwrap().parse::<f64>().unwrap(),item.total.clone().unwrap().parse::<f64>().unwrap(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                        }else {
+                            sw.append_row(row![(),(),(),(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                        }
+                        general_journal_line = general_journal_line + 1;
+                    }
+                }else{
+                    // 没有明细，直接判断为脏数据，因为业务不可能有空壳流水
+                }
+            }
+            Ok(())
+        }).expect("write excel error!");
+        // 这里面是直接返回流的
+        let excel_stream = wb.close().expect("close excel error!");
+        response.content_type("application/octet-stream;charset=UTF-8");
+        response.insert_header((actix_web::http::header::CONTENT_DISPOSITION, "attachment;filename=journal_collect.xlsx"));
+        response.body(excel_stream.unwrap())
+    }
+
+    /// 计算收支增长率
+    pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<String,String>> {
+        let user_month_wrap = DateNative::from_str((format!("{}-01",month.as_str())).as_str());
+        if user_month_wrap.is_err() {
+            return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 判断是否为当前月
+        let current_month = DateNative::now();
+        if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
+            // 当前月只计算 已经过去的天数
+            current_month.day()
+        }else {
+            // 当月所有的天数
+            user_month.
+        }
+
+        Ok(1)
+    }
 }
