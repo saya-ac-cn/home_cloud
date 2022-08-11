@@ -177,8 +177,11 @@ export const deleteTransaction = params => ajax(`${backendAPI}/api/financial/del
 
 // 导出流水
 export const downTransaction = `${backendAPI}/api/financial/outTransactionListExcel`;
+// {{host}}:{{port}}/backend/financial/journal/excel
+
 // 导出流水明细
 export const outTransactionInfoExcel = `${backendAPI}/api/financial/outTransactionInfoExcel`;
+// {{host}}:{{port}}/backend/financial/general/journal/excel
 
 // 添加流水明细
 export const insertTransactioninfo = params => ajax(`${backendAPI}/api/financial/insertTransactioninfo`, params, 'POST');
@@ -192,20 +195,13 @@ export const updateTransactioninfo = params => ajax(`${backendAPI}/api/financial
 export const deleteTransactioninfo = params => ajax(`${backendAPI}/api/financial/deleteTransactioninfo`, params, 'DELETE');
 // {{host}}:{{port}}/backend/financial/general/journal/11
 
-// 按天统计流水
+// 按天汇总统计流水
 export const totalTransactionForDay = params => ajax(`${backendAPI}/api/financial/totalTransactionForDay`, params, 'GET');
-// 导出按天统计的报表
+// {{host}}:{{port}}/backend/financial/journal/day
+
+// 导出按天汇总的报表
 export const outTransactionForDayExcel = `${backendAPI}/api/financial/outTransactionForDayExcel`;
-
-// 按月统计流水
-export const totalTransactionForMonth = params => ajax(`${backendAPI}/api/financial/totalTransactionForMonth`, params, 'GET');
-// 导出按月统计的报表
-export const outTransactionForMonthExcel = `${backendAPI}/api/financial/outTransactionForMonthExcel`;
-
-// 按年统计流水
-export const totalTransactionForYear = params => ajax(`${backendAPI}/api/financial/totalTransactionForYear`, params, 'GET');
-// 导出按月统计的报表
-export const outTransactionForYearExcel = `${backendAPI}/api/financial/outTransactionForYearExcel`;
+// {{host}}:{{port}}/backend/financial/journal/collect/excel
 
 
 // 查看数据库备份执行列表
@@ -220,6 +216,8 @@ export const getActivityRate= params => ajax(`${backendAPI}/api/set/activityRate
 export const getNewsRate = params => ajax(`${backendAPI}/api/message/newsRate/${params}`, {}, 'GET');
 // 收支增长率
 export const getAccountGrowthRate = params => ajax(`${backendAPI}/api/financial/accountGrowthRate/${params}`, {}, 'GET');
+// {{host}}:{{port}}/backend/financial/journal/total/balance
+
 // 收入比重
 export const getIncomePercentage = params => ajax(`${backendAPI}/api/financial/incomePercentage/${params}`, {}, 'GET');
 // 统计指定月份中各摘要的排名

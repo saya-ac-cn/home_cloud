@@ -29,4 +29,8 @@ impl JournalMapper {
     #[html_sql("./src/dao/journal_mapper.html")]
     pub async fn select_day_count(rb: &mut RbatisExecutor<'_,'_>,journal:&JournalPageDTO,extend:&ExtendPageDTO) -> Result<Option<u64>,Error> { impled!() }
 
+    /// 查询指定月份的收支情况
+    #[html_sql("./src/dao/journal_mapper.html")]
+    pub async fn total_balance(rb: &mut RbatisExecutor<'_,'_>,organize:&u64,archive_date:&chrono::NaiveDate) -> Result<Option<Journal>,Error> { impled!() }
+
 }

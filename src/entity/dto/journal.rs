@@ -28,3 +28,9 @@ pub struct JournalPageDTO{
     pub end_time: Option<rbatis::DateTimeNative>,
     pub organize: Option<u64>
 }
+
+/// 流水数据统计传输层
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct JournalTotalDTO{
+    pub archive_date:Option<String>,
+}

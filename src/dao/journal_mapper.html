@@ -155,4 +155,16 @@
                 </trim>
         ) c
     </select>
+
+    <select id="total_balance">
+        select
+            sum(a.income) as income,
+            sum(a.outlay) as outlay,
+            sum(a.total) as total
+        from
+            journal a
+        where
+        a.organize = #{organize} and a.archive_date like concat(date_format(#{archive_date.inner()},'%Y-%m') ,'%')
+    </select>
+
 </mapper>

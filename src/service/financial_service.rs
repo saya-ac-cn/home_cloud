@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 use std::str::FromStr;
 use actix_http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse};
@@ -7,7 +7,7 @@ use chrono::{Datelike, NaiveDate};
 use log::error;
 use rbatis::crud::{CRUD, CRUDMut};
 use rbatis::DateNative;
-use rust_decimal::Decimal;
+use rust_decimal::{Decimal, RoundingStrategy};
 use rust_decimal::prelude::ToPrimitive;
 use crate::dao::general_journal_mapper::GeneralJournalMapper;
 use crate::dao::journal_mapper::JournalMapper;
@@ -30,6 +30,7 @@ use crate::util::Page;
 extern crate simple_excel_writer as excel;
 
 use excel::*;
+use crate::util::date_time::DateUtils;
 
 /// 财政服务
 pub struct FinancialService {}
@@ -877,7 +878,7 @@ impl FinancialService {
     }
 
     /// 计算收支增长率
-    pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<String,String>> {
+    pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
         let user_month_wrap = DateNative::from_str((format!("{}-01",month.as_str())).as_str());
         if user_month_wrap.is_err() {
             return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER)));
@@ -885,14 +886,71 @@ impl FinancialService {
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
         let current_month = DateNative::now();
-        if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
+        // 总天数，计算日均用
+        let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
             // 当前月只计算 已经过去的天数
             current_month.day()
         }else {
             // 当月所有的天数
-            user_month.
+            DateUtils::get_current_month_days(user_month.year(),user_month.month())
+        };
+        // 得到上一个月的时间
+        let last_month = DateUtils::month_compute(&user_month,-1);
+        // 得到去年同期这个月的时间
+        let last_year = DateUtils::month_compute(&user_month,-12);
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        // 本月（用户请求的月份）的统计
+        let _current_month_wrap = JournalMapper::total_balance(&mut CONTEXT.financial_rbatis.as_executor(), &user_info.organize,&user_month).await;
+        if _current_month_wrap.is_err(){
+            error!("在统计指定月份的收支数据时，发生异常:{}",_current_month_wrap.unwrap_err());
+            return Err(Error::from("收支增长率计算异常"));
         }
-
-        Ok(1)
+        let _current_month_row = _current_month_wrap.unwrap().unwrap();
+        let mut _current_month_total = Decimal::from(0);
+        if _current_month_row.total.is_some() {
+            _current_month_total = _current_month_total.add(_current_month_row.total.unwrap());
+        }
+        // 上月的统计
+        let _last_month_wrap = JournalMapper::total_balance(&mut CONTEXT.financial_rbatis.as_executor(), &user_info.organize,&last_month).await;
+        if _last_month_wrap.is_err(){
+            error!("在统计指定月份的收支数据时，发生异常:{}",_last_month_wrap.unwrap_err());
+            return Err(Error::from("收支增长率计算异常"));
+        }
+        let _last_month_row = _last_month_wrap.unwrap().unwrap();
+        let mut _last_month_total = Decimal::from(0);
+        if _last_month_row.total.is_some() {
+            _last_month_total = _last_month_total.add(_last_month_row.total.unwrap());
+        }
+        // 去年同期
+        let _last_year_wrap = JournalMapper::total_balance(&mut CONTEXT.financial_rbatis.as_executor(), &user_info.organize,&last_year).await;
+        if _last_year_wrap.is_err(){
+            error!("在统计指定月份的收支数据时，发生异常:{}",_last_year_wrap.unwrap_err());
+            return Err(Error::from("收支增长率计算异常"));
+        }
+        let _last_year_row = _last_year_wrap.unwrap().unwrap();
+        let mut _last_year_total = Decimal::from(0);
+        if _last_year_row.total.is_some() {
+            _last_year_total = _last_year_total.add(_last_year_row.total.unwrap());
+        }
+        // 计算本月日均
+        let mut current_avg_total = _current_month_total.div(Decimal::from(days));
+        // 计算环比 （本月的值-上月的值）÷上月的值(如果上月值为空，不计算)
+        let mut m2m = Decimal::from(0);
+        if !_last_month_total.is_zero() {
+            m2m = (_current_month_total.sub(_last_month_total)).div(_last_month_total);
+            m2m = m2m.mul(Decimal::from(100));
+        }
+        // 计算同比 （本年的值-去年同期的值）÷去年同期的值(如果同期值为空，不计算)
+        let mut y2y = Decimal::from(0);
+        if !_last_year_total.is_zero() {
+            y2y = (_current_month_total.sub(_last_year_total)).div(_last_year_total);
+            y2y = y2y.mul(Decimal::from(100));
+        }
+        let mut result:HashMap<&str,Decimal> = HashMap::new();
+        result.insert("account",_current_month_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+        result.insert("avg",current_avg_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+        result.insert("m2m",m2m.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+        result.insert("y2y",y2y.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+        Ok(result)
     }
 }

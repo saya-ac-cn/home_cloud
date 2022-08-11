@@ -1,4 +1,5 @@
-use actix_web::HttpResponse;
+use std::collections::HashMap;
+use actix_web::{HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 
@@ -22,6 +23,17 @@ pub mod abstracts;
 pub mod payment_means;
 pub mod journal;
 pub mod general_journal;
+
+pub struct ResultTools{}
+impl ResultTools {
+    pub fn from_map(arg: String) -> HttpResponse {
+        return HttpResponse::Ok()
+            .insert_header(("Access-Control-Allow-Origin", "*"))
+            .insert_header(("Cache-Control", "no-cache"))
+            .insert_header(("Content-Type", "text/json;charset=UTF-8"))
+            .body(arg);
+    }
+}
 
 /// http接口返回模型结构，提供基础的 code，msg，data 等json数据结构
 #[derive(Debug, Serialize, Deserialize, Clone)]

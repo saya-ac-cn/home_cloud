@@ -1,8 +1,9 @@
-use actix_web::{web, post,get,put,delete, Responder, HttpRequest};
+use actix_web::{web, post, get, put, delete, Responder, HttpRequest, HttpResponse};
 use crate::entity::dto::general_journal::GeneralJournalDTO;
-use crate::entity::dto::journal::{JournalDTO, JournalPageDTO};
-use crate::entity::vo::{RespVO};
+use crate::entity::dto::journal::{JournalDTO, JournalPageDTO, JournalTotalDTO};
+use crate::entity::vo::{RespVO, ResultTools};
 use crate::service::CONTEXT;
+use crate::util;
 
 /// 申报流水
 #[post("/journal")]
@@ -113,4 +114,17 @@ pub async fn page_journal_collect(req: HttpRequest,arg: web::Json<JournalPageDTO
 pub async fn excel_journal_collect(req: HttpRequest,arg: web::Json<JournalPageDTO>) -> impl Responder {
     let result = CONTEXT.financial_service.journal_collect_excel(&req,&arg.0).await;
     return result;
+}
+
+/// 计算收支增长率
+#[get("/journal/total/balance")]
+pub async fn compute_account_growth_rate(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+    let vo = CONTEXT.financial_service.compute_account_growth_rate(&req,&arg.archive_date.clone().unwrap()).await;
+    let result = RespVO{
+        code: Some(util::CODE_SUCCESS),
+        msg: Some(String::from("操作成功")),
+        data: Some(vo.unwrap()),
+    };
+    let json = serde_json::json!(&result).to_string();
+    return ResultTools::from_map(json);
 }
