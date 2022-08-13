@@ -86,6 +86,9 @@ async fn main() -> std::io::Result<()> {
                     .service(financial_controller::page_journal_collect)
                     .service(financial_controller::excel_journal_collect)
                     .service(financial_controller::compute_account_growth_rate)
+                    .service(financial_controller::compute_income_percentage)
+                    .service(financial_controller::order_month_journal)
+                    .service(financial_controller::compute_pre6_journal)
             )
     })
     .bind(&CONTEXT.config.server_url)?

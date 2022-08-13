@@ -33,4 +33,8 @@ impl JournalMapper {
     #[html_sql("./src/dao/journal_mapper.html")]
     pub async fn total_balance(rb: &mut RbatisExecutor<'_,'_>,organize:&u64,archive_date:&chrono::NaiveDate) -> Result<Option<Journal>,Error> { impled!() }
 
+    /// 月度账单排序
+    #[html_sql("./src/dao/journal_mapper.html")]
+    pub async fn bill_rank(rb: &mut RbatisExecutor<'_,'_>,organize:&u64,archive_date:&chrono::NaiveDate) -> Result<Option<Vec<JournalVO>>,Error> { impled!() }
+
 }

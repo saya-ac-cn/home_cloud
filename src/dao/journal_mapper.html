@@ -167,4 +167,20 @@
         a.organize = #{organize} and a.archive_date like concat(date_format(#{archive_date.inner()},'%Y-%m') ,'%')
     </select>
 
+    <select id="bill_rank">
+        select
+            b.`total`,a.`tag` as abstracts_name
+        from `abstracts` a
+        inner join  (
+            select
+                c.`abstract_id` ,
+                sum(c.`income`) as income ,
+                sum(c.`outlay`) as outlay ,
+                sum(c.`total`) as total
+            from `journal` c
+            where c.`organize` = #{organize} and c.`archive_date` like concat(date_format(#{archive_date.inner()},'%Y-%m') ,'%')
+            group by c.`abstract_id`
+        ) b on a.`id` = b.`abstract_id`
+        order by b.`total` desc
+    </select>
 </mapper>

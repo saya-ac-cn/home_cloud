@@ -8,7 +8,7 @@ use log::error;
 use rbatis::crud::{CRUD, CRUDMut};
 use rbatis::DateNative;
 use rust_decimal::{Decimal, RoundingStrategy};
-use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::prelude::{ToPrimitive, Zero};
 use crate::dao::general_journal_mapper::GeneralJournalMapper;
 use crate::dao::journal_mapper::JournalMapper;
 use crate::dao::log_mapper::LogMapper;
@@ -30,6 +30,7 @@ use crate::util::Page;
 extern crate simple_excel_writer as excel;
 
 use excel::*;
+use rbson::Bson;
 use crate::util::date_time::DateUtils;
 
 /// 财政服务
@@ -881,7 +882,7 @@ impl FinancialService {
     pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
         let user_month_wrap = DateNative::from_str((format!("{}-01",month.as_str())).as_str());
         if user_month_wrap.is_err() {
-            return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
         }
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
@@ -953,4 +954,66 @@ impl FinancialService {
         result.insert("y2y",y2y.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
         Ok(result)
     }
+
+    /// 计算指定月份的收入比重
+    pub async fn compute_income_percentage(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_month_wrap = DateNative::from_str(month.as_str());
+        if user_month_wrap.is_err() {
+            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 本月（用户请求的月份）的统计
+        let _current_month_wrap = JournalMapper::total_balance(&mut CONTEXT.financial_rbatis.as_executor(), &user_info.organize,&user_month).await;
+        if _current_month_wrap.is_err(){
+            error!("在统计指定月份的收支数据时，发生异常:{}",_current_month_wrap.unwrap_err());
+            return Err(Error::from("收入比重计算异常"));
+        }
+        let _current_month_row = _current_month_wrap.unwrap().unwrap();
+
+        let income = _current_month_row.income.unwrap_or(Decimal::zero());
+        let total = _current_month_row.total.unwrap_or(Decimal::zero());
+        let mut result:HashMap<&str,Decimal> = HashMap::new();
+        if total.is_zero() {
+            result.insert("percentage",total);
+        }else {
+            result.insert("percentage",income.div(total).round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+        }
+        result.insert("account",total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+        Ok(result)
+    }
+
+    /// 计算指定月份中各摘要的排名
+    pub async fn order_month_journal(&self, req: &HttpRequest,month:&String) ->Result<Vec<JournalVO>> {
+        let user_month_wrap = DateNative::from_str(month.as_str());
+        if user_month_wrap.is_err() {
+            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 按月查询统计账单并排序
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let bill_wrap = JournalMapper::bill_rank(&mut CONTEXT.financial_rbatis.as_executor(), &user_info.organize,&user_month).await;
+        if bill_wrap.is_err(){
+            error!("在统计指定月份中各摘要的排名时，发生异常:{}",bill_wrap.unwrap_err());
+            return Err(Error::from("计算指定月份中各摘要的排名异常"));
+        }
+        let rows = bill_wrap.unwrap();
+        return Ok(rows.unwrap());
+    }
+
+    /// 计算近6个月的财务流水
+    pub async fn compute_pre6_journal(&self, req: &HttpRequest,month:&String) ->Result<rbson::Array> {
+        // 按月查询统计账单并排序
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let query_sql = format!("call count_pre6_journal({}, '{}')", &user_info.organize,month);
+        let param:Vec<Bson> = Vec::new();
+        let compute_result_warp = CONTEXT.financial_rbatis.fetch(query_sql.as_str(), param).await;
+        if compute_result_warp.is_err(){
+            error!("在统计近6个月的财务流水时，发生异常:{}",compute_result_warp.unwrap_err());
+            return Err(Error::from("统计近6个月的财务流水异常"));
+        }
+        let rows:rbson::Array = compute_result_warp.unwrap();
+        return Ok(rows);
+    }
+
 }

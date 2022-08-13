@@ -32,5 +32,5 @@ pub struct JournalPageDTO{
 /// 流水数据统计传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct JournalTotalDTO{
-    pub archive_date:Option<String>,
+    pub archive_date:String,
 }

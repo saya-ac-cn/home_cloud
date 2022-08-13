@@ -119,7 +119,7 @@ pub async fn excel_journal_collect(req: HttpRequest,arg: web::Json<JournalPageDT
 /// 计算收支增长率
 #[get("/journal/total/balance")]
 pub async fn compute_account_growth_rate(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
-    let vo = CONTEXT.financial_service.compute_account_growth_rate(&req,&arg.archive_date.clone().unwrap()).await;
+    let vo = CONTEXT.financial_service.compute_account_growth_rate(&req,&arg.archive_date.clone()).await;
     let result = RespVO{
         code: Some(util::CODE_SUCCESS),
         msg: Some(String::from("操作成功")),
@@ -127,4 +127,32 @@ pub async fn compute_account_growth_rate(req: HttpRequest,arg: web::Json<Journal
     };
     let json = serde_json::json!(&result).to_string();
     return ResultTools::from_map(json);
+}
+
+/// 计算指定月份的收入比重
+#[get("/journal/total/income")]
+pub async fn compute_income_percentage(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+    let vo = CONTEXT.financial_service.compute_income_percentage (&req,&arg.archive_date.clone()).await;
+    let result = RespVO{
+        code: Some(util::CODE_SUCCESS),
+        msg: Some(String::from("操作成功")),
+        data: Some(vo.unwrap()),
+    };
+    let json = serde_json::json!(&result).to_string();
+    return ResultTools::from_map(json);
+}
+
+
+/// 统计指定月份中各摘要的排名
+#[get("/journal/total/order")]
+pub async fn order_month_journal(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+    let vo = CONTEXT.financial_service.order_month_journal(&req,&arg.archive_date.clone()).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 统算近6个月的财务流水
+#[get("/journal/total/pre6")]
+pub async fn compute_pre6_journal(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+    let vo = CONTEXT.financial_service.compute_pre6_journal(&req,&arg.archive_date.clone()).await;
+    return RespVO::from_result(&vo).resp_json();
 }

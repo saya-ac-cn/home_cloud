@@ -220,10 +220,15 @@ export const getAccountGrowthRate = params => ajax(`${backendAPI}/api/financial/
 
 // 收入比重
 export const getIncomePercentage = params => ajax(`${backendAPI}/api/financial/incomePercentage/${params}`, {}, 'GET');
+// {{host}}:{{port}}/backend/financial/journal/total/income
+
 // 统计指定月份中各摘要的排名
 export const getOrderByAmount = params => ajax(`${backendAPI}/api/financial/orderByAmount/${params}`, {}, 'GET');
+// {{host}}:{{port}}/backend/financial/journal/total/order
+
 // 统计指定指定日期月份前6个月的账单
 export const getPreSixMonthBill = params => ajax(`${backendAPI}/api/financial/preSixMonthBill/${params}`, {}, 'GET');
+// {{host}}:{{port}}/backend/financial/journal/total/pre6
 
 // 查询单条便笺
 export const getMemo = params => ajax(`${backendAPI}/api/message/memo/show`, params, 'GET');
