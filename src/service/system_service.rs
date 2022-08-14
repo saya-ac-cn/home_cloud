@@ -7,6 +7,7 @@ use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
 use log::error;
+use rbson::Bson;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
@@ -354,5 +355,20 @@ impl SystemService {
         let page_rows = page_result.unwrap();
         result.records = page_rows;
         return Ok(result);
+    }
+
+    /// 计算近6个月的活跃情况
+    pub async fn compute_pre6_logs(&self, req: &HttpRequest,month:&String) ->Result<rbson::Array> {
+        // 按月查询统计账单并排序
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let query_sql = format!("call count_pre6_logs({}, '{}')", &user_info.organize,month);
+        let param:Vec<Bson> = Vec::new();
+        let compute_result_warp = CONTEXT.primary_rbatis.fetch(query_sql.as_str(), param).await;
+        if compute_result_warp.is_err(){
+            error!("在统计近6个月的活跃情况时，发生异常:{}",compute_result_warp.unwrap_err());
+            return Err(Error::from("统计近6个月的活跃情况异常"));
+        }
+        let rows:rbson::Array = compute_result_warp.unwrap();
+        return Ok(rows);
     }
 }

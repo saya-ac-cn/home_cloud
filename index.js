@@ -208,12 +208,17 @@ export const outTransactionForDayExcel = `${backendAPI}/api/financial/outTransac
 export const getBackUpDBList = params => ajax(`${backendAPI}/api/oss/db`, params, 'GET');
 // 下载备份的数据库文件
 export const downloadBackUpDB = `${backendAPI}/api/oss/db/download/`;
+
 // 获取数据总量及词云数据
 export const getCountAndWordCloud = () => ajax(`${backendAPI}/api/set/countAndWordCloud`, {}, 'GET');
+
 // 查询活跃度
 export const getActivityRate= params => ajax(`${backendAPI}/api/set/activityRate/${params}`, {}, 'GET');
+// {{host}}:{{port}}/backend/system/log/total/pre6
+
 // 统计动态发布
 export const getNewsRate = params => ajax(`${backendAPI}/api/message/newsRate/${params}`, {}, 'GET');
+
 // 收支增长率
 export const getAccountGrowthRate = params => ajax(`${backendAPI}/api/financial/accountGrowthRate/${params}`, {}, 'GET');
 // {{host}}:{{port}}/backend/financial/journal/total/balance

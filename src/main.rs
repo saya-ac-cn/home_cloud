@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
                     .service(system_controller::user_update_password)
                     .service(system_controller::log_page)
                     .service(system_controller::log_type)
+                    .service(system_controller::compute_pre6_logs)
             )
             .service(
                 web::scope("/backend/oss")

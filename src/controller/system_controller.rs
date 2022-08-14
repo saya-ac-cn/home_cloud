@@ -1,4 +1,5 @@
 use actix_web::{web, get, post, put, delete, HttpRequest, Responder};
+use crate::entity::dto::journal::JournalTotalDTO;
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::picture_base64::Base64PictureDTO;
 use crate::entity::dto::sign_in::SignInDTO;
@@ -101,5 +102,12 @@ pub async fn log_type() -> impl Responder {
 #[get("/log/page")]
 pub async fn log_page(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Responder {
     let vo = CONTEXT.system_service.log_page(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 统计近6个月的活跃情况
+#[get("/log/total/pre6")]
+pub async fn compute_pre6_logs(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+    let vo = CONTEXT.system_service.compute_pre6_logs(&req,&arg.archive_date.clone()).await;
     return RespVO::from_result(&vo).resp_json();
 }
