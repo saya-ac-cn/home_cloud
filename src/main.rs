@@ -68,6 +68,7 @@ async fn main() -> std::io::Result<()> {
                     .service(content_controller::delete_notes)
                     .service(content_controller::get_notes)
                     .service(content_controller::page_notes)
+                    .service(content_controller::compute_pre6_news)
             )
             .service(
                 web::scope("/backend/financial")

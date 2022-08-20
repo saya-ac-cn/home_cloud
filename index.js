@@ -218,6 +218,7 @@ export const getActivityRate= params => ajax(`${backendAPI}/api/set/activityRate
 
 // 统计动态发布
 export const getNewsRate = params => ajax(`${backendAPI}/api/message/newsRate/${params}`, {}, 'GET');
+// {{host}}:{{port}}/backend/content/news/total/pre6
 
 // 收支增长率
 export const getAccountGrowthRate = params => ajax(`${backendAPI}/api/financial/accountGrowthRate/${params}`, {}, 'GET');

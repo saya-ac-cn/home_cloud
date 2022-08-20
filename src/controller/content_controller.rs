@@ -1,4 +1,5 @@
 use actix_web::{web, post,get,put,delete, Responder, HttpRequest};
+use crate::entity::dto::journal::JournalTotalDTO;
 use crate::entity::dto::memo::{MemoDTO, MemoPageDTO};
 use crate::entity::dto::news::{NewsDTO, NewsPageDTO};
 use crate::entity::dto::notebook::NoteBookDTO;
@@ -155,5 +156,13 @@ pub async fn get_notes(path: web::Path<u64>) -> impl Responder {
 #[get("/notes")]
 pub async fn page_notes(req: HttpRequest,arg: web::Json<NotesPageDTO>) -> impl Responder {
     let vo = CONTEXT.content_service.page_notes(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+
+/// 统计近6个月的动态发布情况
+#[get("/news/total/pre6")]
+pub async fn compute_pre6_news(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+    let vo = CONTEXT.content_service.compute_pre6_news(&req,&arg.archive_date.clone()).await;
     return RespVO::from_result(&vo).resp_json();
 }

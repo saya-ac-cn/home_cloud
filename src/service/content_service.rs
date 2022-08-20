@@ -1,6 +1,12 @@
+use std::ops::Div;
 use actix_web::HttpRequest;
+use chrono::Datelike;
 use log::error;
 use rbatis::crud::CRUD;
+use rbatis::DateNative;
+use rbson::Bson;
+use rust_decimal::{Decimal, RoundingStrategy};
+use rust_decimal::prelude::ToPrimitive;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::memo_mapper::MemoMapper;
 use crate::dao::news_mapper::NewsMapper;
@@ -22,6 +28,7 @@ use crate::service::CONTEXT;
 use crate::error::Error;
 use crate::error::Result;
 use crate::util;
+use crate::util::date_time::DateUtils;
 
 /// 文本（消息）服务
 pub struct ContentService {}
@@ -453,6 +460,73 @@ impl ContentService {
         }
         let page_rows = page_result.unwrap();
         result.records = page_rows;
+        return Ok(result);
+    }
+
+    /// 计算近6个月的动态发布情况
+    pub async fn compute_pre6_news(&self, req: &HttpRequest,month:&String) ->Result<rbson::Document> {
+        let user_month_wrap = DateNative::from_str(month.as_str());
+        if user_month_wrap.is_err() {
+            return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 判断是否为当前月
+        let current_month = DateNative::now();
+        let mut end= rbatis::DateTimeNative::now();
+
+        // 总天数，计算日均用
+        let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
+            // 当前月只计算 已经过去的天数
+            current_month.day()
+        }else {
+            // 当月所有的天数
+            DateUtils::get_current_month_days(user_month.year(),user_month.month())
+        };
+        let start= rbatis::DateTimeNative::from_str((format!("{}-{:0>2}-01T00:00:00",user_month.year(),user_month.month())).as_str()).unwrap();
+        let end= rbatis::DateTimeNative::from_str((format!("{}-{:0>2}-{:0>2}T00:00:00",user_month.year(),user_month.month(),days)).as_str()).unwrap();
+
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let arg = NewsPageDTO{
+            id: None,
+            topic: None,
+            label: None,
+            content: None,
+            source: None,
+            page_no: None,
+            page_size: None,
+            begin_time: None,
+            end_time: None,
+            organize: Some(user_info.organize)
+        };
+        let mut extend = ExtendPageDTO{
+            page_no: Some(1),
+            page_size: Some(10),
+            begin_time:Some(start),
+            end_time:Some(end),
+        };
+        let count_result = NewsMapper::select_count(&mut CONTEXT.business_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在统计指定日期范围的动态时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("动态条数异常"));
+        }
+        let total_row = count_result.unwrap().unwrap();
+        let total = Decimal::from(total_row);
+        let mut avg_total = total.div(Decimal::from(days));
+
+        // 按月查询统计账单并排序
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let query_sql = format!("call count_pre6_news({}, '{}')", &user_info.organize,month);
+        let param:Vec<Bson> = Vec::new();
+        let compute_result_warp = CONTEXT.business_rbatis.fetch(query_sql.as_str(), param).await;
+        if compute_result_warp.is_err(){
+            error!("在统计近6个月的动态发布时，发生异常:{}",compute_result_warp.unwrap_err());
+            return Err(Error::from("统计近6个月的动态发布异常"));
+        }
+        let rows:rbson::Array = compute_result_warp.unwrap();
+        let mut result = rbson::Document::new();
+        result.insert("count",total.to_u64());
+        result.insert("avg",avg_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero).to_f64());
+        result.insert("news6",rows);
         return Ok(result);
     }
 
