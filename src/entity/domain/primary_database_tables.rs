@@ -60,3 +60,33 @@ pub struct LogType{
     pub describe:Option<String>,
 }
 impl_field_name_method!(LogType{category,describe});
+
+#[crud_table(table_name:plan)]
+#[derive(Clone, Debug)]
+pub struct Plan{
+    pub id:Option<u64>,
+    pub standard_time:Option<DateTimeNative>,
+    pub cycle:Option<u32>,
+    pub unit:Option<u32>,
+    pub content:Option<String>,
+    pub last_exec_time:Option<DateTimeNative>,
+    pub organize:Option<u64>,
+    pub user:Option<String>,
+    pub display:Option<u32>,
+    pub create_time: Option<DateTimeNative>,
+    pub update_time: Option<DateTimeNative>,
+}
+impl_field_name_method!(Plan{id,organize,user,display,last_exec_time});
+
+#[crud_table(table_name:plan_archive)]
+#[derive(Clone, Debug)]
+pub struct PlanArchive{
+    pub id:Option<u64>,
+    pub plan_id:Option<u64>,
+    pub status:Option<u32>,
+    pub content:Option<String>,
+    pub archive_time:Option<DateTimeNative>,
+    pub create_time: Option<DateTimeNative>,
+    pub update_time: Option<DateTimeNative>,
+}
+impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});

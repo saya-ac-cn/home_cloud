@@ -12,6 +12,8 @@ pub mod notes;
 pub mod notebook;
 pub mod general_journal;
 pub mod journal;
+pub mod plan;
+pub mod plan_archive;
 
 use serde::{Deserialize, Serialize};
 

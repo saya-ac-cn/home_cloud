@@ -1,0 +1,80 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <!-- 修改提醒事项  -->
+    <update id="update_plan">
+        update `plan`
+        <set>
+            <if test="plan.standard_time != ''">
+                `standard_time` = #{plan.standard_time},
+            </if>
+            <if test="plan.cycle != 0">
+                `cycle` = #{plan.cycle},
+            </if>
+            <if test="plan.unit != 0">
+                `unit` = #{plan.unit},
+            </if>
+            <if test="plan.content != ''">
+                `content` = #{plan.content},
+            </if>
+            <if test="plan.last_exec_time != ''">
+                `last_exec_time` =  #{plan.last_exec_time},
+            </if>
+            <if test="plan.display != 0">
+                `display` = #{plan.display},
+            </if>
+            <if test="plan.user != ''">
+                `user` = #{plan.user},
+            </if>
+            `update_time` = now()
+        </set>
+        where `id` = #{plan.id} and `organize` = #{plan.organize}
+    </update>
+
+
+    <select id="select_page">
+        select * from `plan`
+        <where>
+            <if test="plan.organize != 0">
+                `organize` = #{plan.organize}
+            </if>
+            <if test="plan.user != ''">
+                and `user` = #{plan.user}
+            </if>
+            <if test="plan.id != 0">
+                and `id` = #{plan.id}
+            </if>
+            <if test="plan.content != ''">
+                and `content` like concat(#{plan.content},'%')
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
+        <trim prefix=" " suffix=";">
+            order by `id` desc limit #{extend.page_no},#{extend.page_size}
+        </trim>
+    </select>
+
+    <select id="select_count">
+        select count(1) from `plan`
+        <where>
+            <if test="plan.organize != 0">
+                `organize` = #{plan.organize}
+            </if>
+            <if test="plan.user != ''">
+                and `user` = #{plan.user}
+            </if>
+            <if test="plan.id != 0">
+                and `id` = #{plan.id}
+            </if>
+            <if test="plan.content != ''">
+                and `content` like concat(#{plan.content},'%')
+            </if>
+            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
+                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            </if>
+        </where>
+    </select>
+
+</mapper>

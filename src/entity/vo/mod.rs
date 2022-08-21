@@ -23,6 +23,8 @@ pub mod abstracts;
 pub mod payment_means;
 pub mod journal;
 pub mod general_journal;
+pub mod plan;
+pub mod plan_archive;
 
 pub struct ResultTools{}
 impl ResultTools {
