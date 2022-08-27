@@ -2,12 +2,13 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::service::CONTEXT;
 use rbatis::DateTimeNative;
-use rbatis::crud::{CRUD};
+use rbatis::crud::{CRUD, CRUDMut};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
 use log::error;
 use rbson::Bson;
+use rust_decimal::prelude::ToPrimitive;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
@@ -18,11 +19,13 @@ use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
-use crate::entity::domain::primary_database_tables::User;
+use crate::entity::domain::primary_database_tables::{Plan, PlanArchive, User};
 use crate::entity::dto::log::LogPageDTO;
+use crate::entity::dto::plan::PlanDTO;
 use crate::entity::vo::log::LogVO;
 use crate::entity::vo::log_type::LogTypeVO;
 use crate::util;
+use crate::util::date_time::DateUtils;
 
 /// 系统服务
 pub struct SystemService {}
@@ -370,5 +373,60 @@ impl SystemService {
         }
         let rows:rbson::Array = compute_result_warp.unwrap();
         return Ok(rows);
+    }
+
+    /// 创建提醒事项
+    pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
+        let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
+        if check_flag{
+            return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER)));
+        }
+        // 计算下次执行时间
+        let last_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let plan = Plan{
+            id:None,
+            standard_time: None,
+            cycle: arg.cycle,
+            unit: arg.unit,
+            content: arg.content.clone(),
+            last_exec_time: Some(last_exec_time),
+            organize: Some(user_info.organize),
+            user: Some(user_info.account.clone()),
+            display: Some(1),
+            create_time: Some(rbatis::DateTimeNative::now()),
+            update_time: None
+        };
+        // 写入提醒事项
+        let mut tx = CONTEXT.primary_rbatis.acquire_begin().await.unwrap();
+        let add_plan_result = tx.save(&plan, &[]).await;
+        if add_plan_result.is_err() {
+            error!("在保存提醒事项时，发生异常:{}",add_plan_result.unwrap_err());
+            tx.rollback();
+            return Err(Error::from("保存提醒事项失败"));
+        }
+        let plan_id = add_plan_result.unwrap().last_insert_id;
+        // 构造任务归档
+        let plan_archive = PlanArchive{
+            id: None,
+            plan_id: plan_id.unwrap().to_u64(),
+            status: Some(1),
+            content: plan.content,
+            archive_time: plan.last_exec_time,
+            create_time: Some(rbatis::DateTimeNative::now()),
+            update_time: None
+        };
+        // 预写入任务归档数据
+        let add_plan_archive_result = tx.save(&plan_archive, &[]).await;
+        if add_plan_archive_result.is_err() {
+            error!("在保存流水时，发生异常:{}",add_plan_archive_result.unwrap_err());
+            tx.rollback();
+            return Err(Error::from("保存流水失败"));
+        }
+        // 所有的写入都成功，最后正式提交
+        tx.commit().await;
+        // TODO 创建一个定时调度任务 tokio-cron-scheduler
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX008")).await;
+        return Ok(add_plan_archive_result?.rows_affected);
     }
 }

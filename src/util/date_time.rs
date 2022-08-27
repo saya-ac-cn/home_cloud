@@ -1,4 +1,5 @@
-use chrono::{Datelike, NaiveDate};
+use std::ops::Add;
+use chrono::{Datelike, DateTime, Duration, Local, NaiveDate, TimeZone};
 
 pub trait DateTimeUtil{
     fn naive_date_time_to_str(&self,format:&str) -> Option<String>;
@@ -47,6 +48,7 @@ impl DateUtils {
         }
     }
 
+    // 月份加减
     pub fn month_compute(original_date:&NaiveDate,val:i32) -> NaiveDate{
         let year = original_date.year();
         let mut month=original_date.month();
@@ -74,5 +76,26 @@ impl DateUtils {
                 original_date.clone().with_year(_year).unwrap().with_month(_month).unwrap()
             }
         }
+    }
+
+    /// 对计划的日期进行加减
+    pub fn plan_data_compute(original :&rbatis::DateTimeNative,cycle :u32,unit :u32) -> rbatis::DateTimeNative{
+        // cycle= 1：一次性，2：天，3：周，4：月，5：年
+        let param = unit as i64;
+        let convert_one_result = if 2==cycle {
+            original.add(Duration::days(param))
+        } else if 3==cycle {
+            original.add(Duration::weeks(param))
+        } else if 4 == cycle {
+            let original_date = original.date();
+            let convert_date = DateUtils::month_compute(&original_date,unit as i32);
+            original.clone().with_year(convert_date.year()).unwrap().with_month(convert_date.month()).unwrap()
+        } else if 5 == cycle {
+            original.clone().with_year(unit as i32).unwrap()
+        } else {
+            original.inner
+        };
+        let convert_two_result:DateTime<Local> = Local.from_local_datetime(&convert_one_result).unwrap();
+        return rbatis::DateTimeNative::from(convert_two_result);
     }
 }
