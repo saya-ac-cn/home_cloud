@@ -472,7 +472,7 @@ impl ContentService {
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
         let current_month = DateNative::now();
-        let mut end= rbatis::DateTimeNative::now();
+        let end= rbatis::DateTimeNative::now();
 
         // 总天数，计算日均用
         let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
@@ -498,7 +498,7 @@ impl ContentService {
             end_time: None,
             organize: Some(user_info.organize)
         };
-        let mut extend = ExtendPageDTO{
+        let extend = ExtendPageDTO{
             page_no: Some(1),
             page_size: Some(10),
             begin_time:Some(start),

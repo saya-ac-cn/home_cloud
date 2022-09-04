@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::ops::{Add, Div, Mul, Sub};
-use std::str::FromStr;
 use actix_http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse};
 use chrono::{Datelike};
@@ -526,7 +525,7 @@ impl FinancialService {
 
     /// 流水明细
     pub async fn general_journal_detail(&self, req: &HttpRequest, param: &JournalPageDTO)-> Result<Vec<GeneralJournalVO>>  {
-        let mut extend = ExtendPageDTO{
+        let extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
             begin_time:param.begin_time,
@@ -570,7 +569,7 @@ impl FinancialService {
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
         }
-        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        let result = Page::<JournalVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(total_row);
@@ -791,7 +790,7 @@ impl FinancialService {
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
         }
-        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        let result = Page::<JournalVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(total_row);
@@ -934,7 +933,7 @@ impl FinancialService {
             _last_year_total = _last_year_total.add(_last_year_row.total.unwrap());
         }
         // 计算本月日均
-        let mut current_avg_total = _current_month_total.div(Decimal::from(days));
+        let current_avg_total = _current_month_total.div(Decimal::from(days));
         // 计算环比 （本月的值-上月的值）÷上月的值(如果上月值为空，不计算)
         let mut m2m = Decimal::from(0);
         if !_last_month_total.is_zero() {
