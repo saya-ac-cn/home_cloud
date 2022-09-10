@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::error::Result;
-use crate::service::CONTEXT;
+use crate::service::{CONTEXT, SCHEDULER};
 use rbatis::DateTimeNative;
 use rbatis::crud::{CRUD, CRUDMut};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
@@ -66,6 +66,7 @@ impl SystemService {
         // 通过上面生成的token，完整记录日志
         let extract_result = &JWTToken::extract_token(&sign_in_vo.access_token);
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis, &extract_result.clone().unwrap(), String::from("OX001")).await;
+        SCHEDULER.lock().unwrap().add(123456);
         return Ok(sign_in_vo);
     }
 

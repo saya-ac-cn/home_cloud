@@ -1,4 +1,4 @@
-use actix_web::{web, post, get, put, delete, Responder, HttpRequest, HttpResponse};
+use actix_web::{web, post, get, put, delete, Responder, HttpRequest};
 use crate::entity::dto::general_journal::GeneralJournalDTO;
 use crate::entity::dto::journal::{JournalDTO, JournalPageDTO, JournalTotalDTO};
 use crate::entity::vo::{RespVO, ResultTools};

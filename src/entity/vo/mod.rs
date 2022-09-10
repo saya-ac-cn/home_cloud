@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use actix_web::{HttpResponse, Responder};
+use actix_web::{HttpResponse};
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 

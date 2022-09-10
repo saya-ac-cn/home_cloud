@@ -1,12 +1,20 @@
+use actix::Actor;
 use home_cloud::controller::{system_controller, oss_controller, content_controller, financial_controller};
-use home_cloud::service::CONTEXT;
+use home_cloud::service::{CONTEXT, SCHEDULER};
 use actix_web::{web, App, HttpServer};
 use actix_files as fs;
 use log::info;
-
+use std::time::Duration;
+use chrono::{FixedOffset, Local, TimeZone, Utc};
+use home_cloud::util::scheduler::Scheduler;
+fn test() {
+    println!("now: {}", Local::now().to_string());
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // 初始化调度器
+    actix_web::rt::spawn(Scheduler::start());
     //日志追加器
     home_cloud::config::log::init_log();
     info!(
