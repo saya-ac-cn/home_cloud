@@ -12,6 +12,7 @@ use rust_decimal::prelude::ToPrimitive;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
+use crate::dao::plan_mapper::PlanMapper;
 use crate::dao::user_mapper::UserMapper;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::dto::sign_in::SignInDTO;
@@ -66,7 +67,6 @@ impl SystemService {
         // 通过上面生成的token，完整记录日志
         let extract_result = &JWTToken::extract_token(&sign_in_vo.access_token);
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis, &extract_result.clone().unwrap(), String::from("OX001")).await;
-        SCHEDULER.lock().unwrap().add(123456);
         return Ok(sign_in_vo);
     }
 
@@ -376,36 +376,8 @@ impl SystemService {
         return Ok(rows);
     }
 
-    /// 创建提醒事项
-    pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
-        let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
-        if check_flag{
-            return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER)));
-        }
-        // 计算下次执行时间
-        let last_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let plan = Plan{
-            id:None,
-            standard_time: None,
-            cycle: arg.cycle,
-            unit: arg.unit,
-            content: arg.content.clone(),
-            last_exec_time: Some(last_exec_time),
-            organize: Some(user_info.organize),
-            user: Some(user_info.account.clone()),
-            display: Some(1),
-            create_time: Some(rbatis::DateTimeNative::now()),
-            update_time: None
-        };
-        // 写入提醒事项
-        let mut tx = CONTEXT.primary_rbatis.acquire_begin().await.unwrap();
-        let add_plan_result = tx.save(&plan, &[]).await;
-        if add_plan_result.is_err() {
-            error!("在保存提醒事项时，发生异常:{}",add_plan_result.unwrap_err());
-            tx.rollback();
-            return Err(Error::from("保存提醒事项失败"));
-        }
+    /**
+
         let plan_id = add_plan_result.unwrap().last_insert_id;
         // 构造任务归档
         let plan_archive = PlanArchive{
@@ -426,8 +398,95 @@ impl SystemService {
         }
         // 所有的写入都成功，最后正式提交
         tx.commit().await;
+**/
+
+    /// 创建提醒事项
+    pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
+        let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
+        if check_flag{
+            return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER)));
+        }
+        let cycle = arg.cycle.unwrap();
+        // 计算下次执行时间
+        let next_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        //   `cycle` 重复执行周期(1：一次性，2：天，3：周，4：月，5：年)',
+        //   `unit` '重复执行周期单位',
+        let plan = Plan{
+            id:None,
+            standard_time: arg.standard_time.clone(),
+            cycle: Some(cycle),
+            unit: if 1 == cycle { None } else {arg.unit},
+            content: arg.content.clone(),
+            next_exec_time: if 1 == cycle { None } else {Some(next_exec_time)},
+            organize: Some(user_info.organize),
+            user: Some(user_info.account.clone()),
+            display: Some(1),
+            create_time: Some(rbatis::DateTimeNative::now()),
+            update_time: None
+        };
+
+        let write_result = CONTEXT.primary_rbatis.save(&plan, &[]).await;
+        if  write_result.is_err(){
+            error!("在保存提醒事项时，发生异常:{}",write_result.unwrap_err());
+            return Err(Error::from("保存提醒事项失败!"));
+        }
         // TODO 创建一个定时调度任务 tokio-cron-scheduler
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX008")).await;
-        return Ok(add_plan_archive_result?.rows_affected);
+        // SCHEDULER.lock().unwrap().add(123456);
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX022")).await;
+        return Ok(write_result?.rows_affected);
     }
+
+
+    /// 修改提醒事项
+    pub async fn edit_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
+        let check_flag = arg.id.is_none() || arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
+        if check_flag{
+            return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER)));
+        }
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(), &arg.id);
+        let plan_option: Option<Plan> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
+        let plan_exist = plan_option.ok_or_else(|| Error::from((format!("id={} 的提醒事项不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
+        let cycle = arg.cycle.unwrap();
+        // 计算下次执行时间
+        let next_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        let plan = Plan{
+            id:plan_exist.id,
+            standard_time: arg.standard_time.clone(),
+            cycle: Some(cycle),
+            unit: if 1 == cycle { None } else {arg.unit},
+            content: arg.content.clone(),
+            next_exec_time: if 1 == cycle { None } else {Some(next_exec_time)},
+            organize: plan_exist.organize,
+            user: Some(user_info.account.clone()),
+            display: arg.display,
+            create_time: None,
+            update_time:Some(rbatis::DateTimeNative::now())
+        };
+        let result = PlanMapper::update_plan(&mut CONTEXT.primary_rbatis.as_executor(),&plan).await;
+        if result.is_err() {
+            error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
+            return Err(Error::from("提醒事项修改失败"));
+        }
+        // TODO 删除旧的，添加新的
+
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
+        return Ok(result?.rows_affected);
+    }
+
+    /// 删除提醒事项
+    pub async fn delete_plan(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        // 只能删除自己组织机构下的数据
+        let delete_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(),id).and().eq(Plan::organize(),user_info.organize);
+        let write_result = CONTEXT.primary_rbatis.remove_by_wrapper::<Plan>(delete_where).await;
+        if write_result.is_err(){
+            error!("删除提醒事项时，发生异常:{}",write_result.unwrap_err());
+            return Err(Error::from("删除提醒事项失败!"));
+        }
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
+        return Ok(write_result?);
+    }
+
 }

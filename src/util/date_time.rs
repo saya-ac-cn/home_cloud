@@ -91,7 +91,8 @@ impl DateUtils {
             let convert_date = DateUtils::month_compute(&original_date,unit as i32);
             original.clone().with_year(convert_date.year()).unwrap().with_month(convert_date.month()).unwrap()
         } else if 5 == cycle {
-            original.clone().with_year(unit as i32).unwrap()
+            let new_year = original.year() + (unit as i32);
+            original.clone().with_year(new_year).unwrap()
         } else {
             original.inner
         };

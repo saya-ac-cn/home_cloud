@@ -16,8 +16,8 @@
             <if test="plan.content != ''">
                 `content` = #{plan.content},
             </if>
-            <if test="plan.last_exec_time != ''">
-                `last_exec_time` =  #{plan.last_exec_time},
+            <if test="plan.next_exec_time != ''">
+                `next_exec_time` =  #{plan.next_exec_time},
             </if>
             <if test="plan.display != 0">
                 `display` = #{plan.display},

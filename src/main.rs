@@ -42,6 +42,9 @@ async fn main() -> std::io::Result<()> {
                     .service(system_controller::log_page)
                     .service(system_controller::log_type)
                     .service(system_controller::compute_pre6_logs)
+                    .service(system_controller::add_notes)
+                    .service(system_controller::edit_plan)
+                    .service(system_controller::delete_plan)
             )
             .service(
                 web::scope("/backend/oss")

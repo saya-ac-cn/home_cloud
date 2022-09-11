@@ -2,6 +2,7 @@ use actix_web::{web, get, post, put, delete, HttpRequest, Responder};
 use crate::entity::dto::journal::JournalTotalDTO;
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::picture_base64::Base64PictureDTO;
+use crate::entity::dto::plan::PlanDTO;
 use crate::entity::dto::sign_in::SignInDTO;
 use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::{RespVO};
@@ -109,5 +110,30 @@ pub async fn log_page(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Resp
 #[get("/log/total/pre6")]
 pub async fn compute_pre6_logs(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
     let vo = CONTEXT.system_service.compute_pre6_logs(&req,&arg.archive_date.clone()).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+
+/// 创建提醒事项
+#[post("/plan")]
+pub async fn add_notes(req: HttpRequest,arg: web::Json<PlanDTO>) -> impl Responder {
+    log::info!("add_plan:{:?}", arg.0);
+    let vo = CONTEXT.system_service.add_plan(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 修改提醒事项
+#[put("/plan")]
+pub async fn edit_plan(req: HttpRequest,arg: web::Json<PlanDTO>) -> impl Responder {
+    log::info!("edit_plan:{:?}", arg.0);
+    let vo = CONTEXT.system_service.edit_plan(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 删除提醒事项
+#[delete("/plan/{id}")]
+pub async fn delete_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responder {
+    let id = path.into_inner();
+    let vo = CONTEXT.system_service.delete_plan(&req,&id).await;
     return RespVO::from_result(&vo).resp_json();
 }

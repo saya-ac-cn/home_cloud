@@ -69,14 +69,14 @@ pub struct Plan{
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub last_exec_time:Option<DateTimeNative>,
+    pub next_exec_time:Option<DateTimeNative>,
     pub organize:Option<u64>,
     pub user:Option<String>,
     pub display:Option<u32>,
     pub create_time: Option<DateTimeNative>,
     pub update_time: Option<DateTimeNative>,
 }
-impl_field_name_method!(Plan{id,organize,user,display,last_exec_time});
+impl_field_name_method!(Plan{id,organize,user,display,next_exec_time});
 
 #[crud_table(table_name:plan_archive)]
 #[derive(Clone, Debug)]

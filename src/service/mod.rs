@@ -64,12 +64,6 @@ impl Default for ServiceContext {
             logic_un_deleted: config.logic_un_deleted,
             logic_deleted: config.logic_deleted,
         };
-        let mut scheduler:Scheduler = Scheduler{
-            scheduler:cron_tab::Cron::new(Utc),
-            plan_pool: HashMap::new()
-        };
-        //actix_web::rt::spawn(scheduler.start());
-        //scheduler.add(5210);
         ServiceContext {
             primary_rbatis: async_std::task::block_on(async {
                 crate::dao::init_rbatis(&primary_database_config).await
@@ -85,7 +79,6 @@ impl Default for ServiceContext {
             content_service: ContentService {},
             financial_service: FinancialService {},
             config,
-            //scheduler
         }
     }
 }

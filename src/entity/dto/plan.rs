@@ -7,7 +7,7 @@ pub struct PlanDTO {
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub last_exec_time:Option<rbatis::DateTimeNative>,
+    pub next_exec_time:Option<rbatis::DateTimeNative>,
     pub organize:Option<u64>,
     pub user:Option<String>,
     pub display:Option<u32>,
@@ -23,7 +23,7 @@ pub struct PlanPageDTO{
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub last_exec_time:Option<rbatis::DateTimeNative>,
+    pub next_exec_time:Option<rbatis::DateTimeNative>,
     pub user:Option<String>,
     pub display:Option<u32>,
 
