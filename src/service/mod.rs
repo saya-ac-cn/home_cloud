@@ -18,7 +18,7 @@ use crate::dao::DataSource;
 pub use crate::config::config::ApplicationConfig;
 use crate::service::financial_service::FinancialService;
 use crate::util::scheduler::Scheduler;
-use chrono::Utc;
+use chrono::{FixedOffset, Local, TimeZone};
 use std::sync::Mutex;
 
 
@@ -85,10 +85,12 @@ impl Default for ServiceContext {
 
     // 在lazy_static! { //your code} 中的代码并不会在编译时初始化静态量，它会在首次调用时，执行代码，来初始化。也就是所谓的延迟计算。
     lazy_static! {
+        //let local_tz = Local::from_offset(&FixedOffset::east(8));
         pub static ref CONTEXT: ServiceContext = ServiceContext::default();
         // https://www.javaroad.cn/questions/71579
         pub static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler{
-            scheduler:cron_tab::Cron::new(Utc),
+            // 东八区，必须设置，否则定时任务将到点不执行
+            scheduler:cron_tab::Cron::new(Local::from_offset(&FixedOffset::east(8))),
             plan_pool: HashMap::new()
         });
     }

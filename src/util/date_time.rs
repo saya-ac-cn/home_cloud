@@ -1,5 +1,5 @@
 use std::ops::Add;
-use chrono::{Datelike, DateTime, Duration, Local, NaiveDate, TimeZone};
+use chrono::{Datelike, DateTime, Duration, Local, NaiveDate, Timelike, TimeZone};
 
 pub trait DateTimeUtil{
     fn naive_date_time_to_str(&self,format:&str) -> Option<String>;
@@ -78,7 +78,7 @@ impl DateUtils {
         }
     }
 
-    /// 对计划的日期进行加减
+    /// 对计划的日期进行加运算
     pub fn plan_data_compute(original :&rbatis::DateTimeNative,cycle :u32,unit :u32) -> rbatis::DateTimeNative{
         // cycle= 1：一次性，2：天，3：周，4：月，5：年
         let param = unit as i64;
@@ -99,4 +99,14 @@ impl DateUtils {
         let convert_two_result:DateTime<Local> = Local.from_local_datetime(&convert_one_result).unwrap();
         return rbatis::DateTimeNative::from(convert_two_result);
     }
+
+    /// 根据日期时间生成cron表达式，其中秒一律按0处理，年份按照*，每年执行一次，因为cron_table框架不支持一次性的定时调度，特殊处理成每年执行一次，然后删除
+    pub fn data_time_to_cron(data_time :&rbatis::DateTimeNative) -> String {
+        let month = data_time.month();
+        let day = data_time.day();
+        let hour = data_time.hour();
+        let minute = data_time.minute();
+        format!(" 0 {} {} {} {} *",minute,hour,day,month)
+    }
+
 }

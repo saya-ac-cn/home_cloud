@@ -2,13 +2,12 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::service::{CONTEXT, SCHEDULER};
 use rbatis::DateTimeNative;
-use rbatis::crud::{CRUD, CRUDMut};
+use rbatis::crud::CRUD;
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
 use log::error;
 use rbson::Bson;
-use rust_decimal::prelude::ToPrimitive;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
@@ -20,7 +19,7 @@ use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
-use crate::entity::domain::primary_database_tables::{Plan, PlanArchive, User};
+use crate::entity::domain::primary_database_tables::{Plan, User};
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::plan::PlanDTO;
 use crate::entity::vo::log::LogVO;
@@ -432,7 +431,7 @@ impl SystemService {
             return Err(Error::from("保存提醒事项失败!"));
         }
         // TODO 创建一个定时调度任务 tokio-cron-scheduler
-        // SCHEDULER.lock().unwrap().add(123456);
+        SCHEDULER.lock().unwrap().remove(520);
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX022")).await;
         return Ok(write_result?.rows_affected);
     }
@@ -485,6 +484,7 @@ impl SystemService {
             error!("删除提醒事项时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除提醒事项失败!"));
         }
+        SCHEDULER.lock().unwrap().remove(*id);
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
         return Ok(write_result?);
     }
