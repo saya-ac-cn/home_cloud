@@ -16,6 +16,10 @@ impl PlanMapper {
 
     /// 分页查询提醒事项
     #[html_sql("./src/dao/plan_mapper.html")]
+    pub async fn select_list(rb: &mut RbatisExecutor<'_,'_>,plan:&PlanPageDTO) -> Result<Option<Vec<Plan>>,Error> { impled!() }
+
+    /// 分页查询提醒事项
+    #[html_sql("./src/dao/plan_mapper.html")]
     pub async fn select_page(rb: &mut RbatisExecutor<'_,'_>,plan:&PlanPageDTO,extend:&ExtendPageDTO) -> Result<Option<Vec<PlanVO>>,Error> { impled!() }
 
     /// 查询提醒事项总数

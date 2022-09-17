@@ -76,7 +76,7 @@ pub struct Plan{
     pub create_time: Option<DateTimeNative>,
     pub update_time: Option<DateTimeNative>,
 }
-impl_field_name_method!(Plan{id,organize,user,display,next_exec_time});
+impl_field_name_method!(Plan{id,organize,user,display,standard_time,next_exec_time});
 
 #[crud_table(table_name:plan_archive)]
 #[derive(Clone, Debug)]

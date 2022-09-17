@@ -22,41 +22,53 @@
     </update>
 
     <select id="select_page">
-        select * from `plan_archive`
+        select * from `plan_archive` a left join `plan` b on a.`plan_id` = b.`id`
         <where>
+            <if test="plan.organize != 0">
+                b.`organize` = #{plan.organize}
+            </if>
+            <if test="plan.user != ''">
+                and b.`user` = #{plan.user}
+            </if>
             <if test="plan.id != 0">
-                and `id` = #{plan.id}
+                and a.`id` = #{plan.id}
             </if>
             <if test="plan.status != 0">
-                and `status` = #{plan.status}
+                and a.`status` = #{plan.status}
             </if>
             <if test="plan.content != ''">
-                and `content` like concat(#{plan.content},'%')
+                and a.`content` like concat(#{plan.content},'%')
             </if>
             <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+                and a.`create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
             </if>
         </where>
         <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
         <trim prefix=" " suffix=";">
-            order by `id` desc limit #{extend.page_no},#{extend.page_size}
+            order by a.`id` desc limit #{extend.page_no},#{extend.page_size}
         </trim>
     </select>
 
     <select id="select_count">
-        select count(1) from `plan_archive`
+        select count(1) from `plan_archive` a left join `plan` b on a.`plan_id` = b.`id`
         <where>
+            <if test="plan.organize != 0">
+                b.`organize` = #{plan.organize}
+            </if>
+            <if test="plan.user != ''">
+                and b.`user` = #{plan.user}
+            </if>
             <if test="plan.id != 0">
-                and `id` = #{plan.id}
+                and a.`id` = #{plan.id}
             </if>
             <if test="plan.status != 0">
-                and `status` = #{plan.status}
+                and a.`status` = #{plan.status}
             </if>
             <if test="plan.content != ''">
-                and `content` like concat(#{plan.content},'%')
+                and a.`content` like concat(#{plan.content},'%')
             </if>
             <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+                and a.`create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
             </if>
         </where>
     </select>

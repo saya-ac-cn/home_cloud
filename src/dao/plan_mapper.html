@@ -30,6 +30,26 @@
         where `id` = #{plan.id} and `organize` = #{plan.organize}
     </update>
 
+    <select id="select_list">
+        select * from `plan`
+        <where>
+            <if test="plan.organize != 0">
+                `organize` = #{plan.organize}
+            </if>
+            <if test="plan.user != ''">
+                and `user` = #{plan.user}
+            </if>
+            <if test="plan.id != 0">
+                and `id` = #{plan.id}
+            </if>
+            <if test="plan.standard_time.inner() != ''">
+                and `standard_time` = date_format(#{plan.standard_time.inner()},'%Y-%m-%d %H:%i:00')
+            </if>
+            <if test="plan.content != ''">
+                and `content` like concat(#{plan.content},'%')
+            </if>
+        </where>
+    </select>
 
     <select id="select_page">
         select * from `plan`

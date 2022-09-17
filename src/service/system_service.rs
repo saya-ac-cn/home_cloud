@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::service::{CONTEXT, SCHEDULER};
 use rbatis::DateTimeNative;
-use rbatis::crud::CRUD;
+use rbatis::crud::{CRUD, CRUDMut};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
@@ -11,6 +11,7 @@ use rbson::Bson;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
+use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::dao::user_mapper::UserMapper;
 use crate::entity::dto::page::ExtendPageDTO;
@@ -19,11 +20,14 @@ use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
-use crate::entity::domain::primary_database_tables::{Plan, User};
+use crate::entity::domain::primary_database_tables::{Plan, PlanArchive, User};
 use crate::entity::dto::log::LogPageDTO;
-use crate::entity::dto::plan::PlanDTO;
+use crate::entity::dto::plan::{PlanDTO, PlanPageDTO};
+use crate::entity::dto::plan_archive::PlanArchivePageDTO;
 use crate::entity::vo::log::LogVO;
 use crate::entity::vo::log_type::LogTypeVO;
+use crate::entity::vo::plan::PlanVO;
+use crate::entity::vo::plan_archive::PlanArchiveVO;
 use crate::util;
 use crate::util::date_time::DateUtils;
 
@@ -375,30 +379,6 @@ impl SystemService {
         return Ok(rows);
     }
 
-    /**
-
-        let plan_id = add_plan_result.unwrap().last_insert_id;
-        // 构造任务归档
-        let plan_archive = PlanArchive{
-            id: None,
-            plan_id: plan_id.unwrap().to_u64(),
-            status: Some(1),
-            content: plan.content,
-            archive_time: plan.last_exec_time,
-            create_time: Some(rbatis::DateTimeNative::now()),
-            update_time: None
-        };
-        // 预写入任务归档数据
-        let add_plan_archive_result = tx.save(&plan_archive, &[]).await;
-        if add_plan_archive_result.is_err() {
-            error!("在保存流水时，发生异常:{}",add_plan_archive_result.unwrap_err());
-            tx.rollback();
-            return Err(Error::from("保存流水失败"));
-        }
-        // 所有的写入都成功，最后正式提交
-        tx.commit().await;
-**/
-
     /// 创建提醒事项
     pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
         let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
@@ -408,6 +388,8 @@ impl SystemService {
         let cycle = arg.cycle.unwrap();
         // 计算下次执行时间
         let next_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        // 生成定时cron表达式
+        let cron_tab = DateUtils::data_time_to_cron(&arg.standard_time.clone().unwrap());
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         //   `cycle` 重复执行周期(1：一次性，2：天，3：周，4：月，5：年)',
         //   `unit` '重复执行周期单位',
@@ -427,13 +409,14 @@ impl SystemService {
 
         let write_result = CONTEXT.primary_rbatis.save(&plan, &[]).await;
         if  write_result.is_err(){
-            error!("在保存提醒事项时，发生异常:{}",write_result.unwrap_err());
-            return Err(Error::from("保存提醒事项失败!"));
+            error!("在保存计划提醒事项时，发生异常:{}",write_result.unwrap_err());
+            return Err(Error::from("保存计划提醒事项失败!"));
         }
-        // TODO 创建一个定时调度任务 tokio-cron-scheduler
-        SCHEDULER.lock().unwrap().remove(520);
+        let result = write_result.unwrap();
+        let plan_id = result.last_insert_id.unwrap() as u64;
+        SCHEDULER.lock().unwrap().add(plan_id,cron_tab.as_str());
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX022")).await;
-        return Ok(write_result?.rows_affected);
+        return Ok(result.rows_affected);
     }
 
 
@@ -450,6 +433,8 @@ impl SystemService {
         let cycle = arg.cycle.unwrap();
         // 计算下次执行时间
         let next_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        // 生成定时cron表达式
+        let cron_tab = DateUtils::data_time_to_cron(&arg.standard_time.clone().unwrap());
         let plan = Plan{
             id:plan_exist.id,
             standard_time: arg.standard_time.clone(),
@@ -468,8 +453,9 @@ impl SystemService {
             error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("提醒事项修改失败"));
         }
-        // TODO 删除旧的，添加新的
-
+        let mut scheduler = SCHEDULER.lock().unwrap();
+        scheduler.remove(plan_exist.id.unwrap());
+        scheduler.add(plan_exist.id.unwrap(),cron_tab.as_str());
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
         return Ok(result?.rows_affected);
     }
@@ -488,5 +474,141 @@ impl SystemService {
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
         return Ok(write_result?);
     }
+
+    /// 分页查询当前活跃的计划提醒(plan)
+    pub async fn plan_page(&self, req: &HttpRequest, param: &PlanPageDTO) -> Result<Page<PlanVO>>  {
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+
+        let count_result = PlanMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("在计划提醒分页统计时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("计划提醒分页查询异常"));
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result = Page::<PlanVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(result.page_size);
+        let page_result = PlanMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        if page_result.is_err() {
+            error!("在计划提醒分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
+            return Err(Error::from("计划提醒分页查询异常"));
+        }
+        let page_rows = page_result.unwrap();
+        result.records = page_rows;
+        return Ok(result);
+    }
+
+    /// 提前完成计划提醒
+    pub async fn advance_finish_news(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(), &id);
+        let plan_option: Option<Plan> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
+        let mut plan_exist = plan_option.ok_or_else(|| Error::from((format!("id={} 的提醒事项不存在!", id), util::NOT_EXIST)))?;
+
+        // 提前准备任务归档数据
+        let plan_archive = PlanArchive{
+            id: None,
+            plan_id: plan_exist.id,
+            status: Some(3),
+            content: plan_exist.clone().content,
+            archive_time: plan_exist.standard_time.clone(),
+            create_time: Some(rbatis::DateTimeNative::now()),
+            update_time: None
+        };
+        let mut scheduler = SCHEDULER.lock().unwrap();
+        if 1 == plan_exist.cycle.unwrap() {
+            // 一次性的任务，计划提醒表(plan)按兵不动，只用归档
+            let write_result = CONTEXT.primary_rbatis.save(&plan_archive, &[]).await;
+            if  write_result.is_err(){
+                error!("在归档计划提醒事项时id={}，archive_time={:?}，发生异常:{}",plan_exist.id.unwrap(),plan_exist.standard_time.clone(),write_result.unwrap_err());
+            }
+            // 移除这个调度任务
+            scheduler.remove(*id);
+            return Ok(0);
+        }
+        // 对于循环任务，需要生成下次的执行时间
+        // 将上次计算好的本次时间放入到本次的基准时间
+        plan_exist.standard_time = plan_exist.next_exec_time;
+        // 计算下次执行时间
+        let next_exec_time = DateUtils::plan_data_compute(&plan_exist.standard_time.clone().unwrap(),plan_exist.cycle.unwrap(),plan_exist.unit.unwrap());
+        plan_exist.next_exec_time = Some(next_exec_time);
+
+        let mut tx = CONTEXT.primary_rbatis.acquire_begin().await.unwrap();
+        let edit_plan_result = PlanMapper::update_plan(&mut tx.as_executor(), &plan_exist).await;
+        if edit_plan_result.is_err() {
+            error!("在完成id={}的计划提醒时，发生异常:{}",id,edit_plan_result.unwrap_err());
+            tx.rollback();
+            return Err(Error::from("提前完成提醒事项失败，请稍后再试"));
+        }
+
+        // 预写入任务归档数据
+        let add_plan_archive_result = tx.save(&plan_archive, &[]).await;
+        if add_plan_archive_result.is_err() {
+            error!("在归档计划提醒时，发生异常:{}",add_plan_archive_result.unwrap_err());
+            tx.rollback();
+            return Err(Error::from("提前完成提醒事项失败，请稍后再试"));
+        }
+        // 所有的写入都成功，最后正式提交
+        tx.commit().await;
+        // 生成定时cron表达式
+        let cron_tab = DateUtils::data_time_to_cron(&plan_exist.standard_time.clone().unwrap());
+        scheduler.remove(plan_exist.id.unwrap());
+        scheduler.add(plan_exist.id.unwrap(),cron_tab.as_str());
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
+        return Ok(add_plan_archive_result?.rows_affected);
+    }
+
+    /// 分页获取归档计划提醒数据(plan_archive)
+    pub async fn plan_archive_page(&self, req: &HttpRequest, param: &PlanArchivePageDTO) -> Result<Page<PlanArchiveVO>>  {
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let mut arg= param.clone();
+        // 用户只能看到自己组织下的数据
+        arg.organize = Some(user_info.organize);
+
+        let count_result = PlanArchiveMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        if count_result.is_err(){
+            error!("分页归档计划提醒统计时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("分页归档计划提醒异常"));
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result = Page::<PlanArchiveVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(result.page_size);
+        let page_result = PlanArchiveMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        if page_result.is_err() {
+            error!("在分页获取归档计划提醒页面数据时，发生异常:{}",page_result.unwrap_err());
+            return Err(Error::from("分页查询归档计划提醒异常"));
+        }
+        let page_rows = page_result.unwrap();
+        result.records = page_rows;
+        return Ok(result);
+    }
+
+
+    // 归档计划提醒的编辑
+    // 归档计划提醒的删除
 
 }

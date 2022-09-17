@@ -39,6 +39,9 @@ async fn main() -> std::io::Result<()> {
                     .service(system_controller::add_notes)
                     .service(system_controller::edit_plan)
                     .service(system_controller::delete_plan)
+                    .service(system_controller::plan_page)
+                    .service(system_controller::finish_plan)
+                    .service(system_controller::plan_archive_page)
             )
             .service(
                 web::scope("/backend/oss")
