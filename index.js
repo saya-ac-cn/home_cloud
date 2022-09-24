@@ -209,8 +209,9 @@ export const getBackUpDBList = params => ajax(`${backendAPI}/api/oss/db`, params
 // 下载备份的数据库文件
 export const downloadBackUpDB = `${backendAPI}/api/oss/db/download/`;
 
-// 获取数据总量及词云数据
+// 获取数据总量
 export const getCountAndWordCloud = () => ajax(`${backendAPI}/api/set/countAndWordCloud`, {}, 'GET');
+// {{host}}:{{port}}/backend/system/total/object/rows
 
 // 查询活跃度
 export const getActivityRate= params => ajax(`${backendAPI}/api/set/activityRate/${params}`, {}, 'GET');

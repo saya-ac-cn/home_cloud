@@ -1282,7 +1282,7 @@ dependencies = [
  "chrono",
  "cron_tab",
  "fast_log",
- "futures-util",
+ "futures",
  "indexmap",
  "jsonwebtoken",
  "lazy_static",

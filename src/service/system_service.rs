@@ -7,7 +7,7 @@ use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
 use log::error;
-use rbson::Bson;
+use rbson::{Array, Bson, Document};
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
@@ -23,7 +23,7 @@ use crate::util::Page;
 use crate::entity::domain::primary_database_tables::{Plan, PlanArchive, User};
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::plan::{PlanDTO, PlanPageDTO};
-use crate::entity::dto::plan_archive::PlanArchivePageDTO;
+use crate::entity::dto::plan_archive::{PlanArchiveDTO, PlanArchivePageDTO};
 use crate::entity::vo::log::LogVO;
 use crate::entity::vo::log_type::LogTypeVO;
 use crate::entity::vo::plan::PlanVO;
@@ -379,6 +379,87 @@ impl SystemService {
         return Ok(rows);
     }
 
+    /// 统计各个表的数据体量
+    pub async fn compute_object_rows(&self, req: &HttpRequest)->Result<rbson::Array> {
+        // 最终结果集的容器
+        let mut result: Vec<Bson> = rbson::Array::new();
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let query_primary_count_sql = format!("select '计划' as `type` , count(1) as `value` from `plan` where `organize` = {};", &user_info.organize);
+        let param:Vec<Bson> = Vec::new();
+        let primary_count_result_warp = CONTEXT.primary_rbatis.fetch(query_primary_count_sql.as_str(), param).await;
+        // 异常健壮处理
+        let mut error_plan = Bson::Null;
+        let mut primary_rows:rbson::Array = rbson::Array::new();
+        if primary_count_result_warp.is_err(){
+            error!("在统计主库的计划提醒时，发生异常:{}",primary_count_result_warp.clone().unwrap_err());
+            let mut plan = rbson::Document::new();
+            plan.insert("type","计划");
+            plan.insert("value",0);
+            error_plan = Bson::Document(plan);
+            result.push(error_plan);
+        }else {
+            primary_rows = primary_count_result_warp.unwrap();
+            for item in primary_rows {
+                result.push(item);
+            }
+        }
+        let query_business_count_sql = format!("select '文件' as `type` , count(1) as `value` from `files` where `organize` = {}\n
+                                                    union all\n
+                                                    select '图片' as `type` , count(1) as `value` from `pictures` where `organize` = {}\n
+                                                    union all\n
+                                                    select '笔记簿' as `type` , count(1) as `value` from `notebook` where `organize` = {}\n
+                                                    union all\n
+                                                    select '笔记' as `type` , count(1) as `value` from `notebook` a inner join `notes` b on a.`id` = b.`notebook_id` where a.`organize` = {}\n
+                                                    union all\n
+                                                    select '动态' as `type` , count(1) as `value` from `news` where `organize` = {}", &user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize);
+        let param:Vec<Bson> = Vec::new();
+        let business_count_result_warp = CONTEXT.business_rbatis.fetch(query_business_count_sql.as_str(), param).await;
+
+        // 异常健壮处理
+        let mut error_files = Bson::Null;
+        let mut error_pictures = Bson::Null;
+        let mut error_notebook = Bson::Null;
+        let mut error_note = Bson::Null;
+        let mut error_news = Bson::Null;
+        let mut business_rows:rbson::Array = rbson::Array::new();
+
+        if business_count_result_warp.is_err(){
+            error!("在统计业务库的各表总数据量时，发生异常:{}",business_count_result_warp.unwrap_err());
+            let mut files = rbson::Document::new();
+            files.insert("type","文件");
+            files.insert("value",0);
+            error_files = Bson::Document(files);
+            result.push(error_files);
+            let mut pictures = rbson::Document::new();
+            pictures.insert("type","图片");
+            pictures.insert("value",0);
+            error_pictures = Bson::Document(pictures);
+            result.push(error_pictures);
+            let mut notebook = rbson::Document::new();
+            notebook.insert("type","笔记簿");
+            notebook.insert("value",0);
+            error_notebook = Bson::Document(notebook);
+            result.push(error_notebook);
+            let mut notes = rbson::Document::new();
+            notes.insert("type","笔记");
+            notes.insert("value",0);
+            error_note = Bson::Document(notes);
+            result.push(error_note);
+            let mut news = rbson::Document::new();
+            news.insert("type","动态");
+            news.insert("value",0);
+            error_news = Bson::Document(news);
+            result.push(error_news);
+        }else {
+            business_rows = business_count_result_warp.unwrap();
+            for item in business_rows {
+                result.push(item);
+            }
+        }
+        return Ok(result);
+    }
+
+
     /// 创建提醒事项
     pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
         let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
@@ -512,7 +593,7 @@ impl SystemService {
     }
 
     /// 提前完成计划提醒
-    pub async fn advance_finish_news(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
+    pub async fn advance_finish_plan(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(), &id);
         let plan_option: Option<Plan> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
@@ -608,7 +689,38 @@ impl SystemService {
     }
 
 
-    // 归档计划提醒的编辑
-    // 归档计划提醒的删除
+    /// 归档计划提醒的编辑(只能编辑完成与否)
+    pub async fn edit_plan_archive(&self, req: &HttpRequest,arg: &PlanArchiveDTO) -> Result<u64> {
+        let check_flag = arg.id.is_none() || arg.status.is_none();
+        if check_flag{
+            return Err(Error::from(("归档计划id和状态不能为空!",util::NOT_PARAMETER)));
+        }
+        let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(PlanArchive::id(), &arg.id);
+        let plan_archive_option: Option<PlanArchive> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
+        let mut plan_archive_exist = plan_archive_option.ok_or_else(|| Error::from((format!("id={} 的归档提醒事项不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
+        plan_archive_exist.status = arg.status;
+        let result = PlanArchiveMapper::update_plan(&mut CONTEXT.primary_rbatis.as_executor(),&plan_archive_exist).await;
+        if result.is_err() {
+            error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
+            return Err(Error::from("提醒事项修改失败"));
+        }
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
+        return Ok(result?.rows_affected);
+    }
 
+    // https://www.cnblogs.com/silentdoer/p/13278650.html
+    /// 归档计划提醒的删除
+    pub async fn delete_plan_archive(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
+        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        // 只能删除自己组织机构下的数据
+        let delete_where = CONTEXT.primary_rbatis.new_wrapper().eq(PlanArchive::id(),id).and();
+        let write_result = CONTEXT.primary_rbatis.remove_by_wrapper::<PlanArchive>(delete_where).await;
+        if write_result.is_err(){
+            error!("删除归档提醒事项时，发生异常:{}",write_result.unwrap_err());
+            return Err(Error::from("删除归档提醒事项失败!"));
+        }
+        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
+        return Ok(write_result?);
+    }
 }

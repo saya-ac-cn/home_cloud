@@ -3,7 +3,7 @@ use crate::entity::dto::journal::JournalTotalDTO;
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::picture_base64::Base64PictureDTO;
 use crate::entity::dto::plan::{PlanDTO, PlanPageDTO};
-use crate::entity::dto::plan_archive::PlanArchivePageDTO;
+use crate::entity::dto::plan_archive::{PlanArchiveDTO, PlanArchivePageDTO};
 use crate::entity::dto::sign_in::SignInDTO;
 use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::{RespVO};
@@ -114,6 +114,13 @@ pub async fn compute_pre6_logs(req: HttpRequest,arg: web::Json<JournalTotalDTO>)
     return RespVO::from_result(&vo).resp_json();
 }
 
+///  统计各个表的数据体量
+#[get("/total/object/rows")]
+pub async fn compute_object_rows(req: HttpRequest) -> impl Responder {
+    let vo = CONTEXT.system_service.compute_object_rows(&req).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
 
 /// 创建提醒事项
 #[post("/plan")]
@@ -150,13 +157,29 @@ pub async fn plan_page(req: HttpRequest, arg: web::Json<PlanPageDTO>) -> impl Re
 #[put("/plan/finish/{id}")]
 pub async fn finish_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responder {
     let id = path.into_inner();
-    let vo = CONTEXT.system_service.advance_finish_news(&req,&id).await;
+    let vo = CONTEXT.system_service.advance_finish_plan(&req,&id).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 分页获取归档计划提醒数据
-#[get("/plan/archive/page")]
+#[get("/archive/archive/page")]
 pub async fn plan_archive_page(req: HttpRequest, arg: web::Json<PlanArchivePageDTO>) -> impl Responder {
     let vo = CONTEXT.system_service.plan_archive_page(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 修改归档的提醒事项
+#[put("/archive/plan")]
+pub async fn edit_archive_plan(req: HttpRequest,arg: web::Json<PlanArchiveDTO>) -> impl Responder {
+    log::info!("edit_archive_plan:{:?}", arg.0);
+    let vo = CONTEXT.system_service.edit_plan_archive(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+/// 删除归档的提醒事项
+#[delete("/archive/plan/{id}")]
+pub async fn delete_archive_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responder {
+    let id = path.into_inner();
+    let vo = CONTEXT.system_service.delete_plan_archive(&req,&id).await;
     return RespVO::from_result(&vo).resp_json();
 }

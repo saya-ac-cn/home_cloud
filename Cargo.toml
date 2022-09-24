@@ -23,7 +23,8 @@ lazy_static = "1.4.0"
 #log
 log = "0.4"
 fast_log = { version="1.4.16", features = ["lz4","zip", "gzip"]}
-futures-util = { version = "0.3.7", default-features = false, features = ["std"] }
+#futures-util = { version = "0.3.7", default-features = false, features = ["std"] }
+futures= { version = "0.3.21", default-features = false, features = ["std"] }
 #web server
 actix = "0.13.0"
 actix-web = "4.0"
