@@ -1,4 +1,5 @@
 use actix_web::{web, get, post, put, delete, HttpRequest, Responder};
+use crate::entity::dto::db_dump_log::DbDumpLogPageDTO;
 use crate::entity::dto::journal::JournalTotalDTO;
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::picture_base64::Base64PictureDTO;
@@ -183,3 +184,11 @@ pub async fn delete_archive_plan(req: HttpRequest,path: web::Path<u64>) -> impl 
     let vo = CONTEXT.system_service.delete_plan_archive(&req,&id).await;
     return RespVO::from_result(&vo).resp_json();
 }
+
+/// 获取数据库备份日志分页列表
+#[get("/db/log/page")]
+pub async fn db_dump_log_page(req: HttpRequest, arg: web::Json<DbDumpLogPageDTO>) -> impl Responder {
+    let vo = CONTEXT.system_service.db_dump_log_page(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+

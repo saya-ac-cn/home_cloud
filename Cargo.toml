@@ -50,5 +50,7 @@ urlencoding = "0.2.0"
 rust_decimal = "1.25.0"
 # Excel工具
 simple_excel_writer = "0.2.0"
-#rcron = "1.2.1"
+# 定时任务
 cron_tab = "0.1.4"
+# 发送邮件
+lettre="0.10.0-alpha.5"

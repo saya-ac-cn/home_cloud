@@ -3,21 +3,66 @@ use std::collections::HashMap;
 use std::thread;
 use log::{error, info};
 use crate::service::{CONTEXT, SCHEDULER};
-use chrono::Local;
+use chrono::{Duration, Local, NaiveDateTime};
 use cron_tab::Cron;
 use rbatis::crud::{CRUD, CRUDMut};
 use rbatis::DateTimeNative;
+use rbatis::value::DateTimeNow;
 use crate::dao::plan_mapper::PlanMapper;
-use crate::entity::domain::primary_database_tables::{Plan, PlanArchive};
+use crate::entity::domain::primary_database_tables::{DbDumpLog, Plan, PlanArchive};
 use crate::entity::dto::plan::PlanPageDTO;
 use crate::util;
-use crate::util::date_time::{DateUtils};
+use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::scheduler;
+use std::process::Command;
+use std::fs::File;
+use std::ops::Sub;
+use crate::util::mail_util::MailUtils;
 
 /// 调度任务 https://crates.io/crates/cron_tab
 pub struct Scheduler {
     pub scheduler: Cron<Local>,
     pub plan_pool: HashMap<u64, i32>,
+}
+
+/// 落实mysql 的 mysqldump操作
+pub async fn do_execute_mysqldump(){
+    let start_time = DateTimeUtil::naive_date_time_to_str(&Some(chrono::NaiveDateTime::now()), util::FORMAT_Y_M_D_H_M_S);
+    // 确定要备份的路径
+    let archive_date = NaiveDateTime::now().sub(Duration::days(1));
+    let today_op = DateTimeUtil::naive_date_time_to_str(&Some(archive_date.date()), util::FORMAT_YMD);
+    let today = today_op.unwrap();
+    // 数据备份的相对路径
+    let db_path = format!("/{}/db/db_dump_{}.sql",util::DOCUMENT_PATH,today);
+    // 数据备份的完整路径
+    let save_path = format!("{}{}", &CONTEXT.config.data_dir,db_path.clone());
+    let mut command = Command::new("sh");
+    command.arg("-c").arg(&CONTEXT.config.mysqldump);
+    command.stdout(File::create(save_path).unwrap());
+    let code = command.status().unwrap().code();
+    let end_time = DateTimeUtil::naive_date_time_to_str(&Some(chrono::NaiveDateTime::now()), util::FORMAT_Y_M_D_H_M_S);
+    match code {
+        Some(code) => {
+            // 写入备份成功的数据记录
+            let log = DbDumpLog{
+                id:None,
+                url: Some(db_path),
+                archive_date: Some(rbatis::DateNative::from(rbatis::DateNative::now().sub(Duration::days(1)))),
+                execute_data: Some(rbatis::DateTimeNative::now())
+            };
+            let write_result = CONTEXT.primary_rbatis.save(&log, &[]).await;
+            if  write_result.is_err(){
+                error!("备份数据库时，发生异常:{}",write_result.unwrap_err());
+            }else {
+                MailUtils::send_dump_massage(DateTimeUtil::naive_date_time_to_str(&Some(archive_date.date()), util::FORMAT_Y_M_D).unwrap().as_str(),start_time.unwrap().as_str(),end_time.unwrap().as_str())
+            }
+            info!("Exit Status: {}", code);
+        }
+        None => {
+            // 发送备份失败的消息
+            error!("Process terminated.");
+        }
+    }
 }
 
 /// 落实调度任务的具体执行
@@ -85,6 +130,11 @@ pub async fn do_plan_notice(date:rbatis::DateTimeNative){
 }
 
 /// 触发执行调度执行
+pub fn execute_mysqldump() {
+    futures::executor::block_on(do_execute_mysqldump());
+}
+
+/// 触发执行调度执行
 pub fn plan_notice() {
     futures::executor::block_on(do_plan_notice(rbatis::DateTimeNative::now()));
 }
@@ -96,6 +146,8 @@ impl Scheduler {
         // 查询现存所有活跃的提醒计划
         let plan_result= CONTEXT.primary_rbatis.fetch_list().await;
         let mut poll = SCHEDULER.lock().unwrap();
+        // 添加一个备份数据库的定时任务
+        poll.scheduler.add_fn("0 0 3 * * ?",scheduler::execute_mysqldump);
         if plan_result.is_ok(){
             let plans:Vec<Plan> = plan_result.unwrap();
             for plan in plans {

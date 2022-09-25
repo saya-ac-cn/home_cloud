@@ -13,6 +13,7 @@ pub mod journal_mapper;
 pub mod general_journal_mapper;
 pub mod plan_mapper;
 pub mod plan_archive_mapper;
+pub mod db_dump_log_mapper;
 
 pub struct DataSource {
     /// 数据库地址

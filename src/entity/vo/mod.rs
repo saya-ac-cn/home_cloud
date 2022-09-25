@@ -24,6 +24,7 @@ pub mod journal;
 pub mod general_journal;
 pub mod plan;
 pub mod plan_archive;
+pub mod db_dump_log;
 
 pub struct ResultTools{}
 impl ResultTools {

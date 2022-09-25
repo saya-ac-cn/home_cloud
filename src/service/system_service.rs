@@ -8,6 +8,7 @@ use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
 use log::error;
 use rbson::{Array, Bson, Document};
+use crate::dao::db_dump_log_mapper::DbDumpLogMapper;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
@@ -21,9 +22,11 @@ use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
 use crate::entity::domain::primary_database_tables::{Plan, PlanArchive, User};
+use crate::entity::dto::db_dump_log::DbDumpLogPageDTO;
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::plan::{PlanDTO, PlanPageDTO};
 use crate::entity::dto::plan_archive::{PlanArchiveDTO, PlanArchivePageDTO};
+use crate::entity::vo::db_dump_log::DbDumpLogVO;
 use crate::entity::vo::log::LogVO;
 use crate::entity::vo::log_type::LogTypeVO;
 use crate::entity::vo::plan::PlanVO;
@@ -343,8 +346,8 @@ impl SystemService {
 
         let count_result = LogMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
         if count_result.is_err(){
-            error!("在用户分页统计时，发生异常:{}",count_result.unwrap_err());
-            return Err(Error::from("用户分页查询异常"));
+            error!("在日志分页统计时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("日志分页查询异常"));
         }
         let total_row = count_result.unwrap().unwrap();
         if total_row <= 0 {
@@ -709,7 +712,6 @@ impl SystemService {
         return Ok(result?.rows_affected);
     }
 
-    // https://www.cnblogs.com/silentdoer/p/13278650.html
     /// 归档计划提醒的删除
     pub async fn delete_plan_archive(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
@@ -722,5 +724,36 @@ impl SystemService {
         }
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
         return Ok(write_result?);
+    }
+
+    /// 数据库备份日志分页
+    pub async fn db_dump_log_page(&self, req: &HttpRequest,param: &DbDumpLogPageDTO) -> Result<Page<DbDumpLogVO>>  {
+        let mut extend = ExtendPageDTO{
+            page_no: param.page_no,
+            page_size: param.page_size,
+            begin_time:param.begin_time,
+            end_time:param.end_time
+        };
+        let count_result = DbDumpLogMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &param,&extend).await;
+        if count_result.is_err(){
+            error!("在数据库备份日志分页统计时，发生异常:{}",count_result.unwrap_err());
+            return Err(Error::from("数据库备份日志分页查询异常"));
+        }
+        let total_row = count_result.unwrap().unwrap();
+        if total_row <= 0 {
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result = Page::<DbDumpLogVO>::page_query( total_row, &extend);
+        // 重新设置limit起始位置
+        extend.page_no = Some((result.page_no-1)*result.page_size);
+        extend.page_size = Some(result.page_size);
+        let page_result = DbDumpLogMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &param,&extend).await;
+        if page_result.is_err() {
+            error!("在数据库备份日志分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
+            return Err(Error::from("数据库备份日志分页查询异常"));
+        }
+        let page_rows = page_result.unwrap();
+        result.records = page_rows;
+        return Ok(result);
     }
 }

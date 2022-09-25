@@ -1,4 +1,4 @@
-use rbatis::DateTimeNative;
+use rbatis::{DateNative, DateTimeNative};
 
 /// 主数据库
 
@@ -90,3 +90,13 @@ pub struct PlanArchive{
     pub update_time: Option<DateTimeNative>,
 }
 impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});
+
+#[crud_table(table_name:db_dump_log)]
+#[derive(Clone, Debug)]
+pub struct DbDumpLog{
+    pub id:Option<u64>,
+    pub url:Option<String>,
+    pub archive_date:Option<DateNative>,
+    pub execute_data:Option<DateTimeNative>,
+}
+impl_field_name_method!(DbDumpLog{id,archive_date});

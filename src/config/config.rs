@@ -36,7 +36,18 @@ pub struct ApplicationConfig {
     pub login_fail_retry_wait_sec: u64,
     /// 项目产生的数据目录
     pub data_dir: String,
-    pub file_type_map: HashMap<String, String>
+    /// 备份数据库的指令
+    pub mysqldump: String,
+    /// 文件类型映射字典
+    pub file_type_map: HashMap<String, String>,
+    /// 发件人
+    pub from_mail: String,
+    /// 收件人
+    pub to_mail: Vec<String>,
+    /// 邮件服务器地址
+    pub mail_server: String,
+    /// 邮件服务器发送token
+    pub mail_token: String
 
 }
 

@@ -6,5 +6,6 @@ pub mod date_time;
 pub mod page;
 pub mod constant;
 pub mod scheduler;
+pub mod mail_util;
 pub use page::*;
 pub use constant::*;
