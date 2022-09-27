@@ -10,6 +10,9 @@ pub struct PlanArchiveVO{
     pub plan_id:Option<u64>,
     pub status:Option<u32>,
     pub content:Option<String>,
+    pub user_account:Option<String>,
+    pub user_name:Option<String>,
+    pub user_mail:Option<String>,
     pub archive_time:Option<String>,
     pub create_time:Option<String>,
     pub update_time:Option<String>
@@ -23,6 +26,9 @@ impl From<PlanArchive> for PlanArchiveVO {
             plan_id: arg.plan_id,
             status:arg.status,
             content: arg.content,
+            user_account:None,
+            user_name:None,
+            user_mail:None,
             archive_time: DateTimeUtil::naive_date_time_to_str(&arg.archive_time,&util::FORMAT_Y_M_D_H_M_S),
             create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
             update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S)

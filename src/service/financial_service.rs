@@ -636,7 +636,7 @@ impl FinancialService {
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
         }
-        let mut result = Page::<JournalVO>::page_query( total_row, &extend);
+        let result = Page::<JournalVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(total_row);

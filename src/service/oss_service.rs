@@ -7,7 +7,7 @@ use actix_multipart::{Field, Multipart};
 use actix_web::{HttpRequest, HttpResponse, web};
 use actix_web::web::BufMut;
 use chrono::NaiveDateTime;
-use futures_util::{StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt};
 use crate::error::Error;
 use crate::error::Result;
 use crate::util::string::IsEmptyString;

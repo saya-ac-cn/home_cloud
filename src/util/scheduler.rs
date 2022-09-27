@@ -9,7 +9,7 @@ use rbatis::crud::{CRUD, CRUDMut};
 use rbatis::DateTimeNative;
 use rbatis::value::DateTimeNow;
 use crate::dao::plan_mapper::PlanMapper;
-use crate::entity::domain::primary_database_tables::{DbDumpLog, Plan, PlanArchive};
+use crate::entity::domain::primary_database_tables::{DbDumpLog, Plan, PlanArchive, User};
 use crate::entity::dto::plan::PlanPageDTO;
 use crate::util;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
@@ -17,6 +17,8 @@ use crate::util::scheduler;
 use std::process::Command;
 use std::fs::File;
 use std::ops::Sub;
+use crate::dao::plan_archive_mapper::PlanArchiveMapper;
+use crate::entity::vo::plan_archive::PlanArchiveVO;
 use crate::util::mail_util::MailUtils;
 
 /// 调度任务 https://crates.io/crates/cron_tab
@@ -66,8 +68,24 @@ pub async fn do_execute_mysqldump(){
 }
 
 /// 落实调度任务的具体执行
-pub async fn do_plan_notice(date:rbatis::DateTimeNative){
+pub async fn do_plan_notice(date:rbatis::DateTimeNative) {
     println!("begin execute task at: {}", date.to_string());
+    // 查询所有的用户信息，并放入map中
+    let user_query_result = CONTEXT.primary_rbatis.fetch_list().await;
+    if user_query_result.is_err(){
+        error!("查询用户发送异常:{}",user_query_result.unwrap_err());
+        return;
+    }
+    let user_list:Vec<User>  = user_query_result.unwrap();
+    if user_list.is_empty() {
+        return;
+    }
+    let mut plan_pool: HashMap<String, User>= HashMap::new();
+    for user in user_list {
+        let account = user.account.clone().unwrap();
+        plan_pool.insert(account,user);
+    }
+
     let query_where = PlanPageDTO{id: None,standard_time:Some(date),cycle: None, unit: None,content: None,next_exec_time: None, user: None,display: None, page_no: None,page_size: None,begin_time: None,end_time: None,organize: None };
     let list_result = PlanMapper::select_list(&mut CONTEXT.primary_rbatis.as_executor(), &query_where).await;
     if list_result.is_err() {
@@ -126,6 +144,52 @@ pub async fn do_plan_notice(date:rbatis::DateTimeNative){
         scheduler.remove(plan.id.unwrap());
         scheduler.add(plan.id.unwrap(),cron_tab.as_str());
         // TODO 发一次邮件给予提示
+        if !plan_pool.contains_key(plan.user.clone().unwrap().as_str()){
+            return;
+        }
+        let user_op = plan_pool.get(plan.user.clone().unwrap().as_str());
+        let user = user_op.unwrap();
+        let mut contets:Vec<String> =  Vec::new();
+        let content = plan.content.clone().unwrap();
+        contets.push(content);
+        MailUtils::send_plan_massage(true,user,contets)
+    }
+}
+
+/// 落实未完成的任务提醒
+pub async fn do_undone_plan_notice(){
+    // 查询截止到今日都还没有完成的任务
+    let query_list_result = PlanArchiveMapper::select_undone_list(&mut CONTEXT.primary_rbatis.as_executor()).await;
+    if query_list_result.is_err() {
+        // 查询此刻的计划提醒发生异常
+        error!("触发定时任务后，查询未完成的计划提醒发生异常:{}",query_list_result.unwrap_err());
+        return;
+    }
+    let plans:Vec<PlanArchiveVO> = query_list_result.unwrap().unwrap();
+    // 对提醒按照用户进行分组
+    let mut map:HashMap<String,Vec<PlanArchiveVO>> = HashMap::new();
+    for item in plans {
+        let user_account = item.user_account.clone().unwrap();
+        if map.contains_key(&user_account) {
+            let mut list = map.get(&user_account).unwrap().to_vec();
+            list.push(item);
+            map.insert(user_account, list);
+        }else {
+            map.insert(user_account, vec![item]);
+        }
+    }
+    // 遍历这个map
+    for (account,plans) in map.iter() {
+        let user_info = plans.get(0).clone().unwrap();
+        let mut contets:Vec<String> =  Vec::new();
+        let user_mail_info = User{account: Some(account.clone()),name: user_info.clone().user_name,password: None,sex: None,qq: None, email: user_info.clone().user_mail,phone: None,birthday: None,hometown: None, autograph: None,logo: None,background: None,organize_id: None,state: None,create_time: None,update_time: None };
+        // 对这个用户下的提醒整理成一个列表
+        for plan in plans {
+            let content = plan.content.clone().unwrap();
+            contets.push(content);
+        }
+        // 发送邮件
+        MailUtils::send_plan_massage(false,&user_mail_info,contets)
     }
 }
 
@@ -139,6 +203,11 @@ pub fn plan_notice() {
     futures::executor::block_on(do_plan_notice(rbatis::DateTimeNative::now()));
 }
 
+/// 触发执行调度执行
+pub fn undone_plan_notice() {
+    futures::executor::block_on(do_undone_plan_notice());
+}
+
 impl Scheduler {
 
     /// 调度任务的初始化
@@ -146,6 +215,8 @@ impl Scheduler {
         // 查询现存所有活跃的提醒计划
         let plan_result= CONTEXT.primary_rbatis.fetch_list().await;
         let mut poll = SCHEDULER.lock().unwrap();
+        // 添加一个未完成计划的定时任务
+        poll.scheduler.add_fn("0 0 2 * * ?",scheduler::undone_plan_notice);
         // 添加一个备份数据库的定时任务
         poll.scheduler.add_fn("0 0 3 * * ?",scheduler::execute_mysqldump);
         if plan_result.is_ok(){

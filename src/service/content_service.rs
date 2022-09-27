@@ -511,7 +511,7 @@ impl ContentService {
         }
         let total_row = count_result.unwrap().unwrap();
         let total = Decimal::from(total_row);
-        let mut avg_total = total.div(Decimal::from(days));
+        let avg_total = total.div(Decimal::from(days));
 
         // 按月查询统计账单并排序
         let user_info = JWTToken::extract_user_by_request(req).unwrap();

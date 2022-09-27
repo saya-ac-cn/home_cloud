@@ -21,4 +21,8 @@ impl PlanArchiveMapper {
     /// 查询提醒事项总数
     #[html_sql("./src/dao/plan_archive_mapper.html")]
     pub async fn select_count(rb: &mut RbatisExecutor<'_,'_>,plan:&PlanArchivePageDTO,extend:&ExtendPageDTO) -> Result<Option<u64>,Error> { impled!() }
+
+    /// 查询未完成的提醒事项
+    #[html_sql("./src/dao/plan_archive_mapper.html")]
+    pub async fn select_undone_list(rb: &mut RbatisExecutor<'_,'_>) -> Result<Option<Vec<PlanArchiveVO>>,Error> { impled!() }
 }
