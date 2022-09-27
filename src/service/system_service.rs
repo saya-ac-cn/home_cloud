@@ -123,7 +123,7 @@ impl SystemService {
         if check_flag {
             return Err(Error::from(("账号、姓名、手机号、邮箱以及所属组织不能为空!", util::NOT_PARAMETER)));
         }
-        let old_user = UserMapper::find_by_account(&CONTEXT.primary_rbatis, arg.account.as_ref().unwrap_or_default()).await?;
+        let old_user = UserMapper::find_by_account(&CONTEXT.primary_rbatis, &arg.account.clone().unwrap()).await?;
         if old_user.is_some() {
             return Err(Error::from(format!(
                 "账户:{}已存在!",

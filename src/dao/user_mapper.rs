@@ -12,7 +12,7 @@ pub struct UserMapper{}
 impl UserMapper {
 
     ///根据账户名查找
-    pub async fn find_by_account(rbatis: &Rbatis,account: &str) -> Result<Option<User>, rbatis::Error> {
+    pub async fn find_by_account(rbatis: &Rbatis, account: &String) -> Result<Option<User>, rbatis::Error> {
         let wrapper = rbatis.new_wrapper().eq(User::account(), account);
         return Ok(rbatis.fetch_by_wrapper(wrapper).await?);
     }
