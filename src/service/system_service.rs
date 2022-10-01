@@ -1,12 +1,12 @@
 use crate::error::Error;
 use crate::error::Result;
 use crate::service::{CONTEXT, SCHEDULER};
-use rbatis::DateTimeNative;
 use rbatis::crud::{CRUD, CRUDMut};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::HttpRequest;
 use log::error;
+use rbatis::value::DateTimeNow;
 use rbson::{Array, Bson, Document};
 use crate::dao::db_dump_log_mapper::DbDumpLogMapper;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
@@ -15,7 +15,7 @@ use crate::dao::log_type_mapper::LogTypeMapper;
 use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::dao::user_mapper::UserMapper;
-use crate::entity::dto::page::ExtendPageDTO;
+use crate::entity::dto::page::{ExtendPageDTO};
 use crate::entity::dto::sign_in::SignInDTO;
 use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::jwt::JWTToken;
@@ -150,7 +150,7 @@ impl SystemService {
             background: arg.background,
             organize_id: arg.organize_id,
             state: 1.into(),
-            create_time: Some(rbatis::DateTimeNative::now()),
+            create_time: Some(chrono::NaiveDateTime::now()),
             update_time: None,
         };
         let write_result = CONTEXT.primary_rbatis.save(&user, &[]).await;
@@ -189,7 +189,7 @@ impl SystemService {
             ip,
             organize:user.organize_id.unwrap(),
             city: String::from("云南西双版纳"),
-            exp: DateTimeNative::now().timestamp() as usize,// 时间和校验的时候保持一致，统一秒
+            exp: chrono::NaiveDateTime::now().timestamp() as usize,// 时间和校验的时候保持一致，统一秒
         };
         sign_vo.access_token = jwt_token.create_token(&CONTEXT.config.jwt_secret)?;
         return Ok(sign_vo);
@@ -238,7 +238,7 @@ impl SystemService {
             organize_id: arg.organize_id,
             state: arg.state,
             create_time: user_exist.create_time,
-            update_time: Some(rbatis::DateTimeNative::now()),
+            update_time: Some(chrono::NaiveDateTime::now()),
         };
         let result = UserMapper::update_user(&mut CONTEXT.primary_rbatis.as_executor(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
         if result.is_err() {
@@ -311,7 +311,7 @@ impl SystemService {
             organize_id: None,
             state: None,
             create_time: None,
-            update_time: Some(rbatis::DateTimeNative::now()),
+            update_time: Some(chrono::NaiveDateTime::now()),
         };
         let result = UserMapper::update_user(&mut CONTEXT.primary_rbatis.as_executor(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
         if result.is_err() {
@@ -487,7 +487,7 @@ impl SystemService {
             organize: Some(user_info.organize),
             user: Some(user_info.account.clone()),
             display: Some(1),
-            create_time: Some(rbatis::DateTimeNative::now()),
+            create_time: Some(chrono::NaiveDateTime::now()),
             update_time: None
         };
 
@@ -530,7 +530,7 @@ impl SystemService {
             user: Some(user_info.account.clone()),
             display: arg.display,
             create_time: None,
-            update_time:Some(rbatis::DateTimeNative::now())
+            update_time:Some(chrono::NaiveDateTime::now())
         };
         let result = PlanMapper::update_plan(&mut CONTEXT.primary_rbatis.as_executor(),&plan).await;
         if result.is_err() {
@@ -609,7 +609,7 @@ impl SystemService {
             status: Some(3),
             content: plan_exist.clone().content,
             archive_time: plan_exist.standard_time.clone(),
-            create_time: Some(rbatis::DateTimeNative::now()),
+            create_time: Some(chrono::NaiveDateTime::now()),
             update_time: None
         };
         let mut scheduler = SCHEDULER.lock().unwrap();

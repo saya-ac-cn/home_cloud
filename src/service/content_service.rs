@@ -3,7 +3,7 @@ use actix_web::HttpRequest;
 use chrono::Datelike;
 use log::error;
 use rbatis::crud::CRUD;
-use rbatis::DateNative;
+use rbatis::value::DateTimeNow;
 use rbson::Bson;
 use rust_decimal::{Decimal, RoundingStrategy};
 use rust_decimal::prelude::ToPrimitive;
@@ -49,7 +49,7 @@ impl ContentService {
             content:arg.content.clone(),
             organize: Some(user_info.organize),
             source:Some(user_info.account.clone()),
-            create_time:Some(rbatis::DateTimeNative::now()),
+            create_time:Some(chrono::NaiveDateTime::now()),
             update_time:None,
         };
         let write_result = CONTEXT.business_rbatis.save(&news, &[]).await;
@@ -160,7 +160,7 @@ impl ContentService {
             source:Some(user_info.account.clone()),
             title:arg.title.clone(),
             content:arg.content.clone(),
-            create_time:Some(rbatis::DateTimeNative::now()),
+            create_time:Some(chrono::NaiveDateTime::now()),
             update_time:None,
         };
         let write_result = CONTEXT.business_rbatis.save(&memo, &[]).await;
@@ -367,7 +367,7 @@ impl ContentService {
             topic: arg.topic.clone(),
             content:arg.content.clone(),
             source:Some(user_info.account.clone()),
-            create_time:Some(rbatis::DateTimeNative::now()),
+            create_time:Some(chrono::NaiveDateTime::now()),
             update_time:None
         };
 
@@ -398,7 +398,7 @@ impl ContentService {
             content:arg.content.clone(),
             source:Some(user_info.account.clone()),
             create_time:None,
-            update_time:Some(rbatis::DateTimeNative::now())
+            update_time:Some(chrono::NaiveDateTime::now())
         };
         let result = NotesMapper::update_notes(&mut CONTEXT.business_rbatis.as_executor(),&notes,&user_info.organize).await;
         if result.is_err() {
@@ -465,14 +465,14 @@ impl ContentService {
 
     /// 计算近6个月的动态发布情况
     pub async fn compute_pre6_news(&self, req: &HttpRequest,month:&String) ->Result<rbson::Document> {
-        let user_month_wrap = DateNative::from_str(month.as_str());
+        let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
             return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
         }
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
-        let current_month = DateNative::now();
-        let end= rbatis::DateTimeNative::now();
+        let current_month = chrono::NaiveDateTime::now().date();
+        let end= chrono::NaiveDateTime::now();
 
         // 总天数，计算日均用
         let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
@@ -482,8 +482,9 @@ impl ContentService {
             // 当月所有的天数
             DateUtils::get_current_month_days(user_month.year(),user_month.month())
         };
-        let start= rbatis::DateTimeNative::from_str((format!("{}-{:0>2}-01T00:00:00",user_month.year(),user_month.month())).as_str()).unwrap();
-        let end= rbatis::DateTimeNative::from_str((format!("{}-{:0>2}-{:0>2}T00:00:00",user_month.year(),user_month.month(),days)).as_str()).unwrap();
+        // "%Y-%m-%d %H:%M:%S%
+        let start= chrono::NaiveDateTime::parse_from_str((format!("{}-{:0>2}-01T00:00:00",user_month.year(),user_month.month())).as_str(),&util::FORMAT_Y_M_D_T_H_M_S).unwrap();
+        let end= chrono::NaiveDateTime::parse_from_str((format!("{}-{:0>2}-{:0>2}T00:00:00",user_month.year(),user_month.month(),days)).as_str(),&util::FORMAT_Y_M_D_T_H_M_S).unwrap();
 
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let arg = NewsPageDTO{

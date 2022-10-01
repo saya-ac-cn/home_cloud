@@ -5,7 +5,6 @@ use actix_web::{HttpRequest, HttpResponse};
 use chrono::{Datelike};
 use log::error;
 use rbatis::crud::{CRUD, CRUDMut};
-use rbatis::DateNative;
 use rust_decimal::{Decimal, RoundingStrategy};
 use rust_decimal::prelude::{ToPrimitive, Zero};
 use crate::dao::general_journal_mapper::GeneralJournalMapper;
@@ -29,6 +28,7 @@ use crate::util::Page;
 extern crate simple_excel_writer as excel;
 
 use excel::*;
+use rbatis::value::DateTimeNow;
 use rbson::Bson;
 use crate::util::date_time::DateUtils;
 
@@ -79,7 +79,7 @@ impl FinancialService {
             archive_date: arg.archive_date,
             organize: Some(user_info.organize),
             source:Some(user_info.account.clone()),
-            create_time:Some(rbatis::DateTimeNative::now()),
+            create_time:Some(chrono::NaiveDateTime::now()),
             update_time: None
         };
         // 写入流水记录
@@ -127,7 +127,7 @@ impl FinancialService {
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
         let archive_date = journal_exist.archive_date.unwrap();
-        let current = DateNative::now();
+        let current = chrono::NaiveDateTime::now().date();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -145,7 +145,7 @@ impl FinancialService {
             organize: journal_exist.organize,
             source:Some(user_info.account.clone()),
             create_time: None,
-            update_time: Some(rbatis::DateTimeNative::now())
+            update_time: Some(chrono::NaiveDateTime::now())
         };
         let result = JournalMapper::update_journal(&mut CONTEXT.financial_rbatis.as_executor(),&journal).await;
         if result.is_err() {
@@ -165,7 +165,7 @@ impl FinancialService {
         let journal = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", id),util::NOT_EXIST)))?;
         // 历史数据不允许操作
         let archive_date = journal.archive_date.unwrap();
-        let current = DateNative::now();
+        let current = chrono::NaiveDateTime::now().date();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许删除本月的流水，历史流水已归档，不允许操作"));
         }
@@ -191,7 +191,7 @@ impl FinancialService {
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
         let archive_date = journal_exist.archive_date.unwrap();
-        let current = DateNative::now();
+        let current = chrono::NaiveDateTime::now().date();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -226,7 +226,7 @@ impl FinancialService {
             organize: journal_exist.organize,
             source:Some(user_info.account.clone()),
             create_time:None,
-            update_time: Some(rbatis::DateTimeNative::now())
+            update_time: Some(chrono::NaiveDateTime::now())
         };
 
         // 修改流水记录
@@ -271,7 +271,7 @@ impl FinancialService {
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
         let archive_date = journal_exist.archive_date.unwrap();
-        let current = DateNative::now();
+        let current = chrono::NaiveDateTime::now().date();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -318,7 +318,7 @@ impl FinancialService {
             organize: journal_exist.organize,
             source:Some(user_info.account.clone()),
             create_time:None,
-            update_time: Some(rbatis::DateTimeNative::now())
+            update_time: Some(chrono::NaiveDateTime::now())
         };
 
         // 修改流水记录
@@ -362,7 +362,7 @@ impl FinancialService {
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &general_journal_exist.journal_id.unwrap()),util::NOT_EXIST)))?;
         let archive_date = journal_exist.archive_date.unwrap();
         // 历史数据不允许操作
-        let current = DateNative::now();
+        let current = chrono::NaiveDateTime::now().date();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -409,7 +409,7 @@ impl FinancialService {
                 organize: journal_exist.organize,
                 source:Some(user_info.account.clone()),
                 create_time:None,
-                update_time: Some(rbatis::DateTimeNative::now())
+                update_time: Some(chrono::NaiveDateTime::now())
             };
 
             // 修改流水记录
@@ -879,13 +879,13 @@ impl FinancialService {
 
     /// 计算收支增长率
     pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
-        let user_month_wrap = DateNative::from_str((format!("{}-01",month.as_str())).as_str());
+        let user_month_wrap = chrono::NaiveDate::parse_from_str((format!("{}-01",month.as_str())).as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
             return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
         }
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
-        let current_month = DateNative::now();
+        let current_month = chrono::NaiveDateTime::now().date();
         // 总天数，计算日均用
         let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
             // 当前月只计算 已经过去的天数
@@ -957,7 +957,7 @@ impl FinancialService {
     /// 计算指定月份的收入比重
     pub async fn compute_income_percentage(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
-        let user_month_wrap = DateNative::from_str(month.as_str());
+        let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
             return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
         }
@@ -984,7 +984,7 @@ impl FinancialService {
 
     /// 计算指定月份中各摘要的排名
     pub async fn order_month_journal(&self, req: &HttpRequest,month:&String) ->Result<Vec<JournalVO>> {
-        let user_month_wrap = DateNative::from_str(month.as_str());
+        let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
             return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
         }

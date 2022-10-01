@@ -45,8 +45,8 @@
             <if test="journal.monetary_id != 0">
                 and a.`monetary_id` = #{journal.monetary_id}
             </if>
-            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and a.`archive_date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d')
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+                and a.`archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')
             </if>
         </where>
         <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
@@ -80,8 +80,8 @@
             <if test="journal.monetary_id != 0">
                 and a.`monetary_id` = #{journal.monetary_id}
             </if>
-            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and a.`archive_date` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d')
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+                and a.`archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')
             </if>
         </where>
         <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->

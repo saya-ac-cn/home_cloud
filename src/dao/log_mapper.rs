@@ -3,10 +3,11 @@ use rbatis::crud::CRUD;
 use rbatis::rbatis::Rbatis;
 use rbatis::executor::{RbatisExecutor};
 use rbatis::db::DBExecResult;
-use rbatis::{DateTimeNative, Error};
+use rbatis::{Error};
+use rbatis::value::DateTimeNow;
 use crate::entity::domain::primary_database_tables::Log;
 use crate::entity::dto::log::LogPageDTO;
-use crate::entity::dto::page::ExtendPageDTO;
+use crate::entity::dto::page::{ExtendPageDTO};
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::log::LogVO;
 
@@ -23,8 +24,11 @@ impl LogMapper {
             category:Some(category),
             ip:Some(jwt.ip.clone()),
             city:Some(jwt.city.clone()),
-            date:Some(DateTimeNative::now()),
+            date:Some(chrono::NaiveDateTime::now()),
         };
+       // let aa = DateTimeNative::now().inner;
+       //  let aa1 = DateTimeNative::now();
+       //  chrono::NaiveDateTime::now().
         return Ok(rbatis.save(&log, &[]).await);
     }
 

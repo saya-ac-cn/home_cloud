@@ -9,7 +9,7 @@ pub struct JournalDTO {
     pub means_id:Option<u64>,
     pub abstract_id:Option<u64>,
     pub remarks:Option<String>,
-    pub archive_date:Option<rbatis::DateNative>,
+    pub archive_date:Option<chrono::NaiveDate>,
     pub details:Option<Vec<GeneralJournalDTO>>
 }
 
@@ -24,8 +24,8 @@ pub struct JournalPageDTO{
 
     pub page_no: Option<u64>,
     pub page_size: Option<u64>,
-    pub begin_time: Option<rbatis::DateTimeNative>,
-    pub end_time: Option<rbatis::DateTimeNative>,
+    pub begin_time: Option<chrono::NaiveDateTime>,
+    pub end_time: Option<chrono::NaiveDateTime>,
     pub organize: Option<u64>
 }
 

@@ -264,7 +264,7 @@ impl OssService {
         if !image_arr[0].starts_with("data:image"){
             return Err(Error::from(("非法的Base64图片!",util::NOT_PARAMETER)));
         }
-        let today_op = DateTimeUtil::naive_date_time_to_str(&Some(NaiveDateTime::now().date()), util::FORMAT_YMD);
+        let today_op = DateTimeUtil::naive_date_time_to_str(&Some(chrono::NaiveDateTime::now().date()), util::FORMAT_YMD);
         let today = today_op.unwrap();
         let file_name = format!("{}{}.png", today.clone(),rand::thread_rng().gen_range(10000..=99999));
         let save_path = format!("{}/{}/{}/{}", &CONTEXT.config.data_dir,util::LOGO_PATH ,&user_info.account.clone(),today.clone());
@@ -277,7 +277,7 @@ impl OssService {
         let http_path = local_path.clone().unwrap().replace(&CONTEXT.config.data_dir,&String::from(""));
 
         user_exist.logo = Some(http_path);
-        user_exist.update_time = Some(rbatis::DateTimeNative::now());
+        user_exist.update_time = Some(chrono::NaiveDateTime::now());
         CONTEXT.primary_rbatis.update_by_column(User::account(), &mut user_exist).await?;
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX005")).await;
         Ok(String::from("保存成功"))
@@ -333,7 +333,7 @@ impl OssService {
                     web_url: Some(http_path),
                     organize: Some(user_info.organize),
                     source: Some(user_info.account.clone()),
-                    create_time: Some(rbatis::DateTimeNative::now()),
+                    create_time: Some(chrono::NaiveDateTime::now()),
                     update_time: None
                 };
                 let write_result = CONTEXT.business_rbatis.save(&picture, &[]).await;
@@ -384,7 +384,7 @@ impl OssService {
             web_url: Some(http_path),
             organize: Some(user_info.organize),
             source: Some(user_info.account.clone()),
-            create_time: Some(rbatis::DateTimeNative::now()),
+            create_time: Some(chrono::NaiveDateTime::now()),
             update_time: None
         };
         let write_result = CONTEXT.business_rbatis.save(&picture, &[]).await;
@@ -469,7 +469,7 @@ impl OssService {
             organize: Some(user_info.organize),
             source: Some(user_info.account.clone()),
             status: Some(2),
-            create_time: Some(rbatis::DateTimeNative::now()),
+            create_time: Some(chrono::NaiveDateTime::now()),
             update_time: None
         };
         let write_result = CONTEXT.business_rbatis.save(&files, &[]).await;

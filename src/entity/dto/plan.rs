@@ -3,33 +3,33 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlanDTO {
     pub id:Option<u64>,
-    pub standard_time:Option<rbatis::DateTimeNative>,
+    pub standard_time:Option<chrono::NaiveDateTime>,
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub next_exec_time:Option<rbatis::DateTimeNative>,
+    pub next_exec_time:Option<chrono::NaiveDateTime>,
     pub organize:Option<u64>,
     pub user:Option<String>,
     pub display:Option<u32>,
-    pub create_time: Option<rbatis::DateTimeNative>,
-    pub update_time: Option<rbatis::DateTimeNative>,
+    pub create_time: Option<chrono::NaiveDateTime>,
+    pub update_time: Option<chrono::NaiveDateTime>,
 }
 
 /// 提醒事项分页数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlanPageDTO{
     pub id:Option<u64>,
-    pub standard_time:Option<rbatis::DateTimeNative>,
+    pub standard_time:Option<chrono::NaiveDateTime>,
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub next_exec_time:Option<rbatis::DateTimeNative>,
+    pub next_exec_time:Option<chrono::NaiveDateTime>,
     pub user:Option<String>,
     pub display:Option<u32>,
 
     pub page_no: Option<u64>,
     pub page_size: Option<u64>,
-    pub begin_time: Option<rbatis::DateTimeNative>,
-    pub end_time: Option<rbatis::DateTimeNative>,
+    pub begin_time: Option<chrono::NaiveDateTime>,
+    pub end_time: Option<chrono::NaiveDateTime>,
     pub organize: Option<u64>
 }

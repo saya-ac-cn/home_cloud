@@ -6,8 +6,6 @@ use crate::service::{CONTEXT, SCHEDULER};
 use chrono::{Duration, Local, NaiveDateTime};
 use cron_tab::Cron;
 use rbatis::crud::{CRUD, CRUDMut};
-use rbatis::DateTimeNative;
-use rbatis::value::DateTimeNow;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::domain::primary_database_tables::{DbDumpLog, Plan, PlanArchive, User};
 use crate::entity::dto::plan::PlanPageDTO;
@@ -17,6 +15,7 @@ use crate::util::scheduler;
 use std::process::Command;
 use std::fs::File;
 use std::ops::Sub;
+use rbatis::value::DateTimeNow;
 use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::entity::vo::plan_archive::PlanArchiveVO;
 use crate::util::mail_util::MailUtils;
@@ -49,8 +48,8 @@ pub async fn do_execute_mysqldump(){
             let log = DbDumpLog{
                 id:None,
                 url: Some(db_path),
-                archive_date: Some(rbatis::DateNative::from(rbatis::DateNative::now().sub(Duration::days(1)))),
-                execute_data: Some(rbatis::DateTimeNative::now())
+                archive_date: Some(chrono::NaiveDateTime::now().sub(Duration::days(1)).date()),
+                execute_data: Some(chrono::NaiveDateTime::now())
             };
             let write_result = CONTEXT.primary_rbatis.save(&log, &[]).await;
             if  write_result.is_err(){
@@ -68,7 +67,7 @@ pub async fn do_execute_mysqldump(){
 }
 
 /// 落实调度任务的具体执行
-pub async fn do_plan_notice(date:rbatis::DateTimeNative) {
+pub async fn do_plan_notice(date:chrono::NaiveDateTime) {
     println!("begin execute task at: {}", date.to_string());
     // 查询所有的用户信息，并放入map中
     let user_query_result = CONTEXT.primary_rbatis.fetch_list().await;
@@ -103,7 +102,7 @@ pub async fn do_plan_notice(date:rbatis::DateTimeNative) {
             status: Some(1),
             content: plan.clone().content,
             archive_time: Some(date),
-            create_time: Some(rbatis::DateTimeNative::now()),
+            create_time: Some(chrono::NaiveDateTime::now()),
             update_time: None
         };
         if 1 == plan.cycle.unwrap() {
@@ -200,7 +199,7 @@ pub fn execute_mysqldump() {
 
 /// 触发执行调度执行
 pub fn plan_notice() {
-    futures::executor::block_on(do_plan_notice(rbatis::DateTimeNative::now()));
+    futures::executor::block_on(do_plan_notice(chrono::NaiveDateTime::now()));
 }
 
 /// 触发执行调度执行

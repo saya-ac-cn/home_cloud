@@ -1,4 +1,3 @@
-use rbatis::DateTimeNative;
 
 #[crud_table(table_name:news)]
 #[derive(Clone, Debug)]
@@ -9,8 +8,8 @@ pub struct News{
     pub content:Option<String>,
     pub organize:Option<u64>,
     pub source:Option<String>,
-    pub create_time:Option<DateTimeNative>,
-    pub update_time:Option<DateTimeNative>,
+    pub create_time:Option<chrono::NaiveDateTime>,
+    pub update_time:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(News{id,topic,label,content,organize,source,create_time,update_time});
 
@@ -25,8 +24,8 @@ pub struct Pictures{
     pub web_url:Option<String>,
     pub organize:Option<u64>,
     pub source:Option<String>,
-    pub create_time:Option<DateTimeNative>,
-    pub update_time:Option<DateTimeNative>,
+    pub create_time:Option<chrono::NaiveDateTime>,
+    pub update_time:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(Pictures{id,category,file_name,descript,file_url,web_url,organize,source,create_time,update_time});
 
@@ -41,8 +40,8 @@ pub struct Files{
     pub organize:Option<u64>,
     pub source:Option<String>,
     pub status:Option<u32>,
-    pub create_time:Option<DateTimeNative>,
-    pub update_time:Option<DateTimeNative>,
+    pub create_time:Option<chrono::NaiveDateTime>,
+    pub update_time:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(Files{id,uid,file_name,file_url,file_type,organize,source,status,create_time,update_time});
 
@@ -54,8 +53,8 @@ pub struct Memo{
     pub source:Option<String>,
     pub title:Option<String>,
     pub content:Option<String>,
-    pub create_time:Option<DateTimeNative>,
-    pub update_time:Option<DateTimeNative>,
+    pub create_time:Option<chrono::NaiveDateTime>,
+    pub update_time:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(Memo{id,organize,source,title,content,create_time,update_time});
 
@@ -80,7 +79,7 @@ pub struct Notes{
     pub topic:Option<String>,
     pub content:Option<String>,
     pub source:Option<String>,
-    pub create_time:Option<DateTimeNative>,
-    pub update_time:Option<DateTimeNative>,
+    pub create_time:Option<chrono::NaiveDateTime>,
+    pub update_time:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(Notes{id,notebook_id,label,topic,content,create_time,update_time});

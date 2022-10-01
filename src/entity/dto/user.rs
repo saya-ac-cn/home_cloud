@@ -32,9 +32,9 @@ pub struct UserDTO {
     /// 是否锁定(1正常，2锁定)
     pub state: Option<u32>,
     /// 创建时间
-    pub create_time: Option<rbatis::DateTimeNative>,
+    pub create_time: Option<chrono::NaiveDateTime>,
     /// 修改时间
-    pub update_time: Option<rbatis::DateTimeNative>,
+    pub update_time: Option<chrono::NaiveDateTime>,
 }
 
 impl UserDTO {
@@ -72,6 +72,6 @@ pub struct UserPageDTO {
     pub phone: Option<String>,
     pub organize_id: Option<u64>,
     pub state: Option<u32>,
-    pub begin_time: Option<rbatis::DateTimeNative>,
-    pub end_time: Option<rbatis::DateTimeNative>,
+    pub begin_time: Option<chrono::NaiveDateTime>,
+    pub end_time: Option<chrono::NaiveDateTime>,
 }

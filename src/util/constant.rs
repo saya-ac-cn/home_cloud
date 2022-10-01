@@ -28,5 +28,6 @@ pub const WALLPAPER_PATH:&str = "picture/wallpaper";
 
 /// 定义日期相关的格式化format
 pub const FORMAT_Y_M_D_H_M_S:&str = "%Y-%m-%d %H:%M:%S";
+pub const FORMAT_Y_M_D_T_H_M_S:&str = "%Y-%m-%dT%H:%M:%S";
 pub const FORMAT_Y_M_D:&str = "%Y-%m-%d";
 pub const FORMAT_YMD:&str = "%Y%m%d";

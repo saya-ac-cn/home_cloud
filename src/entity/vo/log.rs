@@ -9,6 +9,6 @@ pub struct LogVO{
     pub category:Option<String>,
     pub ip:Option<String>,
     pub city:Option<String>,
-    pub date:Option<String>,
+    pub date:Option<chrono::NaiveDateTime>,
     pub detail:Option<String>
 }

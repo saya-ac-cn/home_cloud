@@ -1,5 +1,3 @@
-use rbatis::{DateNative, DateTimeNative};
-
 /// 主数据库
 
 #[crud_table(table_name:user)]
@@ -34,9 +32,9 @@ pub struct User {
     /// 是否锁定(1正常，2锁定)
     pub state: Option<u32>,
     /// 创建时间
-    pub create_time: Option<DateTimeNative>,
+    pub create_time: Option<chrono::NaiveDateTime>,
     /// 修改时间
-    pub update_time: Option<DateTimeNative>,
+    pub update_time: Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(User{account,name,password,sex,qq,email,phone,birthday,hometown,autograph,logo,background,organize_id,state,create_time,update_time});
 
@@ -49,7 +47,7 @@ pub struct Log{
     pub category:Option<String>,
     pub ip:Option<String>,
     pub city:Option<String>,
-    pub date:Option<DateTimeNative>,
+    pub date:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(Log{id,user,category,ip,city,date});
 
@@ -65,16 +63,16 @@ impl_field_name_method!(LogType{category,describe});
 #[derive(Clone, Debug)]
 pub struct Plan{
     pub id:Option<u64>,
-    pub standard_time:Option<DateTimeNative>,
+    pub standard_time:Option<chrono::NaiveDateTime>,
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub next_exec_time:Option<DateTimeNative>,
+    pub next_exec_time:Option<chrono::NaiveDateTime>,
     pub organize:Option<u64>,
     pub user:Option<String>,
     pub display:Option<u32>,
-    pub create_time: Option<DateTimeNative>,
-    pub update_time: Option<DateTimeNative>,
+    pub create_time: Option<chrono::NaiveDateTime>,
+    pub update_time: Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(Plan{id,organize,user,display,standard_time,next_exec_time});
 
@@ -85,9 +83,9 @@ pub struct PlanArchive{
     pub plan_id:Option<u64>,
     pub status:Option<u32>,
     pub content:Option<String>,
-    pub archive_time:Option<DateTimeNative>,
-    pub create_time: Option<DateTimeNative>,
-    pub update_time: Option<DateTimeNative>,
+    pub archive_time:Option<chrono::NaiveDateTime>,
+    pub create_time: Option<chrono::NaiveDateTime>,
+    pub update_time: Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});
 
@@ -96,7 +94,7 @@ impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});
 pub struct DbDumpLog{
     pub id:Option<u64>,
     pub url:Option<String>,
-    pub archive_date:Option<DateNative>,
-    pub execute_data:Option<DateTimeNative>,
+    pub archive_date:Option<chrono::NaiveDate>,
+    pub execute_data:Option<chrono::NaiveDateTime>,
 }
 impl_field_name_method!(DbDumpLog{id,archive_date});

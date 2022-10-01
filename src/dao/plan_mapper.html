@@ -42,8 +42,8 @@
             <if test="plan.id != 0">
                 and `id` = #{plan.id}
             </if>
-            <if test="plan.standard_time.inner() != ''">
-                and `standard_time` = date_format(#{plan.standard_time.inner()},'%Y-%m-%d %H:%i:00')
+            <if test="plan.standard_time != ''">
+                and `standard_time` = date_format(#{plan.standard_time},'%Y-%m-%d %H:%i:00')
             </if>
             <if test="plan.content != ''">
                 and `content` like concat(#{plan.content},'%')
@@ -66,8 +66,8 @@
             <if test="plan.content != ''">
                 and `content` like concat(#{plan.content},'%')
             </if>
-            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
             </if>
         </where>
         <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
@@ -91,8 +91,8 @@
             <if test="plan.content != ''">
                 and `content` like concat(#{plan.content},'%')
             </if>
-            <if test="extend.begin_time.inner() != '' && extend.end_time.inner() != ''">
-                and `create_time` between date_format(#{extend.begin_time.inner()},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time.inner() },'%Y-%m-%d 23:59:59')
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
             </if>
         </where>
     </select>

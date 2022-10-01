@@ -14,17 +14,18 @@ impl DateTimeUtil for Option<chrono::naive::NaiveDate>{
     }
 }
 
-impl DateTimeUtil for Option<rbatis::DateNative>{
-    fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
-        match self {
-            None => None,
-            Some(naive_date_time) => {
-                let date = self.unwrap();
-                Some(date.format(format).to_string())
-            },
-        }
-    }
-}
+// 不建议使用rbatis自带的时间
+// impl DateTimeUtil for Option<rbatis::DateNative>{
+//     fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
+//         match self {
+//             None => None,
+//             Some(naive_date_time) => {
+//                 let date = self.unwrap();
+//                 Some(date.format(format).to_string())
+//             },
+//         }
+//     }
+// }
 
 impl DateTimeUtil for Option<chrono::NaiveDateTime>{
     fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
@@ -35,17 +36,18 @@ impl DateTimeUtil for Option<chrono::NaiveDateTime>{
     }
 }
 
-impl DateTimeUtil for Option<rbatis::DateTimeNative>{
-    fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
-        match self {
-            None => None,
-            Some(naive_date_time) => {
-                let date = self.unwrap();
-                DateTimeUtil::naive_date_time_to_str(&Some(date.inner),format)
-            },
-        }
-    }
-}
+// 不建议使用rbatis自带的时间
+// impl DateTimeUtil for Option<rbatis::DateTimeNative>{
+//     fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
+//         match self {
+//             None => None,
+//             Some(naive_date_time) => {
+//                 let date = self.unwrap();
+//                 DateTimeUtil::naive_date_time_to_str(&Some(date.inner),format)
+//             },
+//         }
+//     }
+// }
 
 pub struct DateUtils{}
 
@@ -91,7 +93,7 @@ impl DateUtils {
     }
 
     /// 对计划的日期进行加运算
-    pub fn plan_data_compute(original :&rbatis::DateTimeNative,cycle :u32,unit :u32) -> rbatis::DateTimeNative{
+    pub fn plan_data_compute(original :&chrono::NaiveDateTime,cycle :u32,unit :u32) -> chrono::NaiveDateTime{
         // cycle= 1：一次性，2：天，3：周，4：月，5：年
         let param = unit as i64;
         let convert_one_result = if 2==cycle {
@@ -106,14 +108,13 @@ impl DateUtils {
             let new_year = original.year() + (unit as i32);
             original.clone().with_year(new_year).unwrap()
         } else {
-            original.inner
+            original.clone()
         };
-        let convert_two_result:DateTime<Local> = Local.from_local_datetime(&convert_one_result).unwrap();
-        return rbatis::DateTimeNative::from(convert_two_result);
+        return convert_one_result;
     }
 
     /// 根据日期时间生成cron表达式，其中秒一律按0处理，年份按照*，每年执行一次，因为cron_table框架不支持一次性的定时调度，特殊处理成每年执行一次，然后删除
-    pub fn data_time_to_cron(data_time :&rbatis::DateTimeNative) -> String {
+    pub fn data_time_to_cron(data_time :&chrono::NaiveDateTime) -> String {
         let month = data_time.month();
         let day = data_time.day();
         let hour = data_time.hour();

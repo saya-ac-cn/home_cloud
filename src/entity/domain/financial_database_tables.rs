@@ -1,4 +1,3 @@
-use rbatis::{DateNative, DateTimeNative};
 use rust_decimal::Decimal;
 
 #[crud_table(table_name:journal)]
@@ -12,11 +11,11 @@ pub struct Journal{
     pub abstract_id:Option<u64>,
     pub total:Option<Decimal>,
     pub remarks:Option<String>,
-    pub archive_date:Option<DateNative>,
+    pub archive_date:Option<chrono::NaiveDate>,
     pub organize:Option<u64>,
     pub source:Option<String>,
-    pub create_time:Option<DateTimeNative>,
-    pub update_time:Option<DateTimeNative>
+    pub create_time:Option<chrono::NaiveDateTime>,
+    pub update_time:Option<chrono::NaiveDateTime>
 }
 impl_field_name_method!(Journal{id,monetary_id,means_id,abstract_id,organize,source});
 
