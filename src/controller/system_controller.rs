@@ -17,6 +17,13 @@ pub async fn login(req: HttpRequest,arg: web::Json<SignInDTO>) -> impl Responder
     return RespVO::from_result(&vo).resp_json();
 }
 
+/// 刷新token
+#[post("/token/refresh")]
+pub async fn token_refresh(req: HttpRequest) -> impl Responder {
+    let vo = CONTEXT.system_service.token_refresh(&req).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
 /// 用户注销
 pub async fn logout(req: HttpRequest) -> impl Responder {
     let vo = CONTEXT.system_service.logout(&req).await;
@@ -101,11 +108,18 @@ pub async fn log_type() -> impl Responder {
     return RespVO::from_result(&vo).resp_json();
 }
 
-/// 获取用户分页列表
+/// 获取日志分页列表
 #[get("/log/page")]
 pub async fn log_page(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Responder {
     let vo = CONTEXT.system_service.log_page(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
+}
+
+/// 导出日志
+#[get("/log/excel")]
+pub async fn log_excel(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Responder {
+    let result = CONTEXT.system_service.log_excel(&req,&arg.0).await;
+    return result;
 }
 
 /// 统计近6个月的活跃情况
@@ -187,8 +201,8 @@ pub async fn delete_archive_plan(req: HttpRequest,path: web::Path<u64>) -> impl 
 
 /// 获取数据库备份日志分页列表
 #[get("/db/log/page")]
-pub async fn db_dump_log_page(req: HttpRequest, arg: web::Json<DbDumpLogPageDTO>) -> impl Responder {
-    let vo = CONTEXT.system_service.db_dump_log_page(&req,&arg.0).await;
+pub async fn db_dump_log_page(req: HttpRequest, arg: web::Query<DbDumpLogPageDTO>) -> impl Responder {
+    log::info!("db_dump_log_page:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.system_service.db_dump_log_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
-

@@ -16,7 +16,7 @@
             <if test="files.uid != ''">
                 and `uid` = #{files.uid}
             </if>
-            <if test="files.status != ''">
+            <if test="files.status != 0">
                 and `status` = #{files.status}
             </if>
             <if test="files.file_name != ''">
@@ -30,9 +30,9 @@
     </select>
 
     <update id="update_files">
-        update `news`
+        update `files`
         <set>
-            <if test="files.status != ''">
+            <if test="files.status != 0">
                 `status` = #{files.status},
             </if>
             <if test="files.source != ''">
@@ -58,7 +58,7 @@
             <if test="files.uid != ''">
                 and `uid` = #{files.uid}
             </if>
-            <if test="files.status != ''">
+            <if test="files.status != 0">
                 and `status` = #{files.status}
             </if>
             <if test="files.file_name != ''">
@@ -89,14 +89,14 @@
             <if test="files.uid != ''">
                 and `uid` = #{files.uid}
             </if>
-            <if test="files.status != ''">
+            <if test="files.status != 0">
                 and `status` = #{files.status}
             </if>
             <if test="files.file_name != ''">
                 and `file_name` like concat(#{files.file_name},'%')
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `date` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
             </if>
         </where>
     </select>

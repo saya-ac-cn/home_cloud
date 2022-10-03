@@ -74,7 +74,7 @@
     </select>
 
     <select id="select_undone_list">
-        select a.*,b.`user` as user_account,c.`name` as user_name,c.`email` as user_mail from `plan_archive` a inner join `plan` b on a.plan_id = b.id inner join `user` c on b.`user` = c.`account` where `status` != 3 and `archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')
+        select a.*,b.`user` as user_account,c.`name` as user_name,c.`email` as user_mail from `plan_archive` a inner join `plan` b on a.plan_id = b.id inner join `user` c on b.`user` = c.`account` where a.`status` != 3 and a.`archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')
     </select>
 
 </mapper>

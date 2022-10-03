@@ -52,4 +52,8 @@ impl LogMapper {
     /// 查询日志总数
     #[html_sql("./src/dao/log_mapper.html")]
     pub async fn select_count(rb: &mut RbatisExecutor<'_,'_>,log:&LogPageDTO,extend:&ExtendPageDTO) -> Result<Option<u64>,Error> { impled!() }
+
+    /// 分页查询日志
+    #[html_sql("./src/dao/log_mapper.html")]
+    pub async fn select_recently(rb: &mut RbatisExecutor<'_,'_>,user:&String) -> Result<Option<LogVO>,Error> { impled!() }
 }

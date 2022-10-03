@@ -11,11 +11,11 @@ let backendAPI = '/backend';
 
 // 登录接口
 export const requestLogin = params => ajax(`${backendAPI}/login/web`, params, 'POST');
-// {{host}}:{{port}}/login
+// {{host}}:{{port}}/backend/login
 
 // 注销接口
 export const requestLogout = params => ajax(`${backendAPI}/logout`, params, 'POST');
-// {{host}}:{{port}}/logout
+// {{host}}:{{port}}/backend/logout
 
 // 获取日志接口
 export const getLogList = params => ajax(`${backendAPI}/api/set/log`, params, 'POST');
@@ -27,6 +27,7 @@ export const getLogType = params => ajax(`${backendAPI}/api/set/logtype`, params
 
 // 导出日志
 export const downloadLogExcel = `${backendAPI}/api/set/log/excel`;
+// {{host}}:{{port}}/backend/system/log/excel
 
 // 上传头像
 export const uploadLogo = params => ajax(`${backendAPI}/api/set/uploadlogo`, params, 'POST');

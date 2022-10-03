@@ -8,7 +8,7 @@
                 and `id` = #{log.id}
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d)  and date_format(#{extend.end_time },'%Y-%m-%d')
+                and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')
             </if>
         </where>
         <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
@@ -24,7 +24,7 @@
                 and `id` = #{log.id}
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d)  and date_format(#{extend.end_time },'%Y-%m-%d')
+                and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')
             </if>
         </where>
     </select>

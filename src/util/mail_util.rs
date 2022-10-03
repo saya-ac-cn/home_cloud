@@ -162,7 +162,7 @@ impl MailUtils {
             title = String::from("以下是您今天的计划安排，请根据您的情况，合理安排：");
         } else {
             // 执行超期未完成的提醒
-            title = String::from("以下是您昨天的还没有完成的计划安排，请根据您的情况，合理安排：");
+            title = String::from("以下是您截止昨天还未完成的计划安排，请根据您的情况，合理安排：");
         }
 
         // 拼凑提醒内容
@@ -183,7 +183,7 @@ impl MailUtils {
         let to_add = user.email.clone().unwrap();
         let to_mail = format!("{} <{}>",to_user,to_add);
 
-        let mut email_builder = Message::builder()
+        let email_builder = Message::builder()
         // 发件人
         .from(email_from.clone().parse().unwrap())
         // 收件人

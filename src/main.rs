@@ -19,11 +19,12 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(home_cloud::middleware::auth::Auth)
-            .route("/login", web::post().to(system_controller::login),)
-            .route("/logout", web::post().to(system_controller::logout),)
+            .route("/backend/login", web::post().to(system_controller::login),)
+            .route("/backend/logout", web::post().to(system_controller::logout),)
             .service(fs::Files::new("/warehouse", "/Users/saya/warehouse"))
             .service(
                 web::scope("/backend/system")
+                    .service(system_controller::token_refresh)
                     .service(system_controller::myself)
                     .service(system_controller::user_add)
                     .service(system_controller::user_update)
@@ -34,6 +35,7 @@ async fn main() -> std::io::Result<()> {
                     .service(system_controller::user_upload_logo)
                     .service(system_controller::user_update_password)
                     .service(system_controller::log_page)
+                    .service(system_controller::log_excel)
                     .service(system_controller::log_type)
                     .service(system_controller::compute_pre6_logs)
                     .service(system_controller::compute_object_rows)

@@ -32,8 +32,8 @@
             <if test="log.organize != 0">
                 `organize` = #{log.organize}
             </if>
-            <if test="log.source != ''">
-                and `source` = #{log.source}
+            <if test="log.user != ''">
+                and `user` = #{log.source}
             </if>
             <if test="log.id != 0">
                 and a.`id` = #{log.id}
@@ -57,8 +57,8 @@
             <if test="log.organize != 0">
                 `organize` = #{log.organize}
             </if>
-            <if test="log.source != ''">
-                and `source` = #{log.source}
+            <if test="log.user != ''">
+                and `user` = #{log.source}
             </if>
             <if test="log.id != 0">
                 and `id` = #{log.id}
@@ -70,6 +70,10 @@
                 and `date` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
             </if>
         </where>
+    </select>
+
+    <select id="select_recently">
+        select a.`id`,a.`organize`,a.`user`, a.`category`, a.`ip`, a.`city`, a.`date`,b.`describe` as detail from `log` a left join `log_type` b on a.`category` = b.`category` where a.`user` = #{user} order by a.`id` desc limit 1
     </select>
 
 </mapper>

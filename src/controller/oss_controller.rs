@@ -44,8 +44,9 @@ pub async fn upload_file(req: HttpRequest,payload: Multipart) -> impl Responder 
 
 /// 获取文件分页列表
 #[get("/files/page")]
-pub async fn page_files(req: HttpRequest,arg: web::Json<FilesPageDTO>) -> impl Responder {
-    let vo = CONTEXT.oss_service.files_page(&req,&arg.0).await;
+pub async fn page_files(req: HttpRequest,arg: web::Query<FilesPageDTO>) -> impl Responder {
+    log::info!("page_files:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.oss_service.files_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
