@@ -38,6 +38,8 @@ pub struct UserVO {
     pub create_time: Option<String>,
     /// 修改时间
     pub update_time: Option<String>,
+    /// 壁纸url
+    pub background_url: Option<String>
 }
 impl_field_name_method!(UserVO{account,name,password,sex,qq,email,phone,birthday,hometown,autograph,logo,background,organize_id,state,create_time,update_time});
 
@@ -68,6 +70,7 @@ impl From<User> for UserVO {
             background: arg.background,
             organize_id: arg.organize_id,
             state: arg.state,
+            background_url:None,
             create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
             update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S),
         }

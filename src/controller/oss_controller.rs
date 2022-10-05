@@ -22,8 +22,9 @@ pub async fn upload_file_picture(req: HttpRequest,payload: Multipart) -> impl Re
 
 /// 获取图片分页列表
 #[get("/picture/page")]
-pub async fn page_picture(req: HttpRequest,arg: web::Json<PicturesPageDTO>) -> impl Responder {
-    let vo = CONTEXT.oss_service.pictures_page(&req,&arg.0).await;
+pub async fn page_picture(req: HttpRequest,arg: web::Query<PicturesPageDTO>) -> impl Responder {
+    log::info!("page_picture:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.oss_service.pictures_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -51,10 +52,10 @@ pub async fn page_files(req: HttpRequest,arg: web::Query<FilesPageDTO>) -> impl 
 }
 
 /// 删除文件
-#[delete("/files/{id}")]
-pub async fn files_delete(req: HttpRequest,path: web::Path<u64>) -> impl Responder {
-    let id = path.into_inner();
-    let vo = CONTEXT.oss_service.files_delete(&req,id).await;
+#[delete("/files")]
+pub async fn files_delete(req: HttpRequest,arg: web::Query<FilesDTO>) -> impl Responder {
+    log::info!("files_delete:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.oss_service.files_delete(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 

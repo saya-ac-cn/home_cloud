@@ -128,12 +128,23 @@ impl OssService {
     }
 
     /// 删除文件
-    pub async fn files_delete(&self, req: &HttpRequest,id:u64) -> Result<u64>{
+    pub async fn files_delete(&self, req: &HttpRequest,arg:&FilesDTO) -> Result<u64>{
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 只能查看自己组织机构下的数据
-        let query_where = CONTEXT.business_rbatis.new_wrapper().eq(Files::id(),id).and().eq(Files::organize(),user_info.organize);
-        let files_op: Option<Files> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
-        let files = files_op.ok_or_else(|| Error::from((format!("id为:{} 的文件不存在!", id), util::NOT_EXIST)))?;
+        let mut query_where = arg.clone();
+        query_where.organize = Some(user_info.organize);
+
+        let result_wrap = FilesMapper::select_one(&mut CONTEXT.business_rbatis.as_executor(),&query_where).await;
+        if result_wrap.is_err() {
+            error!("在获取文件数据时，发生异常:{}",result_wrap.unwrap_err());
+            return Err(Error::from("删除文件失败!"));
+        }
+        let files_op = result_wrap.unwrap();
+        if files_op.is_none() {
+            return Err(Error::from("删除文件失败!"));
+        }
+        let files = files_op.unwrap();
+
         // 判断文件是否存在，存在才删除
         if files.file_url.is_some() && !files.file_url.as_ref().unwrap().is_empty() {
             let file_path_str = format!("{}/{}", &CONTEXT.config.data_dir, files.file_url.unwrap());
@@ -142,7 +153,7 @@ impl OssService {
                 std::fs::remove_file(file_path);
             }
         }
-        let write_result = CONTEXT.business_rbatis.remove_by_column::<Files, _>(Files::id(), &id).await;
+        let write_result = CONTEXT.business_rbatis.remove_by_column::<Files, _>(Files::id(), &files.id).await;
         if write_result.is_err(){
             error!("删除文件时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除文件失败!"));
@@ -280,7 +291,7 @@ impl OssService {
         user_exist.update_time = Some(chrono::NaiveDateTime::now());
         CONTEXT.primary_rbatis.update_by_column(User::account(), &mut user_exist).await?;
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX005")).await;
-        Ok(String::from("保存成功"))
+        Ok(user_exist.logo.unwrap())
     }
 
     /// 上传文件类型的图片

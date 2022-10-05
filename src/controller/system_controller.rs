@@ -110,15 +110,17 @@ pub async fn log_type() -> impl Responder {
 
 /// 获取日志分页列表
 #[get("/log/page")]
-pub async fn log_page(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Responder {
-    let vo = CONTEXT.system_service.log_page(&req,&arg.0).await;
+pub async fn log_page(req: HttpRequest, arg: web::Query<LogPageDTO>) -> impl Responder {
+    log::info!("log_page:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.system_service.log_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
 /// 导出日志
 #[get("/log/excel")]
-pub async fn log_excel(req: HttpRequest, arg: web::Json<LogPageDTO>) -> impl Responder {
-    let result = CONTEXT.system_service.log_excel(&req,&arg.0).await;
+pub async fn log_excel(req: HttpRequest, arg: web::Query<LogPageDTO>) -> impl Responder {
+    log::info!("log_excel:{:?}", arg.clone().into_inner());
+    let result = CONTEXT.system_service.log_excel(&req,&arg.into_inner()).await;
     return result;
 }
 

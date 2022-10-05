@@ -36,6 +36,8 @@ use crate::util;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 extern crate simple_excel_writer as excel;
 use excel::*;
+use crate::entity::domain::business_database_tables::Pictures;
+
 /// 系统服务
 pub struct SystemService {}
 
@@ -189,8 +191,15 @@ impl SystemService {
         // println!("remote_addr{:?}",req.connection_info().remote_addr().unwrap());
         // println!("realip_remote_addr{:?}",req.connection_info().realip_remote_addr().unwrap());
         user.password = None;
+        // 准备壁纸
+        let mut user_vo = UserVO::from(user.clone());
+        let query_where = CONTEXT.business_rbatis.new_wrapper().eq(Pictures::id(), &user_vo.background);
+        let pic_option: Option<Pictures> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
+        if pic_option.is_some(){
+            user_vo.background_url = pic_option.unwrap().web_url;
+        }
         let mut sign_vo = SignInVO {
-            user: Some(user.clone().into()),
+            user: Some(user_vo),
             access_token: String::new(),
             plan:None,
             log:None
