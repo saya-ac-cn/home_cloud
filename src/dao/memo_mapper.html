@@ -32,7 +32,7 @@
                 and `id` = #{memo.id}
             </if>
             <if test="memo.title != ''">
-                and `topic`  like concat(#{memo.title},'%')
+                and `title`  like concat(#{memo.title},'%')
             </if>
             <if test="memo.content != ''">
                 and `content` like concat(#{memo.content},'%')
@@ -60,7 +60,7 @@
                 and `id` = #{memo.id}
             </if>
             <if test="memo.title != ''">
-                and `topic`  like concat(#{memo.title},'%')
+                and `title`  like concat(#{memo.title},'%')
             </if>
             <if test="memo.content != ''">
                 and `content` like concat(#{memo.content},'%')

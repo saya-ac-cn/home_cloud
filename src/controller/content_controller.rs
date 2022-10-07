@@ -42,8 +42,9 @@ pub async fn get_news(path: web::Path<u64>) -> impl Responder {
 
 /// 获取动态分页列表
 #[get("/news")]
-pub async fn page_news(req: HttpRequest,arg: web::Json<NewsPageDTO>) -> impl Responder {
-    let vo = CONTEXT.content_service.news_page(&req,&arg.0).await;
+pub async fn page_news(req: HttpRequest,arg: web::Query<NewsPageDTO>) -> impl Responder {
+    log::info!("page_news:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.content_service.news_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -82,8 +83,9 @@ pub async fn get_memo(path: web::Path<u64>) -> impl Responder {
 
 /// 获取便笺分页列表
 #[get("/memo")]
-pub async fn page_memo(req: HttpRequest,arg: web::Json<MemoPageDTO>) -> impl Responder {
-    let vo = CONTEXT.content_service.page_memo(&req,&arg.0).await;
+pub async fn page_memo(req: HttpRequest,arg: web::Query<MemoPageDTO>) -> impl Responder {
+    log::info!("page_memo:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.content_service.page_memo(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -114,8 +116,9 @@ pub async fn delete_notebook(req: HttpRequest,path: web::Path<u64>) -> impl Resp
 
 /// 获取笔记簿列表
 #[get("/notebook")]
-pub async fn notebook_list(req: HttpRequest,arg: web::Json<NoteBookDTO>) -> impl Responder {
-    let vo = CONTEXT.content_service.list_notebook(&req,&arg.0).await;
+pub async fn notebook_list(req: HttpRequest,arg: web::Query<NoteBookDTO>) -> impl Responder {
+    log::info!("notebook_list:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.content_service.list_notebook(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -154,8 +157,9 @@ pub async fn get_notes(path: web::Path<u64>) -> impl Responder {
 
 /// 获取笔记分页列表
 #[get("/notes")]
-pub async fn page_notes(req: HttpRequest,arg: web::Json<NotesPageDTO>) -> impl Responder {
-    let vo = CONTEXT.content_service.page_notes(&req,&arg.0).await;
+pub async fn page_notes(req: HttpRequest,arg: web::Query<NotesPageDTO>) -> impl Responder {
+    log::info!("page_notes:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.content_service.page_notes(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 

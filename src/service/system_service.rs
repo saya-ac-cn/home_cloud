@@ -213,6 +213,14 @@ impl SystemService {
         if today_plan_result_warp.is_ok(){
             sign_vo.plan = Some(today_plan_result_warp.unwrap());
         }
+
+        let param1:Vec<Bson> = Vec::new();
+        let aaa = CONTEXT.primary_rbatis.fetch("select now() as create_time", param1).await;
+        let bb :rbson::Array= aaa.unwrap();
+        println!("{:?}",bb);
+
+
+
         // 查询最近的一次操作日志
         let log_warp = LogMapper::select_recently(&mut CONTEXT.primary_rbatis.as_executor(), &user.account.clone().unwrap()).await;
         if log_warp.is_ok() {

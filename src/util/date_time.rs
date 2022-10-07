@@ -1,5 +1,6 @@
 use std::ops::Add;
 use chrono::{Datelike, DateTime, Duration, Local, NaiveDate, Timelike, TimeZone};
+use crate::util::{FORMAT_Y_M_D_T_H_M_S_Z};
 
 pub trait DateTimeUtil{
     fn naive_date_time_to_str(&self,format:&str) -> Option<String>;
@@ -120,6 +121,16 @@ impl DateUtils {
         let hour = data_time.hour();
         let minute = data_time.minute();
         format!(" 0 {} {} {} {} *",minute,hour,day,month)
+    }
+
+    /// 根据时区返回当前时间
+    pub fn now() -> chrono::NaiveDateTime{
+        // 世界时间
+        let utc = chrono::Utc::now();
+        /// 东8区
+        let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        let now = utc.with_timezone(&east8);
+        chrono::NaiveDateTime:: parse_from_str(&now.to_rfc3339_opts(chrono::SecondsFormat::Secs,true), &FORMAT_Y_M_D_T_H_M_S_Z).unwrap()
     }
 
 }

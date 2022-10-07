@@ -285,9 +285,11 @@ impl OssService {
             return Err(crate::error::Error::from(String::from("头像保存失败")));
         }
         let local_path = save_result.ok().clone();
+        // 去除基准路径
         let http_path = local_path.clone().unwrap().replace(&CONTEXT.config.data_dir,&String::from(""));
+        let view_path = format!("/{}{}", &util::PUBLIC_VIEW_ROOT_PATH,http_path);
 
-        user_exist.logo = Some(http_path);
+        user_exist.logo = Some(view_path);
         user_exist.update_time = Some(chrono::NaiveDateTime::now());
         CONTEXT.primary_rbatis.update_by_column(User::account(), &mut user_exist).await?;
         LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX005")).await;
@@ -335,13 +337,16 @@ impl OssService {
                 }
                 let local_path = save_result.ok().clone();
                 let http_path = local_path.clone().unwrap().replace(&CONTEXT.config.data_dir,&String::from(""));
+                // 去除基准路径
+                let view_path = format!("/{}{}", &util::PUBLIC_VIEW_ROOT_PATH,http_path);
+
                 let picture = Pictures{
                     id: None,
                     category: Some(1),
                     file_name: Some(origin_name_copy),
                     descript: None,
                     file_url: local_path.clone(),
-                    web_url: Some(http_path),
+                    web_url: Some(view_path),
                     organize: Some(user_info.organize),
                     source: Some(user_info.account.clone()),
                     create_time: Some(chrono::NaiveDateTime::now()),
@@ -385,14 +390,17 @@ impl OssService {
             return Err(crate::error::Error::from(String::from("保存base64图片")));
         }
         let local_path = save_result.ok().clone();
+        // 去除基准路径
         let http_path = local_path.clone().unwrap().replace(&CONTEXT.config.data_dir,&String::from(""));
+        let view_path = format!("/{}{}", &util::PUBLIC_VIEW_ROOT_PATH,http_path);
+
         let picture = Pictures{
             id: None,
             category: Some(2),
             file_name: Some(file_name),
             descript: None,
             file_url: local_path.clone(),
-            web_url: Some(http_path),
+            web_url: Some(view_path),
             organize: Some(user_info.organize),
             source: Some(user_info.account.clone()),
             create_time: Some(chrono::NaiveDateTime::now()),

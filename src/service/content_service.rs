@@ -309,7 +309,7 @@ impl ContentService {
         let notebook = NoteBook{
             id:arg.id,
             name:arg.name.clone(),
-            organize: None,
+            organize: Some(user_info.organize),
             source:Some(user_info.account.clone()),
             descript:arg.descript.clone(),
             status:arg.status

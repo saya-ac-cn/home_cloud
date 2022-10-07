@@ -1,3 +1,5 @@
+use chrono::FixedOffset;
+
 /// 定义的业务相关处理回执码
 /// 处理成功
 pub const CODE_SUCCESS: i32 = 0;
@@ -15,6 +17,8 @@ pub const FILE_IO_ERROR: i32 = -6;
 pub const UNKNOWN_ERROR: i32 = -404;
 
 /// 定义数据目录下的子级目录
+/// 对外公众访问的根目录
+pub const PUBLIC_VIEW_ROOT_PATH:&str = "warehouse";
 /// 数据库目录
 pub const DATABASE_PATH:&str = "database";
 /// 文档目录
@@ -29,5 +33,6 @@ pub const WALLPAPER_PATH:&str = "picture/wallpaper";
 /// 定义日期相关的格式化format
 pub const FORMAT_Y_M_D_H_M_S:&str = "%Y-%m-%d %H:%M:%S";
 pub const FORMAT_Y_M_D_T_H_M_S:&str = "%Y-%m-%dT%H:%M:%S";
+pub const FORMAT_Y_M_D_T_H_M_S_Z:&str = "%Y-%m-%dT%H:%M:%S%z";
 pub const FORMAT_Y_M_D:&str = "%Y-%m-%d";
 pub const FORMAT_YMD:&str = "%Y%m%d";

@@ -41,6 +41,9 @@
             <if test="notes.id != 0">
                 and a.`id` = #{notes.id}
             </if>
+            <if test="notes.notebook_id != 0">
+                and a.`notebook_id` = #{notes.notebook_id}
+            </if>
             <if test="notes.topic != ''">
                 and a.`topic`  like concat(#{notes.topic},'%')
             </if>
@@ -71,6 +74,9 @@
             </if>
             <if test="notes.id != 0">
                 and a.`id` = #{notes.id}
+            </if>
+            <if test="notes.notebook_id != 0">
+                and a.`notebook_id` = #{notes.notebook_id}
             </if>
             <if test="notes.topic != ''">
                 and a.`topic`  like concat(#{notes.topic},'%')
