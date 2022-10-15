@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 use crate::entity::domain::primary_database_tables::Plan;
-use crate::util;
-use crate::util::date_time::DateTimeUtil;
 
 /// 提醒事项展示层
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -23,16 +21,16 @@ impl From<Plan> for PlanVO {
     fn from(arg: Plan) -> Self {
         Self {
             id: arg.id,
-            standard_time: DateTimeUtil::naive_date_time_to_str(&arg.standard_time,&util::FORMAT_Y_M_D_H_M_S),
+            standard_time: arg.standard_time,
             cycle: arg.cycle,
             unit:arg.unit,
             content: arg.content,
-            next_exec_time: DateTimeUtil::naive_date_time_to_str(&arg.next_exec_time,&util::FORMAT_Y_M_D_H_M_S),
+            next_exec_time: arg.next_exec_time,
             organize: arg.organize,
             user: arg.user,
             display: arg.display,
-            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
-            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S)
+            create_time: arg.create_time,
+            update_time: arg.update_time
         }
     }
 }

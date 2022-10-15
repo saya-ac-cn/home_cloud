@@ -1,33 +1,36 @@
 use crate::service::CONTEXT;
+use fast_log::config::Config;
 use fast_log::consts::LogSize;
-use fast_log::plugin::file_split::{Packer, RollingType};
-use fast_log::plugin::packer::{LZ4Packer, ZipPacker, LogPacker, GZipPacker};
+use fast_log::plugin::file_split::{FileSplitAppender, Packer, RollingType};
 use std::time::Duration;
 
 pub fn init_log() {
     //create log dir
     std::fs::create_dir_all(&CONTEXT.config.log_dir);
     //init fast log
-    fast_log::init_split_log(
-        &CONTEXT.config.log_dir,
-        str_to_temp_size(&CONTEXT.config.log_temp_size),
-        str_to_rolling(&CONTEXT.config.log_rolling_type),
-        str_to_log_level(&CONTEXT.config.log_level),
-        None,
-        choose_packer(&CONTEXT.config.log_pack_compress),
-        CONTEXT.config.debug,
-    );
+    let mut cfg = Config::new()
+        .level(str_to_log_level(&CONTEXT.config.log_level))
+        .custom(FileSplitAppender::new(
+            &CONTEXT.config.log_dir,
+            str_to_temp_size(&CONTEXT.config.log_temp_size),
+            str_to_rolling(&CONTEXT.config.log_rolling_type),
+            choose_packer(&CONTEXT.config.log_pack_compress),
+        ));
+    if CONTEXT.config.debug {
+        cfg = cfg.console();
+    }
+    fast_log::init(cfg);
     if CONTEXT.config.debug == false {
-        println!("[home_cloud] release_mode is up! [file_log] open,[console_log] disabled!");
+        println!("[abs_admin] release_mode is up! [file_log] open,[console_log] disabled!");
     }
 }
 
 fn choose_packer(packer: &str) -> Box<dyn Packer> {
     match packer {
-        "lz4" => Box::new(LZ4Packer {}),
-        "zip" => Box::new(ZipPacker {}),
-        "gzip" => Box::new(GZipPacker {}),
-        _ => Box::new(LogPacker {}),
+        // "lz4" => Box::new(fast_log::plugin::packer::LZ4Packer {}),
+        // "zip" => Box::new(fast_log::plugin::packer::ZipPacker {}),
+        // "gzip" => Box::new(fast_log::plugin::packer::GZipPacker {}),
+        _ => Box::new(fast_log::plugin::packer::LogPacker {}),
     }
 }
 
@@ -68,13 +71,14 @@ fn str_to_rolling(arg: &str) -> RollingType {
     }
 }
 
-fn str_to_log_level(arg: &str) -> log::Level {
+fn str_to_log_level(arg: &str) -> log::LevelFilter {
     return match arg {
-        "warn" => log::Level::Warn,
-        "error" => log::Level::Error,
-        "trace" => log::Level::Trace,
-        "info" => log::Level::Info,
-        "debug" => log::Level::Debug,
-        _ => log::Level::Info,
+        "off" => log::LevelFilter::Off,
+        "warn" => log::LevelFilter::Warn,
+        "error" => log::LevelFilter::Error,
+        "trace" => log::LevelFilter::Trace,
+        "info" => log::LevelFilter::Info,
+        "debug" => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Info,
     };
 }

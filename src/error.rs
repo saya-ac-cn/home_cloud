@@ -77,8 +77,8 @@ impl From<&dyn std::error::Error> for Error {
 }
 
 /// 为防止敏感信息泄露，rbatis框架产生的异常需要对外脱敏，在这里赋予特殊的状态码
-impl From<rbatis::core::Error> for Error {
-    fn from(arg: rbatis::core::Error) -> Self {
+impl From<rbatis::error::Error> for Error {
+    fn from(arg: rbatis::error::Error) -> Self {
         Error::E(arg.to_string(),util::UNKNOWN_ERROR)
     }
 }

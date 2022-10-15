@@ -1,7 +1,7 @@
 /// 主数据库
+use serde::{Deserialize, Serialize};
 
-#[crud_table(table_name:user)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     /// 用户名
     pub account: Option<String>,
@@ -32,14 +32,13 @@ pub struct User {
     /// 是否锁定(1正常，2锁定)
     pub state: Option<u32>,
     /// 创建时间
-    pub create_time: Option<chrono::NaiveDateTime>,
+    pub create_time: Option<String>,
     /// 修改时间
-    pub update_time: Option<chrono::NaiveDateTime>,
+    pub update_time: Option<String>,
 }
-impl_field_name_method!(User{account,name,password,sex,qq,email,phone,birthday,hometown,autograph,logo,background,organize_id,state,create_time,update_time});
+impl_field_name_method!(User{account,name,email,phone,organize_id,state});
 
-#[crud_table(table_name:log)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Log{
     pub id:Option<u64>,
     pub organize:Option<u64>,
@@ -47,54 +46,50 @@ pub struct Log{
     pub category:Option<String>,
     pub ip:Option<String>,
     pub city:Option<String>,
-    pub date:Option<chrono::NaiveDateTime>,
+    pub date:Option<String>,
 }
-impl_field_name_method!(Log{id,user,category,ip,city,date});
+impl_field_name_method!(Log{id,user,category,date});
 
-#[crud_table(table_name:log_type)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogType{
     pub category:Option<String>,
     pub describe:Option<String>,
 }
-impl_field_name_method!(LogType{category,describe});
+impl_field_name_method!(LogType{category});
 
-#[crud_table(table_name:plan)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Plan{
     pub id:Option<u64>,
-    pub standard_time:Option<chrono::NaiveDateTime>,
+    pub standard_time:Option<String>,
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
     pub content:Option<String>,
-    pub next_exec_time:Option<chrono::NaiveDateTime>,
+    pub next_exec_time:Option<String>,
     pub organize:Option<u64>,
     pub user:Option<String>,
     pub display:Option<u32>,
-    pub create_time: Option<chrono::NaiveDateTime>,
-    pub update_time: Option<chrono::NaiveDateTime>,
+    pub create_time: Option<String>,
+    pub update_time: Option<String>,
 }
 impl_field_name_method!(Plan{id,organize,user,display,standard_time,next_exec_time});
 
-#[crud_table(table_name:plan_archive)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlanArchive{
     pub id:Option<u64>,
     pub plan_id:Option<u64>,
     pub status:Option<u32>,
     pub content:Option<String>,
-    pub archive_time:Option<chrono::NaiveDateTime>,
-    pub create_time: Option<chrono::NaiveDateTime>,
-    pub update_time: Option<chrono::NaiveDateTime>,
+    pub archive_time:Option<String>,
+    pub create_time: Option<String>,
+    pub update_time: Option<String>,
 }
 impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});
 
-#[crud_table(table_name:db_dump_log)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DbDumpLog{
     pub id:Option<u64>,
     pub url:Option<String>,
-    pub archive_date:Option<chrono::NaiveDate>,
-    pub execute_data:Option<chrono::NaiveDateTime>,
+    pub archive_date:Option<String>,
+    pub execute_data:Option<String>,
 }
 impl_field_name_method!(DbDumpLog{id,archive_date});

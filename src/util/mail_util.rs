@@ -3,11 +3,10 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use std::string::String;
 use lettre::message::{header, MultiPart, SinglePart};
-use rbatis::value::DateTimeNow;
 use crate::entity::domain::primary_database_tables::User;
 use crate::service::CONTEXT;
 use crate::util;
-use crate::util::date_time::DateTimeUtil;
+use crate::util::date_time::{DateTimeUtil, DateUtils};
 
 pub struct MailUtils{}
 
@@ -68,7 +67,7 @@ impl MailUtils {
     </div>
 </body>
 </html>"#;
-        let now = DateTimeUtil::naive_date_time_to_str(&Some(chrono::NaiveDateTime::now()), util::FORMAT_Y_M_D_H_M_S);
+        let now = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S);
         let html = html_template.replace("${send_date}",now.unwrap().as_str())
             .replace("${archive_date}",archive_date)
             .replace("${start_date}",start_date)
@@ -172,7 +171,7 @@ impl MailUtils {
             content = content.add(format!("<div style=\"height: 30px;text-indent:30px\">{}、{}</div>",index,item).as_str());
             index = index + 1;
         }
-        let now = DateTimeUtil::naive_date_time_to_str(&Some(chrono::NaiveDateTime::now()), util::FORMAT_Y_M_D_H_M_S);
+        let now = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S);
         let html = html_template.replace("${send_date}",now.unwrap().as_str())
             .replace("${plan_user}",user.name.clone().unwrap().as_str())
             .replace("${plan_content}", content.as_str())

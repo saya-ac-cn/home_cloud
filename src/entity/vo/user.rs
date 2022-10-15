@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 use crate::entity::domain::primary_database_tables::User;
-use crate::util;
-use crate::util::date_time::DateTimeUtil;
 
 /// 用户展示层
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,7 +39,7 @@ pub struct UserVO {
     /// 壁纸url
     pub background_url: Option<String>
 }
-impl_field_name_method!(UserVO{account,name,password,sex,qq,email,phone,birthday,hometown,autograph,logo,background,organize_id,state,create_time,update_time});
+impl_field_name_method!(UserVO{account,name});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UserOwnOrganizeVO {
@@ -71,8 +69,8 @@ impl From<User> for UserVO {
             organize_id: arg.organize_id,
             state: arg.state,
             background_url:None,
-            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time,&util::FORMAT_Y_M_D_H_M_S),
-            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time,&util::FORMAT_Y_M_D_H_M_S),
+            create_time: arg.create_time,
+            update_time: arg.update_time,
         }
     }
 }

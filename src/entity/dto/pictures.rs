@@ -27,7 +27,7 @@ pub struct PicturesPageDTO{
 
     pub page_no: Option<u64>,
     pub page_size: Option<u64>,
-    pub begin_time: Option<chrono::NaiveDateTime>,
-    pub end_time: Option<chrono::NaiveDateTime>,
+    pub begin_time: Option<String>,
+    pub end_time: Option<String>,
     pub organize: Option<u64>,
 }

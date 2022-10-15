@@ -1,6 +1,5 @@
 use std::ops::Add;
-use chrono::{Datelike, DateTime, Duration, Local, NaiveDate, Timelike, TimeZone};
-use crate::util::{FORMAT_Y_M_D_T_H_M_S_Z};
+use chrono::{Datelike, Duration, NaiveDate, Timelike};
 
 pub trait DateTimeUtil{
     fn naive_date_time_to_str(&self,format:&str) -> Option<String>;
@@ -37,18 +36,14 @@ impl DateTimeUtil for Option<chrono::NaiveDateTime>{
     }
 }
 
-// 不建议使用rbatis自带的时间
-// impl DateTimeUtil for Option<rbatis::DateTimeNative>{
-//     fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
-//         match self {
-//             None => None,
-//             Some(naive_date_time) => {
-//                 let date = self.unwrap();
-//                 DateTimeUtil::naive_date_time_to_str(&Some(date.inner),format)
-//             },
-//         }
-//     }
-// }
+impl DateTimeUtil for Option<chrono::DateTime<chrono::FixedOffset>>{
+    fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
+        match self {
+            None => None,
+            Some(date_time) => Some(date_time.format(format).to_string()),
+        }
+    }
+}
 
 pub struct DateUtils{}
 
@@ -124,13 +119,20 @@ impl DateUtils {
     }
 
     /// 根据时区返回当前时间
-    pub fn now() -> chrono::NaiveDateTime{
+    pub fn now() -> chrono::DateTime<chrono::FixedOffset>{
         // 世界时间
         let utc = chrono::Utc::now();
-        /// 东8区
+        // 东8区
         let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
-        let now = utc.with_timezone(&east8);
-        chrono::NaiveDateTime:: parse_from_str(&now.to_rfc3339_opts(chrono::SecondsFormat::Secs,true), &FORMAT_Y_M_D_T_H_M_S_Z).unwrap()
+        utc.with_timezone(&east8)
     }
 
+    /// 根据时区返回当前时间
+    pub fn now_string() -> chrono::DateTime<chrono::FixedOffset>{
+        // 世界时间
+        let utc = chrono::Utc::now();
+        // 东8区
+        let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        utc.with_timezone(&east8)
+    }
 }

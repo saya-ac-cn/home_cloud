@@ -1,20 +1,15 @@
+use std::collections::HashMap;
 use actix_http::StatusCode;
 use crate::error::Error;
 use crate::error::Result;
 use crate::service::{CONTEXT, SCHEDULER};
-use rbatis::crud::{CRUD, CRUDMut};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::{HttpRequest, HttpResponse};
 use log::error;
-use rbatis::value::DateTimeNow;
 use rbson::{Array, Bson, Document};
-use crate::dao::db_dump_log_mapper::DbDumpLogMapper;
 use crate::util::options::OptionStringRefUnwrapOrDefault;
 use crate::dao::log_mapper::LogMapper;
-use crate::dao::log_type_mapper::LogTypeMapper;
-use crate::dao::plan_archive_mapper::PlanArchiveMapper;
-use crate::dao::plan_mapper::PlanMapper;
 use crate::dao::user_mapper::UserMapper;
 use crate::entity::dto::page::{ExtendPageDTO};
 use crate::entity::dto::sign_in::SignInDTO;
@@ -32,11 +27,17 @@ use crate::entity::vo::log::LogVO;
 use crate::entity::vo::log_type::LogTypeVO;
 use crate::entity::vo::plan::PlanVO;
 use crate::entity::vo::plan_archive::PlanArchiveVO;
-use crate::util;
+use crate::{business_rbatis_pool, primary_rbatis_pool, util};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 extern crate simple_excel_writer as excel;
 use excel::*;
+use rbs::Value;
+use crate::dao::db_dump_log_mapper::DbDumpLogMapper;
+use crate::dao::log_type_mapper::LogTypeMapper;
+use crate::dao::plan_archive_mapper::PlanArchiveMapper;
+use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::domain::business_database_tables::Pictures;
+use crate::error::Error::E;
 
 /// 系统服务
 pub struct SystemService {}
@@ -51,11 +52,14 @@ impl SystemService {
         {
             return Err(Error::from(("账号和密码不能为空!", util::NOT_PARAMETER)));
         }
-        let user: Option<User> = CONTEXT
-            .primary_rbatis
-            .fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account))
-            .await?;
-        let user = user.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &arg.account.clone().unwrap()), util::NOT_EXIST)))?;
+
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(),&arg.account.clone().unwrap()).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}",query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let user_wrap = query_user_wrap.unwrap().into_iter().next();
+        let user = user_wrap.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &arg.account.clone().unwrap()), util::NOT_EXIST)))?;
         // 判断用户是否被锁定，2为锁定
         if user.state.eq(&Some(0)) {
             return Err(Error::from("账户被禁用!"));
@@ -76,14 +80,73 @@ impl SystemService {
         let sign_in_vo = self.user_get_info(req, &user).await?;
         // 通过上面生成的token，完整记录日志
         let extract_result = &JWTToken::extract_token(&sign_in_vo.access_token);
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis, &extract_result.clone().unwrap(), String::from("OX001")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(), &extract_result.clone().unwrap(), String::from("OX001")).await;
         return Ok(sign_in_vo);
+    }
+
+    /// 生成用户jwt并返回
+    pub async fn user_get_info(&self, req: &HttpRequest, user: &User) -> Result<SignInVO> {
+        //去除密码，增加安全性
+        let mut user = user.clone();
+        let ip = req.peer_addr().unwrap().ip().to_string();
+        // if req.peer_addr().is_some() {
+        //     ip = req.peer_addr().unwrap().ip().to_string();
+        // } else if req.connection_info().remote_addr().is_some(){
+        //     ip = req.connection_info().remote_addr().unwrap().parse().unwrap();
+        // }else if req.connection_info().realip_remote_addr().is_some() {
+        //     ip = req.connection_info().realip_remote_addr().unwrap().parse().unwrap()
+        // }
+        // println!("remote_addr{:?}",req.peer_addr().unwrap().ip().to_string());
+        // println!("remote_addr{:?}",req.connection_info().remote_addr().unwrap());
+        // println!("realip_remote_addr{:?}",req.connection_info().realip_remote_addr().unwrap());
+        user.password = None;
+        // 准备壁纸
+        let mut user_vo = UserVO::from(user.clone());
+        let query_picture_wrap = Pictures::select_by_column(business_rbatis_pool!(),Pictures::id(),&user_vo.background).await;
+        if query_picture_wrap.is_err() {
+            error!("查询壁纸异常：{}",query_picture_wrap.unwrap_err());
+        }else{
+            let picture = query_picture_wrap.unwrap().into_iter().next();
+            user_vo.background_url = if picture.is_some() { picture.unwrap().web_url}else { None }
+        }
+        let mut sign_vo = SignInVO {
+            user: Some(user_vo),
+            access_token: String::new(),
+            plan:None,
+            log:None
+        };
+        // 查询准备今日计划安排
+        let query_today_plan_sql = "select concat(a.`content`,'[',date_format(a.`archive_time`,'%Y-%m-%d'),']') as item from `plan_archive` a inner join `plan` b on a.plan_id = b.id where a.`status` != 3 and b.`user` = 'shmily' and a.`archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')\n
+            union all\n
+            select concat(c.`content`,'[',date_format(c.`standard_time`,'%Y-%m-%d'),']') as item from `plan` c where c.`user` = 'shmily' and c.`standard_time` <= date_format(now(),'%Y-%m-%d 23:59:59')";
+        let today_plan_result_warp = primary_rbatis_pool!().fetch_decode::<Vec<HashMap<String, String>>>(query_today_plan_sql, vec![]).await;
+        if today_plan_result_warp.is_ok(){
+            sign_vo.plan = Some(today_plan_result_warp.unwrap());
+        }
+
+        // 查询最近的一次操作日志
+        let log_warp = LogMapper::select_recently(primary_rbatis_pool!(), &user.account.clone().unwrap()).await;
+        if log_warp.is_ok() {
+            sign_vo.log = log_warp.unwrap();
+        }
+
+        let jwt_token = JWTToken {
+            account: user.account.unwrap_or_default(),
+            name: user.name.clone().unwrap_or_default(),
+            ip,
+            organize:user.organize_id.unwrap(),
+            city: String::from("云南西双版纳"),
+            exp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize,// 时间和校验的时候保持一致，统一秒
+        };
+        sign_vo.access_token = jwt_token.create_token(&CONTEXT.config.jwt_secret)?;
+        return Ok(sign_vo);
     }
 
     /// 刷新token
     pub async fn token_refresh(&self, req: &HttpRequest) -> Result<String>{
         let mut jwt_token = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        jwt_token.exp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize;// 时间和校验的时候保持一致，统一秒
+        // 时间和校验的时候保持一致，统一秒
+        jwt_token.exp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize;
         let access_token = jwt_token.create_token(&CONTEXT.config.jwt_secret).unwrap();
         Ok(access_token)
     }
@@ -91,7 +154,7 @@ impl SystemService {
     /// 登出后台
     pub async fn logout(&self, req: &HttpRequest) {
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis, &user_info, String::from("OX002")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(), &user_info, String::from("OX002")).await;
     }
 
     /// 用户分页
@@ -99,10 +162,10 @@ impl SystemService {
         let mut extend = ExtendPageDTO {
             page_no: arg.page_no,
             page_size: arg.page_size,
-            begin_time: arg.begin_time,
-            end_time: arg.end_time,
+            begin_time: arg.begin_time.clone(),
+            end_time: arg.end_time.clone()
         };
-        let count_result = UserMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg, &extend).await;
+        let count_result = UserMapper::select_count(primary_rbatis_pool!(), &arg, &extend).await;
         if count_result.is_err() {
             error!("在用户分页统计时，发生异常:{}",count_result.unwrap_err());
             return Err(Error::from("用户分页查询异常"));
@@ -115,7 +178,7 @@ impl SystemService {
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no - 1) * result.page_size);
         extend.page_size = Some(result.page_size);
-        let page_result = UserMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg, &extend).await;
+        let page_result = UserMapper::select_page(primary_rbatis_pool!(), &arg, &extend).await;
         if page_result.is_err() {
             error!("在用户分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
             return Err(Error::from("用户分页查询异常"));
@@ -135,7 +198,13 @@ impl SystemService {
         if check_flag {
             return Err(Error::from(("账号、姓名、手机号、邮箱以及所属组织不能为空!", util::NOT_PARAMETER)));
         }
-        let old_user = UserMapper::find_by_account(&CONTEXT.primary_rbatis, &arg.account.clone().unwrap()).await?;
+
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(),&arg.account.clone().unwrap()).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}",query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let old_user = query_user_wrap.unwrap().into_iter().next();
         if old_user.is_some() {
             return Err(Error::from(format!(
                 "账户:{}已存在!",
@@ -162,10 +231,10 @@ impl SystemService {
             background: arg.background,
             organize_id: arg.organize_id,
             state: 1.into(),
-            create_time: Some(chrono::NaiveDateTime::now()),
+            create_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time: None,
         };
-        let write_result = CONTEXT.primary_rbatis.save(&user, &[]).await;
+        let write_result = User::insert(primary_rbatis_pool!(),&user).await;
         if write_result.is_err() {
             error!("创建账号时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("创建账号时，发生异常!"));
@@ -175,74 +244,15 @@ impl SystemService {
         return Ok(write_result?.rows_affected);
     }
 
-    /// 生成用户jwt并返回
-    pub async fn user_get_info(&self, req: &HttpRequest, user: &User) -> Result<SignInVO> {
-        //去除密码，增加安全性
-        let mut user = user.clone();
-        let ip = req.peer_addr().unwrap().ip().to_string();
-        // if req.peer_addr().is_some() {
-        //     ip = req.peer_addr().unwrap().ip().to_string();
-        // } else if req.connection_info().remote_addr().is_some(){
-        //     ip = req.connection_info().remote_addr().unwrap().parse().unwrap();
-        // }else if req.connection_info().realip_remote_addr().is_some() {
-        //     ip = req.connection_info().realip_remote_addr().unwrap().parse().unwrap()
-        // }
-        // println!("remote_addr{:?}",req.peer_addr().unwrap().ip().to_string());
-        // println!("remote_addr{:?}",req.connection_info().remote_addr().unwrap());
-        // println!("realip_remote_addr{:?}",req.connection_info().realip_remote_addr().unwrap());
-        user.password = None;
-        // 准备壁纸
-        let mut user_vo = UserVO::from(user.clone());
-        let query_where = CONTEXT.business_rbatis.new_wrapper().eq(Pictures::id(), &user_vo.background);
-        let pic_option: Option<Pictures> = CONTEXT.business_rbatis.fetch_by_wrapper(query_where).await?;
-        if pic_option.is_some(){
-            user_vo.background_url = pic_option.unwrap().web_url;
-        }
-        let mut sign_vo = SignInVO {
-            user: Some(user_vo),
-            access_token: String::new(),
-            plan:None,
-            log:None
-        };
-        // 查询准备今日计划安排
-        let query_today_plan_sql = "select concat(a.`content`,'[',date_format(a.`archive_time`,'%Y-%m-%d'),']') as item from `plan_archive` a inner join `plan` b on a.plan_id = b.id where a.`status` != 3 and b.`user` = 'shmily' and a.`archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')\n
-            union all\n
-            select concat(c.`content`,'[',date_format(c.`standard_time`,'%Y-%m-%d'),']') as item from `plan` c where c.`user` = 'shmily' and c.`standard_time` <= date_format(now(),'%Y-%m-%d 23:59:59')";
-        let param:Vec<Bson> = Vec::new();
-        let today_plan_result_warp = CONTEXT.primary_rbatis.fetch(query_today_plan_sql, param).await;
-        if today_plan_result_warp.is_ok(){
-            sign_vo.plan = Some(today_plan_result_warp.unwrap());
-        }
-
-        let param1:Vec<Bson> = Vec::new();
-        let aaa = CONTEXT.primary_rbatis.fetch("select now() as create_time", param1).await;
-        let bb :rbson::Array= aaa.unwrap();
-        println!("{:?}",bb);
-
-
-
-        // 查询最近的一次操作日志
-        let log_warp = LogMapper::select_recently(&mut CONTEXT.primary_rbatis.as_executor(), &user.account.clone().unwrap()).await;
-        if log_warp.is_ok() {
-            sign_vo.log = log_warp.unwrap();
-        }
-
-        let jwt_token = JWTToken {
-            account: user.account.unwrap_or_default(),
-            name: user.name.clone().unwrap_or_default(),
-            ip,
-            organize:user.organize_id.unwrap(),
-            city: String::from("云南西双版纳"),
-            exp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize,// 时间和校验的时候保持一致，统一秒
-        };
-        sign_vo.access_token = jwt_token.create_token(&CONTEXT.config.jwt_secret)?;
-        return Ok(sign_vo);
-    }
-
     /// 通过token获取用户信息
     pub async fn user_get_info_by_token(&self, req: &HttpRequest) -> Result<SignInVO> {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let user_warp: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &user_info.account)).await?;
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(), &user_info.account).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}",query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let user_warp = query_user_wrap.unwrap().into_iter().next();
         let user = user_warp.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &user_info.account), util::NOT_EXIST)))?;
         return self.user_get_info(req, &user).await;
     }
@@ -253,8 +263,13 @@ impl SystemService {
             return Err(Error::from(("账号account不能为空!", util::NOT_PARAMETER)));
         }
         // 首先判断要修改的用户是否存在
-        let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account)).await?;
-        let user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &arg.account.clone().unwrap()), util::NOT_EXIST)))?;
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(),  &arg.account.clone().unwrap()).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}",query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let user_warp = query_user_wrap.unwrap().into_iter().next();
+        let user_exist = user_warp.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &arg.account.clone().unwrap()), util::NOT_EXIST)))?;
 
         let user_edit = User {
             account: user_exist.account,
@@ -272,15 +287,15 @@ impl SystemService {
             organize_id: arg.organize_id,
             state: arg.state,
             create_time: user_exist.create_time,
-            update_time: Some(chrono::NaiveDateTime::now()),
+            update_time: None,
         };
-        let result = UserMapper::update_user(&mut CONTEXT.primary_rbatis.as_executor(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
+        let result = UserMapper::update_user(primary_rbatis_pool!(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
         if result.is_err() {
             error!("在修改用户{}的信息时，发生异常:{}",arg.account.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from(format!("修改账户[{}]信息失败!", arg.account.as_ref().unwrap())));
         }
         let jwt_token = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis, &jwt_token, String::from("OX003")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(), &jwt_token, String::from("OX003")).await;
         Ok(result.unwrap().rows_affected)
     }
 
@@ -289,14 +304,20 @@ impl SystemService {
         if account.is_empty() {
             return Err(Error::from(("account 不能为空！", util::NOT_PARAMETER)));
         }
-        let r = CONTEXT.primary_rbatis.remove_by_column::<User, _>(User::account(), &account).await;
-        return Ok(r?);
+        let r = User::delete_by_column(primary_rbatis_pool!(),User::account(),&account).await?;
+        return Ok(r.rows_affected);
     }
 
     /// 用户详情
     pub async fn user_detail(&self, arg: &UserDTO) -> Result<UserVO> {
         let account = arg.account.clone().unwrap_or_default();
-        let user = UserMapper::find_by_account(&CONTEXT.primary_rbatis, &account).await?.ok_or_else(|| Error::from((format!("用户:{} 不存在！", account), util::NOT_EXIST)))?;
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(),  &account.clone()).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}",query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let user_warp = query_user_wrap.unwrap().into_iter().next();
+        let user = user_warp.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &account.clone()), util::NOT_EXIST)))?;
         let user_vo = UserVO::from(user);
         return Ok(user_vo);
     }
@@ -304,7 +325,7 @@ impl SystemService {
     /// 获取当前用户所在组织的用户列表
     pub async fn user_get_own_organize(&self, req: &HttpRequest) -> Result<Vec<UserOwnOrganizeVO>> {
         let jwt_token = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let query_result = UserMapper::select_own_organize_user(&mut CONTEXT.primary_rbatis.as_executor(), &jwt_token.account).await;
+        let query_result = UserMapper::select_own_organize_user(primary_rbatis_pool!(), &jwt_token.account).await;
         if query_result.is_err() {
             error!("在查询用户所属组织下的用户列表时，发生异常:{}",query_result.unwrap_err());
             return Err(Error::from(format!("查询我所属组织的用户列表异常")));
@@ -318,8 +339,15 @@ impl SystemService {
             return Err(Error::from(("密码不能为空!", util::NOT_PARAMETER)));
         }
         // 首先判断要修改的用户是否存在
-        let user_option: Option<User> = CONTEXT.primary_rbatis.fetch_by_wrapper(CONTEXT.primary_rbatis.new_wrapper().eq(User::account(), &arg.account)).await?;
-        let user_exist = user_option.ok_or_else(|| Error::from((format!("用户:{} 不存在!", &arg.account.clone().unwrap()), util::NOT_EXIST)))?;
+
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(),  &arg.account.clone().unwrap()).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}",query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let user_warp = query_user_wrap.unwrap().into_iter().next();
+        let user_exist = user_warp.ok_or_else(|| Error::from((format!("账号:{} 不存在!", &arg.account.clone().unwrap()), util::NOT_EXIST)))?;
+
         let user_edit = User {
             account: user_exist.account,
             name: None,
@@ -336,21 +364,21 @@ impl SystemService {
             organize_id: None,
             state: None,
             create_time: None,
-            update_time: Some(chrono::NaiveDateTime::now()),
+            update_time: None,
         };
-        let result = UserMapper::update_user(&mut CONTEXT.primary_rbatis.as_executor(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
+        let result = UserMapper::update_user(primary_rbatis_pool!(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
         if result.is_err() {
             error!("在修改用户{}的密码时，发生异常:{}",arg.account.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from(format!("修改账户[{}]密码失败!", arg.account.as_ref().unwrap())));
         }
         let jwt_token = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis, &jwt_token, String::from("OX004")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(), &jwt_token, String::from("OX004")).await;
         Ok(result.unwrap().rows_affected)
     }
 
     /// 日志类别列表
     pub async fn log_get_type(&self) -> Result<Vec<LogTypeVO>> {
-        let query_result = LogTypeMapper::select_all(&mut CONTEXT.primary_rbatis.as_executor()).await;
+        let query_result = LogTypeMapper::select_all(primary_rbatis_pool!()).await;
         if query_result.is_err() {
             error!("在查询日志类型列表时，发生异常:{}",query_result.unwrap_err());
             return Err(Error::from("查询日志类型列表异常"));
@@ -363,14 +391,14 @@ impl SystemService {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
-            begin_time:param.begin_time,
-            end_time:param.end_time
+            begin_time:param.begin_time.clone(),
+            end_time:param.end_time.clone()
         };
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
         arg.organize = Some(user_info.organize);
 
-        let count_result = LogMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let count_result = LogMapper::select_count(primary_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在日志分页统计时，发生异常:{}",count_result.unwrap_err());
             return Err(Error::from("日志分页查询异常"));
@@ -383,7 +411,7 @@ impl SystemService {
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(result.page_size);
-        let page_result = LogMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let page_result = LogMapper::select_page(primary_rbatis_pool!(), &arg,&extend).await;
         if page_result.is_err() {
             error!("在日志分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
             return Err(Error::from("日志分页查询异常"));
@@ -399,14 +427,14 @@ impl SystemService {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
-            begin_time:param.begin_time,
-            end_time:param.end_time
+            begin_time:param.begin_time.clone(),
+            end_time:param.end_time.clone()
         };
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
         let mut arg= param.clone();
         arg.organize = Some(user_info.organize);
 
-        let count_result = LogMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let count_result = LogMapper::select_count(primary_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在日志分页统计时，发生异常:{}",count_result.unwrap_err());
             response.status(StatusCode::INTERNAL_SERVER_ERROR);
@@ -421,7 +449,7 @@ impl SystemService {
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(total_row);
-        let page_result = LogMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let page_result = LogMapper::select_page(primary_rbatis_pool!(), &arg,&extend).await;
         if page_result.is_err() {
             error!("在日志分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
             response.status(StatusCode::INTERNAL_SERVER_ERROR);
@@ -441,7 +469,7 @@ impl SystemService {
             // 写入标题行
             sw.append_row(row!["用户", "操作详情", "IP", "城市", "日期"]);
             for item in rows {
-                sw.append_row(row![item.user.unwrap(),item.detail.unwrap(),item.ip.unwrap(),item.city.unwrap(),DateTimeUtil::naive_date_time_to_str(&item.date,&util::FORMAT_Y_M_D_H_M_S).unwrap()]);
+                sw.append_row(row![item.user.unwrap(),item.detail.unwrap(),item.ip.unwrap(),item.city.unwrap(),item.date.unwrap()]);
             }
             Ok(())
         }).expect("write excel error!");
@@ -458,7 +486,7 @@ impl SystemService {
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
         let query_sql = format!("call count_pre6_logs({}, '{}')", &user_info.organize,month);
         let param:Vec<Bson> = Vec::new();
-        let compute_result_warp = CONTEXT.primary_rbatis.fetch(query_sql.as_str(), param).await;
+        let compute_result_warp = primary_rbatis_pool!().fetch_decode(query_sql.as_str(), vec![]).await;
         if compute_result_warp.is_err(){
             error!("在统计近6个月的活跃情况时，发生异常:{}",compute_result_warp.unwrap_err());
             return Err(Error::from("统计近6个月的活跃情况异常"));
@@ -474,12 +502,12 @@ impl SystemService {
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
         let query_primary_count_sql = format!("select '计划' as `type` , count(1) as `value` from `plan` where `organize` = {};", &user_info.organize);
         let param:Vec<Bson> = Vec::new();
-        let primary_count_result_warp = CONTEXT.primary_rbatis.fetch(query_primary_count_sql.as_str(), param).await;
+        let primary_count_result_warp = primary_rbatis_pool!().fetch_decode(query_primary_count_sql.as_str(), vec![]).await;
         // 异常健壮处理
         let mut error_plan = Bson::Null;
         let mut primary_rows:rbson::Array = rbson::Array::new();
         if primary_count_result_warp.is_err(){
-            error!("在统计主库的计划提醒时，发生异常:{}",primary_count_result_warp.clone().unwrap_err());
+            error!("在统计主库的计划提醒时，发生异常:{}",primary_count_result_warp.unwrap_err());
             let mut plan = rbson::Document::new();
             plan.insert("type","计划");
             plan.insert("value",0);
@@ -501,7 +529,7 @@ impl SystemService {
                                                     union all\n
                                                     select '动态' as `type` , count(1) as `value` from `news` where `organize` = {}", &user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize);
         let param:Vec<Bson> = Vec::new();
-        let business_count_result_warp = CONTEXT.business_rbatis.fetch(query_business_count_sql.as_str(), param).await;
+        let business_count_result_warp = business_rbatis_pool!().fetch_decode(query_business_count_sql.as_str(), vec![]).await;
 
         // 异常健壮处理
         let mut error_files = Bson::Null;
@@ -547,7 +575,6 @@ impl SystemService {
         return Ok(result);
     }
 
-
     /// 创建提醒事项
     pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
         let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
@@ -555,10 +582,18 @@ impl SystemService {
             return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER)));
         }
         let cycle = arg.cycle.unwrap();
+
+        let standard_time_result = chrono::NaiveDateTime::parse_from_str(&arg.standard_time.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        if standard_time_result.is_err() {
+            error!("格式化日期发生异常:{}",standard_time_result.unwrap_err());
+            return Err(Error::from("创建提醒事项失败"));
+        }
+        let standard_time = standard_time_result.unwrap();
+
         // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        let next_exec_time = DateUtils::plan_data_compute(&standard_time,arg.cycle.unwrap(),arg.unit.unwrap());
         // 生成定时cron表达式
-        let cron_tab = DateUtils::data_time_to_cron(&arg.standard_time.clone().unwrap());
+        let cron_tab = DateUtils::data_time_to_cron(&standard_time);
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         //   `cycle` 重复执行周期(1：一次性，2：天，3：周，4：月，5：年)',
         //   `unit` '重复执行周期单位',
@@ -568,26 +603,25 @@ impl SystemService {
             cycle: Some(cycle),
             unit: if 1 == cycle { None } else {arg.unit},
             content: arg.content.clone(),
-            next_exec_time: if 1 == cycle { None } else {Some(next_exec_time)},
+            next_exec_time: if 1 == cycle { None } else {DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S)},
             organize: Some(user_info.organize),
             user: Some(user_info.account.clone()),
             display: Some(1),
-            create_time: Some(chrono::NaiveDateTime::now()),
+            create_time: None,
             update_time: None
         };
 
-        let write_result = CONTEXT.primary_rbatis.save(&plan, &[]).await;
+        let write_result = Plan::insert(primary_rbatis_pool!(),&plan).await;
         if  write_result.is_err(){
             error!("在保存计划提醒事项时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("保存计划提醒事项失败!"));
         }
         let result = write_result.unwrap();
-        let plan_id = result.last_insert_id.unwrap() as u64;
+        let plan_id = result.last_insert_id.as_u64().unwrap();
         SCHEDULER.lock().unwrap().add(plan_id,cron_tab.as_str());
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX022")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX022")).await;
         return Ok(result.rows_affected);
     }
-
 
     /// 修改提醒事项
     pub async fn edit_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
@@ -596,28 +630,41 @@ impl SystemService {
             return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER)));
         }
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(), &arg.id);
-        let plan_option: Option<Plan> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
-        let plan_exist = plan_option.ok_or_else(|| Error::from((format!("id={} 的提醒事项不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
+
+        let query_plan_wrap = Plan::select_by_column(primary_rbatis_pool!(),  Plan::id(), &arg.id).await;
+        if query_plan_wrap.is_err() {
+            error!("查询提醒事项异常：{}",query_plan_wrap.unwrap_err());
+            return Err(Error::from("查询提醒事项失败!"));
+        }
+        let plan_warp = query_plan_wrap.unwrap().into_iter().next();
+        let plan_exist = plan_warp.ok_or_else(|| Error::from((format!("id={} 的提醒事项不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
         let cycle = arg.cycle.unwrap();
+
+        let standard_time_result = chrono::NaiveDateTime::parse_from_str(&arg.standard_time.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        if standard_time_result.is_err() {
+            error!("格式化日期发生异常:{}",standard_time_result.unwrap_err());
+            return Err(Error::from("创建提醒事项失败"));
+        }
+        let standard_time = standard_time_result.unwrap();
+
         // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&arg.standard_time.clone().unwrap(),arg.cycle.unwrap(),arg.unit.unwrap());
+        let next_exec_time = DateUtils::plan_data_compute(&standard_time,arg.cycle.unwrap(),arg.unit.unwrap());
         // 生成定时cron表达式
-        let cron_tab = DateUtils::data_time_to_cron(&arg.standard_time.clone().unwrap());
+        let cron_tab = DateUtils::data_time_to_cron(&standard_time);
         let plan = Plan{
             id:plan_exist.id,
             standard_time: arg.standard_time.clone(),
             cycle: Some(cycle),
             unit: if 1 == cycle { None } else {arg.unit},
             content: arg.content.clone(),
-            next_exec_time: if 1 == cycle { None } else {Some(next_exec_time)},
+            next_exec_time: if 1 == cycle { None } else {DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S)},
             organize: plan_exist.organize,
             user: Some(user_info.account.clone()),
             display: arg.display,
             create_time: None,
-            update_time:Some(chrono::NaiveDateTime::now())
+            update_time: None
         };
-        let result = PlanMapper::update_plan(&mut CONTEXT.primary_rbatis.as_executor(),&plan).await;
+        let result = PlanMapper::update_plan(primary_rbatis_pool!(),&plan).await;
         if result.is_err() {
             error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("提醒事项修改失败"));
@@ -625,7 +672,7 @@ impl SystemService {
         let mut scheduler = SCHEDULER.lock().unwrap();
         scheduler.remove(plan_exist.id.unwrap());
         scheduler.add(plan_exist.id.unwrap(),cron_tab.as_str());
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX023")).await;
         return Ok(result?.rows_affected);
     }
 
@@ -633,15 +680,14 @@ impl SystemService {
     pub async fn delete_plan(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 只能删除自己组织机构下的数据
-        let delete_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(),id).and().eq(Plan::organize(),user_info.organize);
-        let write_result = CONTEXT.primary_rbatis.remove_by_wrapper::<Plan>(delete_where).await;
+        let write_result = Plan::delete_by_id_organize(primary_rbatis_pool!(),id,&user_info.organize).await;
         if write_result.is_err(){
             error!("删除提醒事项时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除提醒事项失败!"));
         }
         SCHEDULER.lock().unwrap().remove(*id);
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
-        return Ok(write_result?);
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX024")).await;
+        return Ok(write_result?.rows_affected);
     }
 
     /// 分页查询当前活跃的计划提醒(plan)
@@ -649,15 +695,15 @@ impl SystemService {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
-            begin_time:param.begin_time,
-            end_time:param.end_time
+            begin_time:param.begin_time.clone(),
+            end_time:param.end_time.clone()
         };
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
 
-        let count_result = PlanMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let count_result = PlanMapper::select_count(primary_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在计划提醒分页统计时，发生异常:{}",count_result.unwrap_err());
             return Err(Error::from("计划提醒分页查询异常"));
@@ -670,7 +716,7 @@ impl SystemService {
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(result.page_size);
-        let page_result = PlanMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let page_result = PlanMapper::select_page(primary_rbatis_pool!(), &arg,&extend).await;
         if page_result.is_err() {
             error!("在计划提醒分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
             return Err(Error::from("计划提醒分页查询异常"));
@@ -683,9 +729,13 @@ impl SystemService {
     /// 提前完成计划提醒
     pub async fn advance_finish_plan(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(Plan::id(), &id);
-        let plan_option: Option<Plan> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
-        let mut plan_exist = plan_option.ok_or_else(|| Error::from((format!("id={} 的提醒事项不存在!", id), util::NOT_EXIST)))?;
+        let query_plan_wrap = Plan::select_by_column(primary_rbatis_pool!(),  Plan::id(), id).await;
+        if query_plan_wrap.is_err() {
+            error!("查询提醒事项异常：{}",query_plan_wrap.unwrap_err());
+            return Err(Error::from("查询提醒事项失败!"));
+        }
+        let plan_warp = query_plan_wrap.unwrap().into_iter().next();
+        let mut plan_exist = plan_warp.ok_or_else(|| Error::from((format!("id={} 的提醒事项不存在!", id), util::NOT_EXIST)))?;
 
         // 提前准备任务归档数据
         let plan_archive = PlanArchive{
@@ -694,13 +744,13 @@ impl SystemService {
             status: Some(3),
             content: plan_exist.clone().content,
             archive_time: plan_exist.standard_time.clone(),
-            create_time: Some(chrono::NaiveDateTime::now()),
+            create_time: None,
             update_time: None
         };
         let mut scheduler = SCHEDULER.lock().unwrap();
         if 1 == plan_exist.cycle.unwrap() {
             // 一次性的任务，计划提醒表(plan)按兵不动，只用归档
-            let write_result = CONTEXT.primary_rbatis.save(&plan_archive, &[]).await;
+            let write_result = PlanArchive::insert(primary_rbatis_pool!(),&plan_archive).await;
             if  write_result.is_err(){
                 error!("在归档计划提醒事项时id={}，archive_time={:?}，发生异常:{}",plan_exist.id.unwrap(),plan_exist.standard_time.clone(),write_result.unwrap_err());
             }
@@ -711,12 +761,20 @@ impl SystemService {
         // 对于循环任务，需要生成下次的执行时间
         // 将上次计算好的本次时间放入到本次的基准时间
         plan_exist.standard_time = plan_exist.next_exec_time;
-        // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&plan_exist.standard_time.clone().unwrap(),plan_exist.cycle.unwrap(),plan_exist.unit.unwrap());
-        plan_exist.next_exec_time = Some(next_exec_time);
 
-        let mut tx = CONTEXT.primary_rbatis.acquire_begin().await.unwrap();
-        let edit_plan_result = PlanMapper::update_plan(&mut tx.as_executor(), &plan_exist).await;
+        let standard_time_result = chrono::NaiveDateTime::parse_from_str(&plan_exist.standard_time.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        if standard_time_result.is_err() {
+            error!("格式化日期发生异常:{}",standard_time_result.unwrap_err());
+            return Err(Error::from("创建提醒事项失败"));
+        }
+        let standard_time = standard_time_result.unwrap();
+
+        // 计算下次执行时间
+        let next_exec_time = DateUtils::plan_data_compute(&standard_time,plan_exist.cycle.unwrap(),plan_exist.unit.unwrap());
+        plan_exist.next_exec_time = DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S);
+
+        let mut tx = primary_rbatis_pool!().acquire_begin().await.unwrap();
+        let edit_plan_result = PlanMapper::update_plan(&mut tx, &plan_exist).await;
         if edit_plan_result.is_err() {
             error!("在完成id={}的计划提醒时，发生异常:{}",id,edit_plan_result.unwrap_err());
             tx.rollback();
@@ -724,7 +782,7 @@ impl SystemService {
         }
 
         // 预写入任务归档数据
-        let add_plan_archive_result = tx.save(&plan_archive, &[]).await;
+        let add_plan_archive_result = PlanArchive::insert(&mut tx,&plan_archive).await;
         if add_plan_archive_result.is_err() {
             error!("在归档计划提醒时，发生异常:{}",add_plan_archive_result.unwrap_err());
             tx.rollback();
@@ -733,10 +791,10 @@ impl SystemService {
         // 所有的写入都成功，最后正式提交
         tx.commit().await;
         // 生成定时cron表达式
-        let cron_tab = DateUtils::data_time_to_cron(&plan_exist.standard_time.clone().unwrap());
+        let cron_tab = DateUtils::data_time_to_cron(&standard_time);
         scheduler.remove(plan_exist.id.unwrap());
         scheduler.add(plan_exist.id.unwrap(),cron_tab.as_str());
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX023")).await;
         return Ok(add_plan_archive_result?.rows_affected);
     }
 
@@ -745,15 +803,15 @@ impl SystemService {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
-            begin_time:param.begin_time,
-            end_time:param.end_time
+            begin_time:param.begin_time.clone(),
+            end_time:param.end_time.clone()
         };
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
 
-        let count_result = PlanArchiveMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let count_result = PlanArchiveMapper::select_count(primary_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("分页归档计划提醒统计时，发生异常:{}",count_result.unwrap_err());
             return Err(Error::from("分页归档计划提醒异常"));
@@ -766,7 +824,7 @@ impl SystemService {
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(result.page_size);
-        let page_result = PlanArchiveMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &arg,&extend).await;
+        let page_result = PlanArchiveMapper::select_page(primary_rbatis_pool!(), &arg,&extend).await;
         if page_result.is_err() {
             error!("在分页获取归档计划提醒页面数据时，发生异常:{}",page_result.unwrap_err());
             return Err(Error::from("分页查询归档计划提醒异常"));
@@ -783,17 +841,22 @@ impl SystemService {
         if check_flag{
             return Err(Error::from(("归档计划id和状态不能为空!",util::NOT_PARAMETER)));
         }
-        let query_where = CONTEXT.primary_rbatis.new_wrapper().eq(PlanArchive::id(), &arg.id);
-        let plan_archive_option: Option<PlanArchive> = CONTEXT.primary_rbatis.fetch_by_wrapper(query_where).await?;
+        let query_plan_archive_wrap = PlanArchive::select_by_column(primary_rbatis_pool!(),  PlanArchive::id(), &arg.id).await;
+        if query_plan_archive_wrap.is_err() {
+            error!("查询归档计划提醒异常：{}",query_plan_archive_wrap.unwrap_err());
+            return Err(Error::from("查询归档计划提醒失败!"));
+        }
+        let plan_archive_option = query_plan_archive_wrap.unwrap().into_iter().next();
+
         let mut plan_archive_exist = plan_archive_option.ok_or_else(|| Error::from((format!("id={} 的归档提醒事项不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
         plan_archive_exist.status = arg.status;
-        let result = PlanArchiveMapper::update_plan(&mut CONTEXT.primary_rbatis.as_executor(),&plan_archive_exist).await;
+        let result = PlanArchiveMapper::update_plan(primary_rbatis_pool!(),&plan_archive_exist).await;
         if result.is_err() {
             error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("提醒事项修改失败"));
         }
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX023")).await;
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX023")).await;
         return Ok(result?.rows_affected);
     }
 
@@ -801,14 +864,13 @@ impl SystemService {
     pub async fn delete_plan_archive(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 只能删除自己组织机构下的数据
-        let delete_where = CONTEXT.primary_rbatis.new_wrapper().eq(PlanArchive::id(),id).and();
-        let write_result = CONTEXT.primary_rbatis.remove_by_wrapper::<PlanArchive>(delete_where).await;
+        let write_result = PlanArchive::delete_by_column(primary_rbatis_pool!(),PlanArchive::id(),id).await;
         if write_result.is_err(){
             error!("删除归档提醒事项时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除归档提醒事项失败!"));
         }
-        LogMapper::record_log_by_jwt(&CONTEXT.primary_rbatis,&user_info,String::from("OX024")).await;
-        return Ok(write_result?);
+        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX024")).await;
+        return Ok(write_result?.rows_affected);
     }
 
     /// 数据库备份日志分页
@@ -816,10 +878,10 @@ impl SystemService {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
-            begin_time:param.begin_time,
-            end_time:param.end_time
+            begin_time:param.begin_time.clone(),
+            end_time:param.end_time.clone()
         };
-        let count_result = DbDumpLogMapper::select_count(&mut CONTEXT.primary_rbatis.as_executor(), &param,&extend).await;
+        let count_result = DbDumpLogMapper::select_count(primary_rbatis_pool!(), &param,&extend).await;
         if count_result.is_err(){
             error!("在数据库备份日志分页统计时，发生异常:{}",count_result.unwrap_err());
             return Err(Error::from("数据库备份日志分页查询异常"));
@@ -832,7 +894,7 @@ impl SystemService {
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(result.page_size);
-        let page_result = DbDumpLogMapper::select_page(&mut CONTEXT.primary_rbatis.as_executor(), &param,&extend).await;
+        let page_result = DbDumpLogMapper::select_page(primary_rbatis_pool!(), &param,&extend).await;
         if page_result.is_err() {
             error!("在数据库备份日志分页获取页面数据时，发生异常:{}",page_result.unwrap_err());
             return Err(Error::from("数据库备份日志分页查询异常"));
@@ -841,4 +903,5 @@ impl SystemService {
         result.records = page_rows;
         return Ok(result);
     }
+
 }

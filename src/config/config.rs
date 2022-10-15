@@ -12,10 +12,6 @@ pub struct ApplicationConfig {
     pub business_database_url: String,
     /// 财政相关数据库地址
     pub financial_database_url: String,
-    /// 逻辑删除字段
-    pub logic_column: String,
-    pub logic_un_deleted: i64,
-    pub logic_deleted: i64,
     /// 日志目录 "target/logs/"
     pub log_dir: String,
     /// "100MB" 日志分割尺寸-单位KB,MB,GB

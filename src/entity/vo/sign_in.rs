@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use crate::entity::vo::log::LogVO;
 use crate::entity::vo::user::UserVO;
@@ -7,7 +8,7 @@ use crate::entity::vo::user::UserVO;
 pub struct SignInVO {
     pub user: Option<UserVO>,
     pub access_token: String,
-    pub plan:Option<rbson::Array>,
+    pub plan:Option<Vec<HashMap<String, String>>>,
     pub log:Option<LogVO>
 }
 

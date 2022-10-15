@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 use crate::entity::domain::business_database_tables::{Pictures};
-use crate::util;
-use crate::util::date_time::DateTimeUtil;
 
 /// 图片展示层
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -29,8 +27,8 @@ impl From<Pictures> for PicturesVO {
             web_url:arg.web_url,
             organize:arg.organize,
             source:arg.source,
-            create_time: DateTimeUtil::naive_date_time_to_str(&arg.create_time, &util::FORMAT_Y_M_D_H_M_S),
-            update_time: DateTimeUtil::naive_date_time_to_str(&arg.update_time, &util::FORMAT_Y_M_D_H_M_S)
+            create_time: arg.create_time,
+            update_time: arg.update_time
         }
     }
 }
