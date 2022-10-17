@@ -6,6 +6,7 @@ use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::files::FilesVO;
 use crate::entity::dto::files::{FilesDTO, FilesPageDTO};
 crud!(Files {});
+impl_select!(Files{select_by_id_and_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 
 pub struct FilesMapper{}
 

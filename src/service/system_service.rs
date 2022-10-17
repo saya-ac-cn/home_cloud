@@ -37,6 +37,8 @@ use crate::dao::log_type_mapper::LogTypeMapper;
 use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::domain::business_database_tables::Pictures;
+use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
+use crate::entity::vo::total_table::TotalTable;
 use crate::error::Error::E;
 
 /// 系统服务
@@ -287,7 +289,7 @@ impl SystemService {
             organize_id: arg.organize_id,
             state: arg.state,
             create_time: user_exist.create_time,
-            update_time: None,
+            update_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
         };
         let result = UserMapper::update_user(primary_rbatis_pool!(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
         if result.is_err() {
@@ -364,7 +366,7 @@ impl SystemService {
             organize_id: None,
             state: None,
             create_time: None,
-            update_time: None,
+            update_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
         };
         let result = UserMapper::update_user(primary_rbatis_pool!(), &user_edit).await;//CONTEXT.primary_rbatis.update_by_column(User::account(),&user_edit).await?;
         if result.is_err() {
@@ -481,17 +483,17 @@ impl SystemService {
     }
 
     /// 计算近6个月的活跃情况
-    pub async fn compute_pre6_logs(&self, req: &HttpRequest,month:&String) ->Result<rbson::Array> {
+    pub async fn compute_pre6_logs(&self, req: &HttpRequest,month:&String) ->Result<Vec<TotalPre6MonthVO>> {
         // 按月查询统计账单并排序
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
         let query_sql = format!("call count_pre6_logs({}, '{}')", &user_info.organize,month);
         let param:Vec<Bson> = Vec::new();
-        let compute_result_warp = primary_rbatis_pool!().fetch_decode(query_sql.as_str(), vec![]).await;
+        let compute_result_warp = primary_rbatis_pool!().fetch_decode::<Vec<TotalPre6MonthVO>>(query_sql.as_str(), vec![]).await;
         if compute_result_warp.is_err(){
             error!("在统计近6个月的活跃情况时，发生异常:{}",compute_result_warp.unwrap_err());
             return Err(Error::from("统计近6个月的活跃情况异常"));
         }
-        let rows:rbson::Array = compute_result_warp.unwrap();
+        let rows:Vec<TotalPre6MonthVO> = compute_result_warp.unwrap();
         return Ok(rows);
     }
 
@@ -519,17 +521,17 @@ impl SystemService {
                 result.push(item);
             }
         }
-        let query_business_count_sql = format!("select '文件' as `type` , count(1) as `value` from `files` where `organize` = {}\n
+        let query_business_count_sql = format!("select '文件' as `name` , count(1) as `value` from `files` where `organize` = {}\n
                                                     union all\n
-                                                    select '图片' as `type` , count(1) as `value` from `pictures` where `organize` = {}\n
+                                                    select '图片' as `name` , count(1) as `value` from `pictures` where `organize` = {}\n
                                                     union all\n
-                                                    select '笔记簿' as `type` , count(1) as `value` from `notebook` where `organize` = {}\n
+                                                    select '笔记簿' as `name` , count(1) as `value` from `notebook` where `organize` = {}\n
                                                     union all\n
-                                                    select '笔记' as `type` , count(1) as `value` from `notebook` a inner join `notes` b on a.`id` = b.`notebook_id` where a.`organize` = {}\n
+                                                    select '笔记' as `name` , count(1) as `value` from `notebook` a inner join `notes` b on a.`id` = b.`notebook_id` where a.`organize` = {}\n
                                                     union all\n
-                                                    select '动态' as `type` , count(1) as `value` from `news` where `organize` = {}", &user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize);
+                                                    select '动态' as `name` , count(1) as `value` from `news` where `organize` = {}", &user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize);
         let param:Vec<Bson> = Vec::new();
-        let business_count_result_warp = business_rbatis_pool!().fetch_decode(query_business_count_sql.as_str(), vec![]).await;
+        let business_count_result_warp = business_rbatis_pool!().fetch_decode::<Vec<TotalTable>>(query_business_count_sql.as_str(), vec![]).await;
 
         // 异常健壮处理
         let mut error_files = Bson::Null;
@@ -537,39 +539,42 @@ impl SystemService {
         let mut error_notebook = Bson::Null;
         let mut error_note = Bson::Null;
         let mut error_news = Bson::Null;
-        let mut business_rows:rbson::Array = rbson::Array::new();
+        let mut business_rows:Vec<TotalTable> = vec![];
 
         if business_count_result_warp.is_err(){
             error!("在统计业务库的各表总数据量时，发生异常:{}",business_count_result_warp.unwrap_err());
             let mut files = rbson::Document::new();
-            files.insert("type","文件");
+            files.insert("name","文件");
             files.insert("value",0);
             error_files = Bson::Document(files);
             result.push(error_files);
             let mut pictures = rbson::Document::new();
-            pictures.insert("type","图片");
+            pictures.insert("name","图片");
             pictures.insert("value",0);
             error_pictures = Bson::Document(pictures);
             result.push(error_pictures);
             let mut notebook = rbson::Document::new();
-            notebook.insert("type","笔记簿");
+            notebook.insert("name","笔记簿");
             notebook.insert("value",0);
             error_notebook = Bson::Document(notebook);
             result.push(error_notebook);
             let mut notes = rbson::Document::new();
-            notes.insert("type","笔记");
+            notes.insert("name","笔记");
             notes.insert("value",0);
             error_note = Bson::Document(notes);
             result.push(error_note);
             let mut news = rbson::Document::new();
-            news.insert("type","动态");
+            news.insert("name","动态");
             news.insert("value",0);
             error_news = Bson::Document(news);
             result.push(error_news);
         }else {
             business_rows = business_count_result_warp.unwrap();
             for item in business_rows {
-                result.push(item);
+                let mut current_data = rbson::Document::new();
+                current_data.insert("name",item.name);
+                current_data.insert("value",item.value);
+                result.push(Bson::Document(current_data));
             }
         }
         return Ok(result);
@@ -607,7 +612,7 @@ impl SystemService {
             organize: Some(user_info.organize),
             user: Some(user_info.account.clone()),
             display: Some(1),
-            create_time: None,
+            create_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time: None
         };
 
@@ -662,7 +667,7 @@ impl SystemService {
             user: Some(user_info.account.clone()),
             display: arg.display,
             create_time: None,
-            update_time: None
+            update_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S)
         };
         let result = PlanMapper::update_plan(primary_rbatis_pool!(),&plan).await;
         if result.is_err() {
@@ -744,7 +749,7 @@ impl SystemService {
             status: Some(3),
             content: plan_exist.clone().content,
             archive_time: plan_exist.standard_time.clone(),
-            create_time: None,
+            create_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time: None
         };
         let mut scheduler = SCHEDULER.lock().unwrap();

@@ -95,11 +95,11 @@ pub async fn own_organize_user(req: HttpRequest) -> impl Responder {
 }
 
 /// 保存用户头像
-//#[post("/user/logo")]
-// pub async fn user_upload_logo(req: HttpRequest, arg:web::Json<Base64PictureDTO>) -> impl Responder {
-//     let vo = CONTEXT.oss_service.upload_logo(&req,&arg.0).await;
-//     return RespVO::from_result(&vo).resp_json();
-// }
+#[post("/user/logo")]
+pub async fn user_upload_logo(req: HttpRequest, arg:web::Json<Base64PictureDTO>) -> impl Responder {
+    let vo = CONTEXT.oss_service.upload_logo(&req,&arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
 
 /// 获取日志类别列表
 #[get("/log/type")]

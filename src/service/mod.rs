@@ -2,9 +2,18 @@
 ///
 /// 系统用户服务
 mod system_service;
+/// 文件资源服务
+mod oss_service;
+/// 文本（消息）服务
+mod content_service;
+/// 财政金融服务
+mod financial_service;
 
 use rbatis::rbatis::Rbatis;
 pub use system_service::*;
+pub use oss_service::*;
+pub use content_service::*;
+pub use financial_service::*;
 
 pub use crate::config::config::ApplicationConfig;
 use std::sync::Mutex;
@@ -53,6 +62,9 @@ pub struct ServiceContext {
     pub business_rbatis: Rbatis,
     pub financial_rbatis: Rbatis,
     pub system_service: SystemService,
+    pub oss_service: OssService,
+    pub content_service: ContentService,
+    pub financial_service: FinancialService
 }
 
 impl ServiceContext {
@@ -86,6 +98,9 @@ impl Default for ServiceContext {
             business_rbatis: crate::entity::init_rbatis(&config),
             financial_rbatis: crate::entity::init_rbatis(&config),
             system_service: SystemService {},
+            oss_service: OssService {},
+            content_service: ContentService {},
+            financial_service: FinancialService {},
             config,
         }
     }

@@ -6,7 +6,8 @@ use crate::entity::dto::memo::MemoPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::memo::MemoVO;
 crud!(Memo {});
-
+impl_select!(Memo {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+impl_delete!(Memo {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 pub struct MemoMapper{}
 
 impl MemoMapper {

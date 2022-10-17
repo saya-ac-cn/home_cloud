@@ -37,6 +37,7 @@ pub struct Monetary{
     pub abbreviate:Option<String>,
     pub symbol:Option<String>
 }
+crud!(Monetary {});
 impl_field_name_method!(Monetary{id,name,abbreviate});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -45,6 +46,7 @@ pub struct Abstracts{
     pub flag:Option<String>,
     pub tag:Option<String>
 }
+crud!(Abstracts {});
 impl_field_name_method!(Abstracts{id,flag});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,4 +54,5 @@ pub struct PaymentMeans{
     pub id:Option<u64>,
     pub name:Option<String>
 }
+crud!(PaymentMeans {});
 impl_field_name_method!(PaymentMeans{id,name});

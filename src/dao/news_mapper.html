@@ -26,56 +26,53 @@
         select `id`,`topic`, `label`, `source`, `create_time`,`update_time` from `news`
         <where>
             <if test="news.organize != 0">
-                `organize` = #{news.organize}
+                ` `organize` = #{news.organize} `
             </if>
             <if test="news.source != ''">
-                and `source` = #{news.source}
+                ` and `source` = #{news.source} `
             </if>
             <if test="news.id != 0">
-                and `id` = #{news.id}
+                ` and `id` = #{news.id}`
             </if>
             <if test="news.topic != ''">
-                and `topic`  like concat(#{news.topic},'%')
+                ` and `topic`  like concat(#{news.topic},'%')`
             </if>
             <if test="news.label != ''">
-                and `label` like concat(#{news.label},'%')
+                ` and `label` like concat(#{news.label},'%')`
             </if>
             <if test="news.content != ''">
-                and `content` like concat(#{news.content},'%')
+                ` and `content` like concat(#{news.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+                ` and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
-        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
-        <trim prefix=" " suffix=";">
-            order by `id` desc limit #{extend.page_no},#{extend.page_size}
-        </trim>
+        ` order by `id` desc limit #{extend.page_no},#{extend.page_size} `
     </select>
 
     <select id="select_count">
-        select count(1) from `news`
+        `select count(1) from `news``
         <where>
             <if test="news.organize != 0">
-                `organize` = #{news.organize}
+                ` `organize` = #{news.organize} `
             </if>
             <if test="news.source != ''">
-                and `source` = #{news.source}
+                ` and `source` = #{news.source} `
             </if>
             <if test="news.id != 0">
-                and `id` = #{news.id}
+                ` and `id` = #{news.id}`
             </if>
             <if test="news.topic != ''">
-                and `topic`  like concat(#{news.topic},'%')
+                ` and `topic`  like concat(#{news.topic},'%')`
             </if>
             <if test="news.label != ''">
-                and `label` like concat(#{news.label},'%')
+                ` and `label` like concat(#{news.label},'%')`
             </if>
             <if test="news.content != ''">
-                and `content` like concat(#{news.content},'%')
+                ` and `content` like concat(#{news.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+                ` and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
     </select>

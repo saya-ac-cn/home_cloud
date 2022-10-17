@@ -90,4 +90,8 @@
         </trim>
     </select>
 
+    <select id="select_count_by_journal_id">
+        select count(*) from `general_journal` where `journal_id` = #{journal_id}
+    </select>
+
 </mapper>
