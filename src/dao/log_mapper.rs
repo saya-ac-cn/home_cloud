@@ -11,7 +11,6 @@ use crate::entity::vo::log::LogVO;
 use crate::util;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 
-crud!(Log {});
 pub struct LogMapper{}
 
 impl LogMapper {

@@ -36,6 +36,8 @@ pub struct User {
     /// 修改时间
     pub update_time: Option<String>,
 }
+crud!(User {});
+impl_select!(User{select_by_account(account:&String) => "`where account = #{account}`"});
 impl_field_name_method!(User{account,name,email,phone,organize_id,state});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -48,6 +50,7 @@ pub struct Log{
     pub city:Option<String>,
     pub date:Option<String>,
 }
+crud!(Log {});
 impl_field_name_method!(Log{id,user,category,date});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -55,6 +58,7 @@ pub struct LogType{
     pub category:Option<String>,
     pub describe:Option<String>,
 }
+crud!(LogType {});
 impl_field_name_method!(LogType{category});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -71,6 +75,8 @@ pub struct Plan{
     pub create_time: Option<String>,
     pub update_time: Option<String>,
 }
+crud!(Plan {});
+impl_delete!(Plan {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(Plan{id,organize,user,display,standard_time,next_exec_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -83,6 +89,7 @@ pub struct PlanArchive{
     pub create_time: Option<String>,
     pub update_time: Option<String>,
 }
+crud!(PlanArchive {});
 impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -92,4 +99,5 @@ pub struct DbDumpLog{
     pub archive_date:Option<String>,
     pub execute_data:Option<String>,
 }
+crud!(DbDumpLog {});
 impl_field_name_method!(DbDumpLog{id,archive_date});

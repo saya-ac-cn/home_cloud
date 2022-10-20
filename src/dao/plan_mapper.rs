@@ -6,8 +6,7 @@ use crate::entity::dto::plan::PlanPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::plan::PlanVO;
 
-crud!(Plan {});
-impl_delete!(Plan {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+
 pub struct PlanMapper{}
 
 impl PlanMapper {

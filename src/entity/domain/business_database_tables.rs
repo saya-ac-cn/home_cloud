@@ -11,6 +11,9 @@ pub struct News{
     pub create_time:Option<String>,
     pub update_time:Option<String>,
 }
+crud!(News {});
+impl_select!(News {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+impl_delete!(News {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(News{id,topic,label,content,organize,source,create_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,6 +29,8 @@ pub struct Pictures{
     pub create_time:Option<String>,
     pub update_time:Option<String>,
 }
+crud!(Pictures {});
+impl_select!(Pictures{select_by_id_and_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(Pictures{id,category,file_name,organize,source,create_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,6 +46,8 @@ pub struct Files{
     pub create_time:Option<String>,
     pub update_time:Option<String>,
 }
+crud!(Files {});
+impl_select!(Files{select_by_id_and_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(Files{id,file_name,file_type,organize,source,status,create_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -53,6 +60,9 @@ pub struct Memo{
     pub create_time:Option<String>,
     pub update_time:Option<String>,
 }
+crud!(Memo {});
+impl_select!(Memo {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+impl_delete!(Memo {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(Memo{id,organize,source,title,content,create_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -64,6 +74,10 @@ pub struct NoteBook{
     pub status:Option<u32>,
     pub descript:Option<String>
 }
+crud!(NoteBook {});
+impl_select!(NoteBook {select_by_organize_name(name:&String,organize:&u64) => "`where name = #{name} and organize= #{organize}`"});
+impl_select!(NoteBook {select_for_repeat(id:&u64,name:&String,organize:&u64) => "`where id != #{id} and name = #{name} and organize= #{organize}`"});
+impl_delete!(NoteBook {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(NoteBook{id,name,organize,source,status});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -77,4 +91,5 @@ pub struct Notes{
     pub create_time:Option<String>,
     pub update_time:Option<String>,
 }
+crud!(Notes {});
 impl_field_name_method!(Notes{id,notebook_id,label,topic,content,create_time});

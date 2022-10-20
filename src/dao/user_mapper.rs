@@ -1,5 +1,4 @@
 use rbatis::executor::Executor;
-use rbatis::rbatis::Rbatis;
 use rbatis::rbdc::db::ExecResult;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::dto::user::UserPageDTO;
@@ -7,9 +6,7 @@ use crate::entity::vo::user::UserOwnOrganizeVO;
 use crate::entity::domain::primary_database_tables::User;
 
 
-crud!(User {});
 
-impl_select!(User{select_by_account(account:&String) => "`where account = #{account}`"});
 pub struct UserMapper{}
 
 impl UserMapper {

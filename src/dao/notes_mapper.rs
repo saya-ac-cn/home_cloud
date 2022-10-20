@@ -5,7 +5,6 @@ use crate::entity::domain::business_database_tables::Notes;
 use crate::entity::dto::notes::NotesPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::notes::NotesVO;
-crud!(Notes {});
 pub struct NotesMapper{}
 
 impl NotesMapper {

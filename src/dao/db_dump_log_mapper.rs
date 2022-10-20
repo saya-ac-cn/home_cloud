@@ -1,10 +1,8 @@
 use rbatis::executor::Executor;
 use rbatis::{Error};
-use crate::entity::domain::primary_database_tables::DbDumpLog;
 use crate::entity::dto::db_dump_log::DbDumpLogPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::db_dump_log::DbDumpLogVO;
-crud!(DbDumpLog {});
 
 pub struct DbDumpLogMapper{}
 

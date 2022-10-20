@@ -6,8 +6,6 @@ use crate::entity::dto::journal::JournalPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::general_journal::{GeneralJournalCollectVO, GeneralJournalVO};
 
-crud!(GeneralJournal {});
-
 pub struct GeneralJournalMapper{}
 
 impl GeneralJournalMapper {

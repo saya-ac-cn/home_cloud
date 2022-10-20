@@ -17,6 +17,9 @@ pub struct Journal{
     pub create_time:Option<String>,
     pub update_time:Option<String>
 }
+crud!(Journal {});
+impl_select!(Journal {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+impl_delete!(Journal {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(Journal{id,monetary_id,means_id,abstract_id,organize,source});
 
 
@@ -28,6 +31,7 @@ pub struct GeneralJournal{
     pub amount:Option<Decimal>,
     pub remarks:Option<String>
 }
+crud!(GeneralJournal {});
 impl_field_name_method!(GeneralJournal{id,journal_id,flag});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

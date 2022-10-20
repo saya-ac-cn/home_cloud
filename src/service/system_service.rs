@@ -7,8 +7,7 @@ use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::{HttpRequest, HttpResponse};
 use log::error;
-use rbson::{Array, Bson, Document};
-use crate::util::options::OptionStringRefUnwrapOrDefault;
+use rbson::Bson;
 use crate::dao::log_mapper::LogMapper;
 use crate::dao::user_mapper::UserMapper;
 use crate::entity::dto::page::{ExtendPageDTO};
@@ -17,7 +16,7 @@ use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::jwt::JWTToken;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::util::Page;
-use crate::entity::domain::primary_database_tables::{Log, Plan, PlanArchive, User};
+use crate::entity::domain::primary_database_tables::{Plan, PlanArchive, User};
 use crate::entity::dto::db_dump_log::DbDumpLogPageDTO;
 use crate::entity::dto::log::LogPageDTO;
 use crate::entity::dto::plan::{PlanDTO, PlanPageDTO};
@@ -31,7 +30,6 @@ use crate::{business_rbatis_pool, primary_rbatis_pool, util};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 extern crate simple_excel_writer as excel;
 use excel::*;
-use rbs::Value;
 use crate::dao::db_dump_log_mapper::DbDumpLogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
 use crate::dao::plan_archive_mapper::PlanArchiveMapper;
@@ -39,7 +37,6 @@ use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::domain::business_database_tables::Pictures;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::entity::vo::total_table::TotalTable;
-use crate::error::Error::E;
 
 /// 系统服务
 pub struct SystemService {}
@@ -447,7 +444,7 @@ impl SystemService {
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
         }
-        let mut result = Page::<LogVO>::page_query( total_row, &extend);
+        let result = Page::<LogVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
         extend.page_no = Some((result.page_no-1)*result.page_size);
         extend.page_size = Some(total_row);

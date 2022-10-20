@@ -5,7 +5,7 @@ use crate::entity::domain::primary_database_tables::PlanArchive;
 use crate::entity::dto::plan_archive::PlanArchivePageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::plan_archive::PlanArchiveVO;
-crud!(PlanArchive {});
+
 
 pub struct PlanArchiveMapper{}
 

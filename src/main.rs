@@ -1,4 +1,4 @@
-use home_cloud::controller::{content_controller, system_controller};
+use home_cloud::controller::{content_controller, financial_controller, system_controller};
 use home_cloud::service::{CONTEXT};
 use actix_web::{web, App, HttpServer};
 use actix_files as fs;
@@ -73,6 +73,28 @@ async fn main() -> std::io::Result<()> {
                     .service(content_controller::get_notes)
                     .service(content_controller::page_notes)
                     .service(content_controller::compute_pre6_news)
+            )
+            .service(
+                web::scope("/backend/financial")
+                    .service(financial_controller::add_journal)
+                    .service(financial_controller::edit_journal)
+                    .service(financial_controller::delete_journal)
+                    .service(financial_controller::page_journal)
+                    .service(financial_controller::excel_journal)
+                    .service(financial_controller::add_general_journal)
+                    .service(financial_controller::edit_general_journal)
+                    .service(financial_controller::delete_general_journal)
+                    .service(financial_controller::detail_general_journal)
+                    .service(financial_controller::excel_general_journal)
+                    .service(financial_controller::get_monetary_list)
+                    .service(financial_controller::get_abstracts_list)
+                    .service(financial_controller::get_payment_means_list)
+                    .service(financial_controller::page_journal_collect)
+                    .service(financial_controller::excel_journal_collect)
+                    .service(financial_controller::compute_account_growth_rate)
+                    .service(financial_controller::compute_income_percentage)
+                    .service(financial_controller::order_month_journal)
+                    .service(financial_controller::compute_pre6_journal)
             )
     })
     .bind(&CONTEXT.config.server_url)?

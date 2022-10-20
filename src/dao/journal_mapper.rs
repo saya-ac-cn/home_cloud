@@ -5,9 +5,7 @@ use crate::entity::domain::financial_database_tables::Journal;
 use crate::entity::dto::journal::JournalPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::journal::JournalVO;
-crud!(Journal {});
-impl_select!(Journal {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
-impl_delete!(Journal {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+
 pub struct JournalMapper{}
 
 impl JournalMapper {

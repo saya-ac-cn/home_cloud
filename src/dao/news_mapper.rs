@@ -1,15 +1,10 @@
 use rbatis::executor::Executor;
-use rbatis::rbatis::Rbatis;
 use rbatis::{Error};
 use rbatis::rbdc::db::ExecResult;
 use crate::entity::domain::business_database_tables::News;
 use crate::entity::dto::news::NewsPageDTO;
 use crate::entity::dto::page::ExtendPageDTO;
 use crate::entity::vo::news::NewsVO;
-crud!(News {});
-impl_select!(News {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
-impl_delete!(News {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
-
 pub struct NewsMapper{}
 
 impl NewsMapper {
