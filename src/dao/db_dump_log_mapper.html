@@ -2,29 +2,26 @@
 <mapper>
 
     <select id="select_page">
-        select `id`, `url`, `archive_date`, `execute_data` from `db_dump_log`
+        `select `id`, `url`, `archive_date`, `execute_data` from `db_dump_log``
         <where>
             <if test="log.id != 0">
-                and `id` = #{log.id}
+               ` and `id` = #{log.id}`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')
+               ` and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')`
             </if>
         </where>
-        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
-        <trim prefix=" " suffix=";">
-            order by `id` desc limit #{extend.page_no},#{extend.page_size}
-        </trim>
+        ` order by `id` desc limit #{extend.page_no},#{extend.page_size}`
     </select>
 
     <select id="select_count">
-        select count(1) from `db_dump_log`
+        `select count(1) from `db_dump_log``
         <where>
             <if test="log.id != 0">
-                and `id` = #{log.id}
+               ` and `id` = #{log.id}`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')
+               ` and `archive_date` between date_format(#{extend.begin_time},'%Y-%m-%d')  and date_format(#{extend.end_time },'%Y-%m-%d')`
             </if>
         </where>
     </select>

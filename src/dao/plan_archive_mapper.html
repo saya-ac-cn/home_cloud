@@ -2,73 +2,70 @@
 <mapper>
     <!-- 修改提醒事项  -->
     <update id="update_plan">
-        update `plan_archive`
+        `update `plan_archive``
         <set>
             <if test="plan.plan_id != 0">
-                `plan_id` = #{plan.plan_id},
+              `  `plan_id` = #{plan.plan_id},`
             </if>
             <if test="plan.status != 0">
-                `status` = #{plan.status},
+              `  `status` = #{plan.status},`
             </if>
             <if test="plan.content != ''">
-                `content` = #{plan.content},
+              `  `content` = #{plan.content},`
             </if>
             <if test="plan.archive_time != ''">
-                `archive_time` =  #{plan.archive_time},
+              `  `archive_time` =  #{plan.archive_time},`
             </if>
-            `update_time` = now()
+            ` `update_time` = now()`
         </set>
-        where `id` = #{plan.id} and `organize` = #{plan.organize}
+        ` where `id` = #{plan.id} and `organize` = #{plan.organize}`
     </update>
 
     <select id="select_page">
-        select * from `plan_archive` a left join `plan` b on a.`plan_id` = b.`id`
+        `select * from `plan_archive` a left join `plan` b on a.`plan_id` = b.`id``
         <where>
             <if test="plan.organize != 0">
-                b.`organize` = #{plan.organize}
+              `  b.`organize` = #{plan.organize}`
             </if>
             <if test="plan.user != ''">
-                and b.`user` = #{plan.user}
+              `  and b.`user` = #{plan.user}`
             </if>
             <if test="plan.id != 0">
-                and a.`id` = #{plan.id}
+              `  and a.`id` = #{plan.id}`
             </if>
             <if test="plan.status != 0">
-                and a.`status` = #{plan.status}
+              `  and a.`status` = #{plan.status}`
             </if>
             <if test="plan.content != ''">
-                and a.`content` like concat(#{plan.content},'%')
+              `  and a.`content` like concat(#{plan.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and a.`create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+              `  and a.`create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
-        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
-        <trim prefix=" " suffix=";">
-            order by a.`id` desc limit #{extend.page_no},#{extend.page_size}
-        </trim>
+        ` order by a.`id` desc limit #{extend.page_no},#{extend.page_size}`
     </select>
 
     <select id="select_count">
-        select count(1) from `plan_archive` a left join `plan` b on a.`plan_id` = b.`id`
+        `select count(1) from `plan_archive` a left join `plan` b on a.`plan_id` = b.`id``
         <where>
             <if test="plan.organize != 0">
-                b.`organize` = #{plan.organize}
+              `  b.`organize` = #{plan.organize}`
             </if>
             <if test="plan.user != ''">
-                and b.`user` = #{plan.user}
+              `  and b.`user` = #{plan.user}`
             </if>
             <if test="plan.id != 0">
-                and a.`id` = #{plan.id}
+              `  and a.`id` = #{plan.id}`
             </if>
             <if test="plan.status != 0">
-                and a.`status` = #{plan.status}
+              `  and a.`status` = #{plan.status}`
             </if>
             <if test="plan.content != ''">
-                and a.`content` like concat(#{plan.content},'%')
+              `  and a.`content` like concat(#{plan.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and a.`create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+              `  and a.`create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
     </select>

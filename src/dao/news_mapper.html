@@ -2,28 +2,28 @@
 <mapper>
     <!-- 修改动态  -->
     <update id="update_news">
-        update `news`
+        `update `news``
         <set>
             <if test="news.topic != ''">
-                `topic` = #{news.topic},
+              `  `topic` = #{news.topic},`
             </if>
             <if test="news.label != ''">
-                `label` =  #{news.label},
+              `  `label` =  #{news.label},`
             </if>
             <if test="news.content != ''">
-                `content` = #{news.content},
+              `  `content` = #{news.content},`
             </if>
             <if test="news.source != ''">
-                `source` = #{news.source},
+              `  `source` = #{news.source},`
             </if>
-            `update_time` = now()
+            ` `update_time` = now()`
         </set>
-        where `id` = #{news.id} and `organize` = #{news.organize}
+        ` where `id` = #{news.id} and `organize` = #{news.organize}`
     </update>
 
 
     <select id="select_page">
-        select `id`,`topic`, `label`, `source`, `create_time`,`update_time` from `news`
+        `select `id`,`topic`, `label`, `source`, `create_time`,`update_time` from `news``
         <where>
             <if test="news.organize != 0">
                 ` `organize` = #{news.organize} `

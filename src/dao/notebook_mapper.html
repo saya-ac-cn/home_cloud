@@ -2,48 +2,46 @@
 <mapper>
     <!-- 修改笔记簿  -->
     <update id="update_notebook">
-        update `notebook`
+        `update `note_book``
         <set>
             <if test="notebook.name != ''">
-                `name` = #{notebook.name},
+              `  `name` = #{notebook.name},`
             </if>
             <if test="notebook.source != ''">
-                `source` = #{notebook.source},
+              `  `source` = #{notebook.source},`
             </if>
             <if test="notebook.status != 0">
-                `status` = #{notebook.status},
+              `  `status` = #{notebook.status},`
             </if>
             <if test="notebook.descript != ''">
-                `descript` = #{notebook.descript},
+              `  `descript` = #{notebook.descript},`
             </if>
         </set>
-        where `id` = #{notebook.id} and `organize` = #{notebook.organize}
+        ` where `id` = #{notebook.id} and `organize` = #{notebook.organize}`
     </update>
 
     <select id="select_list">
-        select a.`id`,a.`name`,a.`organize`,a.`source`,a.`status`,a.`descript`, count(b.`id`) as notes_count
-        from `notebook` a
-        left join `notes` b on a.`id` = b.`notebook_id`
+        `select a.`id`,a.`name`,a.`organize`,a.`source`,a.`status`,a.`descript`, count(b.`id`) as notes_count
+        from `note_book` a
+        left join `notes` b on a.`id` = b.`notebook_id``
         <where>
             <if test="notebook.organize != 0">
-                a.`organize` = #{notebook.organize}
+              `  a.`organize` = #{notebook.organize}`
             </if>
             <if test= "notebook.id != 0">
-                and a.`id`  = #{notebook.id}
+              `  and a.`id`  = #{notebook.id}`
             </if>
             <if test="notebook.name != ''">
-                and a.`name` like concat(#{notebook.topic},'%')
+              `  and a.`name` like concat(#{notebook.topic},'%')`
             </if>
             <if test="notebook.source != ''">
-                and a.`source` = #{notebook.source}
+              `  and a.`source` = #{notebook.source}`
             </if>
             <if test="notebook.status != ''">
-                and a.status = #{notebook.status}
+              `  and a.status = #{notebook.status}`
             </if>
         </where>
-        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
-        <trim prefix=" " suffix=";">
-            group by a.`id` order by a.`id` desc
+        ` group by a.`id` order by a.`id` desc`
         </trim>
     </select>
 

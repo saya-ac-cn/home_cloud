@@ -2,97 +2,94 @@
 <mapper>
     <!-- 修改提醒事项  -->
     <update id="update_plan">
-        update `plan`
+        `update `plan``
         <set>
             <if test="plan.standard_time != ''">
-                `standard_time` = #{plan.standard_time},
+              `  `standard_time` = #{plan.standard_time},`
             </if>
             <if test="plan.cycle != 0">
-                `cycle` = #{plan.cycle},
+              `  `cycle` = #{plan.cycle},`
             </if>
             <if test="plan.unit != 0">
-                `unit` = #{plan.unit},
+              `  `unit` = #{plan.unit},`
             </if>
             <if test="plan.content != ''">
-                `content` = #{plan.content},
+              `  `content` = #{plan.content},`
             </if>
             <if test="plan.next_exec_time != ''">
-                `next_exec_time` =  #{plan.next_exec_time},
+              `  `next_exec_time` =  #{plan.next_exec_time},`
             </if>
             <if test="plan.display != 0">
-                `display` = #{plan.display},
+              `  `display` = #{plan.display},`
             </if>
             <if test="plan.user != ''">
-                `user` = #{plan.user},
+              `  `user` = #{plan.user},`
             </if>
-            `update_time` = now()
+            ` `update_time` = now()`
         </set>
-        where `id` = #{plan.id} and `organize` = #{plan.organize}
+        ` where `id` = #{plan.id} and `organize` = #{plan.organize}`
     </update>
 
     <select id="select_list">
-        select * from `plan`
+        `select * from `plan``
         <where>
             <if test="plan.organize != 0">
-                `organize` = #{plan.organize}
+              `  `organize` = #{plan.organize}`
             </if>
             <if test="plan.user != ''">
-                and `user` = #{plan.user}
+              `  and `user` = #{plan.user}`
             </if>
             <if test="plan.id != 0">
-                and `id` = #{plan.id}
+              `  and `id` = #{plan.id}`
             </if>
             <if test="plan.standard_time != ''">
-                and `standard_time` = date_format(#{plan.standard_time},'%Y-%m-%d %H:%i:00')
+              `  and `standard_time` = date_format(#{plan.standard_time},'%Y-%m-%d %H:%i:00')`
             </if>
             <if test="plan.content != ''">
-                and `content` like concat(#{plan.content},'%')
+              `  and `content` like concat(#{plan.content},'%')`
             </if>
         </where>
     </select>
 
     <select id="select_page">
-        select * from `plan`
+        `select * from `plan``
         <where>
             <if test="plan.organize != 0">
-                `organize` = #{plan.organize}
+              `  `organize` = #{plan.organize}`
             </if>
             <if test="plan.user != ''">
-                and `user` = #{plan.user}
+              `  and `user` = #{plan.user}`
             </if>
             <if test="plan.id != 0">
-                and `id` = #{plan.id}
+              `  and `id` = #{plan.id}`
             </if>
             <if test="plan.content != ''">
-                and `content` like concat(#{plan.content},'%')
+              `  and `content` like concat(#{plan.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
-        <!-- 由于where里面的条件在回填参数时，错误的把后面临近的sql拼接在一起，在这里曲线救国，使用trim自带的prefix加空格，强制隔离开 -->
-        <trim prefix=" " suffix=";">
-            order by `id` desc limit #{extend.page_no},#{extend.page_size}
-        </trim>
+        ` order by `id` desc limit #{extend.page_no},#{extend.page_size}`
     </select>
 
     <select id="select_count">
-        select count(1) from `plan`
+        `select count(1) from `plan``
         <where>
             <if test="plan.organize != 0">
-                `organize` = #{plan.organize}
+              `  `organize` = #{plan.organize}`
             </if>
             <if test="plan.user != ''">
-                and `user` = #{plan.user}
+              `  and `user` = #{plan.user}`
             </if>
             <if test="plan.id != 0">
-                and `id` = #{plan.id}
+              `  and `id` = #{plan.id}`
             </if>
             <if test="plan.content != ''">
-                and `content` like concat(#{plan.content},'%')
+              `  and `content` like concat(#{plan.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-                and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')
+              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
     </select>
