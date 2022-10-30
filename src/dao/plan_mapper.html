@@ -13,6 +13,9 @@
             <if test="plan.unit != 0">
               `  `unit` = #{plan.unit},`
             </if>
+            <if test="plan.title != ''">
+              `  `title` = #{plan.title},`
+            </if>
             <if test="plan.content != ''">
               `  `content` = #{plan.content},`
             </if>
@@ -45,6 +48,9 @@
             <if test="plan.standard_time != ''">
               `  and `standard_time` = date_format(#{plan.standard_time},'%Y-%m-%d %H:%i:00')`
             </if>
+            <if test="plan.title != ''">
+              `  and `title` like concat(#{plan.title},'%')`
+            </if>
             <if test="plan.content != ''">
               `  and `content` like concat(#{plan.content},'%')`
             </if>
@@ -63,11 +69,14 @@
             <if test="plan.id != 0">
               `  and `id` = #{plan.id}`
             </if>
+            <if test="plan.title != ''">
+              `  and `title` like concat(#{plan.title},'%')`
+            </if>
             <if test="plan.content != ''">
               `  and `content` like concat(#{plan.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
+              `  and `standard_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
         ` order by `id` desc limit #{extend.page_no},#{extend.page_size}`
@@ -85,11 +94,14 @@
             <if test="plan.id != 0">
               `  and `id` = #{plan.id}`
             </if>
+            <if test="plan.title != ''">
+              `  and `title` like concat(#{plan.title},'%')`
+            </if>
             <if test="plan.content != ''">
               `  and `content` like concat(#{plan.content},'%')`
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
-              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
+              `  and `standard_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59')`
             </if>
         </where>
     </select>

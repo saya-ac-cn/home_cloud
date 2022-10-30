@@ -67,7 +67,7 @@
     </select>
 
     <select id="select_recently">
-        select a.`id`,a.`organize`,a.`user`, a.`category`, a.`ip`, a.`city`, a.`date`,b.`describe` as detail from `log` a left join `log_type` b on a.`category` = b.`category` where a.`user` = #{user} order by a.`id` desc limit 1
+        select a.`id`,a.`organize`,a.`user`, a.`category`, a.`ip`, a.`city`, a.`date`,b.`detail` from `log` a left join `log_type` b on a.`category` = b.`category` where a.`user` = #{user} order by a.`id` desc limit 1
     </select>
 
 </mapper>
