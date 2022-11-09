@@ -5,22 +5,20 @@ server_name: "home_cloud"
 #server 地址
 server_url: "0.0.0.0:9000"
 #主数据库地址
-primary_database_url: "mysql://-/primary_1?serverTimezone=GMT%2B8"
+primary_database_url: "mysql://-/primary_1?charset=utf8mb4"
 #辅助业务数据库地址
-business_database_url: "mysql://-/business_1?serverTimezone=GMT%2B8"
+business_database_url: "mysql://-/business_1"
 #财政相关数据库地址
-financial_database_url: "mysql://-/financial_1?serverTimezone=GMT%2B8"
-#逻辑删除字段
-logic_column: "status"
-#未删除时的状态
-logic_un_deleted: 0
-#删除后的状态
-logic_deleted: 1
+financial_database_url: "mysql://-/financial_1"
 #日志文件存放目录
 log_dir: "target/logs/"
 #日志分割尺寸-单位KB,MB,GB
 log_temp_size: "100MB"
 #日志打包格式可选“”（空-不压缩）“gzip”（gz压缩包）“zip”（zip压缩包）“lz4”（lz4压缩包（非常快））
+#需要打开以下选项
+#toml文件里面，fast_log 添加   fast_log = { version = "1.5",features = ["lz4", "zip", "gzip"]}
+#src/config/log.rs    解除   fn choose_packer()下的注释
+#application.yml      添加   log_pack_compress: "zip"
 log_pack_compress: "zip"
 #日志滚动保留-保留全部: All,按时间保留(秒): KeepTime(i64),按版本保留: KeepNum(i64)
 log_rolling_type: "KeepNum(20)"
@@ -37,16 +35,19 @@ data_dir: "/Users/saya/warehouse"
 #备份数据库command(备份的时间暂时指定到每日的凌晨3点)
 mysqldump: "/Library/dev-tools/mysql-8.0.19/bin/mysqldump -h 127.0.0.1 -uroot -proot  --default-character-set=utf8  --routines  --databases primary_1 business_1"
 #发件人
-from_mail: "-----"
+from_mail: "-"
 #收件人
 to_mail:
- - "-----"
- - "------"
+ - "saya@saya.ac.cn"
+ - "228476495@qq.com"
 #邮件服务器地址
 mail_server: "smtp.qq.com"
 #邮件服务器发送token
-mail_token: "-------"
-
+mail_token: "-"
+#高德地图ip定位地址
+amap_url: ""
+#高德地图ip定位密钥
+amap_key: ""
 
 #接口白名单（免登录直接访问）
 white_list_api:
@@ -56,47 +57,47 @@ white_list_api:
 
 #文件类型
 file_type_map:
-  "mmap": "complex"
-  "xmind": "complex"
-  "html": "complex"
-  "htm": "complex"
-  "txt]": "text"
-  "md": "text"
-  "xml": "text"
-  "sql": "text"
-  "conf": "text"
-  "doc": "word"
-  "docx": "word"
-  "xls": "excel"
-  "xlsx": "excel"
-  "csv": "csv"
-  "ppt": "ppt"
-  "pptx": "pdf"
-  "pdf": "pdf"
-  "wmv": "video"
-  "mpg": "video"
-  "ts": "video"
-  "mkv": "video"
-  "rmvb": "video"
-  "avi": "video"
-  "mp4": "video"
-  "ape": "audio"
-  "flac": "audio"
-  "wv": "audio"
-  "mp3": "audio"
-  "wma": "audio"
-  "aac": "audio"
-  "ogg": "audio"
-  "exe": "app"
-  "com": "app"
-  "msi": "app"
-  "dll": "app"
-  "jar": "app"
-  "jpg": "picture"
-  "bmp": "picture"
-  "gif": "picture"
-  "png": "picture"
-  "zip": "compress"
-  "rar": "compress"
-  "gz": "compress"
-  "7z": "compress"
+ mmap: "complex"
+ xmind: "complex"
+ html: "complex"
+ htm: "complex"
+ txt: "text"
+ md: "text"
+ xml: "text"
+ sql: "text"
+ conf: "text"
+ doc: "word"
+ docx: "word"
+ xls: "excel"
+ xlsx: "excel"
+ csv: "csv"
+ ppt: "ppt"
+ pptx: "pdf"
+ pdf: "pdf"
+ wmv: "video"
+ mpg: "video"
+ ts: "video"
+ mkv: "video"
+ rmvb: "video"
+ avi: "video"
+ mp4: "video"
+ ape: "audio"
+ flac: "audio"
+ wv: "audio"
+ mp3: "audio"
+ wma: "audio"
+ aac: "audio"
+ ogg: "audio"
+ exe: "app"
+ com: "app"
+ msi: "app"
+ dll: "app"
+ jar: "app"
+ jpg: "picture"
+ bmp: "picture"
+ gif: "picture"
+ png: "picture"
+ zip: "compress"
+ rar: "compress"
+ gz: "compress"
+ 7z: "compress"
