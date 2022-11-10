@@ -6,6 +6,7 @@ use crate::service::{CONTEXT, SCHEDULER};
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
 use crate::util::password_encoder::PasswordEncoder;
 use actix_web::{HttpRequest, HttpResponse};
+use chrono::Datelike;
 use log::error;
 use rbson::Bson;
 use crate::dao::log_mapper::LogMapper;
@@ -30,13 +31,16 @@ use crate::{business_rbatis_pool, primary_rbatis_pool, util};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 extern crate simple_excel_writer as excel;
 use excel::*;
+use rbs::to_value;
 use crate::dao::db_dump_log_mapper::DbDumpLogMapper;
 use crate::dao::log_type_mapper::LogTypeMapper;
 use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::domain::business_database_tables::Pictures;
+use crate::entity::vo::total_log::TotalLogVO;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::entity::vo::total_table::TotalTable;
+use crate::util::ip_util::IpUtils;
 
 /// 系统服务
 pub struct SystemService {}
@@ -87,17 +91,17 @@ impl SystemService {
     pub async fn user_get_info(&self, req: &HttpRequest, user: &User) -> Result<SignInVO> {
         //去除密码，增加安全性
         let mut user = user.clone();
-        let ip = req.peer_addr().unwrap().ip().to_string();
-        // if req.peer_addr().is_some() {
-        //     ip = req.peer_addr().unwrap().ip().to_string();
-        // } else if req.connection_info().remote_addr().is_some(){
-        //     ip = req.connection_info().remote_addr().unwrap().parse().unwrap();
-        // }else if req.connection_info().realip_remote_addr().is_some() {
-        //     ip = req.connection_info().realip_remote_addr().unwrap().parse().unwrap()
-        // }
-        // println!("remote_addr{:?}",req.peer_addr().unwrap().ip().to_string());
-        // println!("remote_addr{:?}",req.connection_info().remote_addr().unwrap());
-        // println!("realip_remote_addr{:?}",req.connection_info().realip_remote_addr().unwrap());
+        let ip = if req.peer_addr().is_some() {
+            req.peer_addr().unwrap().ip().to_string()
+        } else {
+            req.connection_info().realip_remote_addr().unwrap().parse().unwrap()
+        };
+        let city = if ip.eq("127.0.0.1") || ip.eq("localhost") {
+            String::from("局域网地址")
+        }else {
+            IpUtils::city_location(&ip).await
+        };
+
         user.password = None;
         // 准备壁纸
         let mut user_vo = UserVO::from(user.clone());
@@ -115,10 +119,10 @@ impl SystemService {
             log:None
         };
         // 查询准备今日计划安排
-        let query_today_plan_sql = "select concat(a.`content`,'[',date_format(a.`archive_time`,'%Y-%m-%d'),']') as item from `plan_archive` a inner join `plan` b on a.plan_id = b.id where a.`status` != 3 and b.`user` = 'shmily' and a.`archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')\n
+        let query_today_plan_sql = "select concat(`title`,'[',date_format(`archive_time`,'%Y-%m-%d'),']') as item from `plan_archive` where `status` != 3 and `user` = ? and `archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')\n
             union all\n
-            select concat(c.`content`,'[',date_format(c.`standard_time`,'%Y-%m-%d'),']') as item from `plan` c where c.`user` = 'shmily' and c.`standard_time` <= date_format(now(),'%Y-%m-%d 23:59:59')";
-        let today_plan_result_warp = primary_rbatis_pool!().fetch_decode::<Vec<HashMap<String, String>>>(query_today_plan_sql, vec![]).await;
+            select concat(b.`title`,'[',date_format(b.`standard_time`,'%Y-%m-%d'),']') as item from `plan` b where b.`user` = ? and b.`standard_time` <= date_format(now(),'%Y-%m-%d 23:59:59')";
+        let today_plan_result_warp = primary_rbatis_pool!().fetch_decode::<Vec<HashMap<String, String>>>(query_today_plan_sql, vec![to_value!(user.account.clone()),to_value!(user.account.clone())]).await;
         if today_plan_result_warp.is_ok(){
             sign_vo.plan = Some(today_plan_result_warp.unwrap());
         }
@@ -134,7 +138,7 @@ impl SystemService {
             name: user.name.clone().unwrap_or_default(),
             ip,
             organize:user.organize_id.unwrap(),
-            city: String::from("云南西双版纳"),
+            city: city,
             exp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize,// 时间和校验的时候保持一致，统一秒
         };
         sign_vo.access_token = jwt_token.create_token(&CONTEXT.config.jwt_secret)?;
@@ -480,9 +484,34 @@ impl SystemService {
     }
 
     /// 计算近6个月的活跃情况
-    pub async fn compute_pre6_logs(&self, req: &HttpRequest,month:&String) ->Result<Vec<TotalPre6MonthVO>> {
-        // 按月查询统计账单并排序
+    pub async fn compute_pre6_logs(&self, req: &HttpRequest,month:&String) ->Result<TotalLogVO> {
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
+        if user_month_wrap.is_err() {
+            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 查询用户指定的月份日志数量
+        let query_current_month_log_sql = "select count(1) from `log` where `organize` = ? and  `date` like concat(date_format(?,'%Y-%m'),'%')";
+        let current_month_log_result_warp = primary_rbatis_pool!().fetch_decode::<u64>(query_current_month_log_sql, vec![to_value!(user_info.organize),to_value!(month.as_str())]).await;
+        let mut current_month_log:u64 = 0;
+        if current_month_log_result_warp.is_ok(){
+            current_month_log = current_month_log_result_warp.unwrap()
+        }else {
+            error!("在查询指定月份的日志数据总数时，发生异常:{}",current_month_log_result_warp.unwrap_err());
+        }
+        // 判断是否为当前月
+        let current_month = DateUtils::now().date();
+        // 总天数，计算日均用
+        let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
+            // 当前月只计算 已经过去的天数
+            current_month.day()
+        }else {
+            // 当月所有的天数
+            DateUtils::get_current_month_days(user_month.year(),user_month.month())
+        };
+        let avg:u64 = current_month_log/(days as u64);
+
         let query_sql = format!("call count_pre6_logs({}, '{}')", &user_info.organize,month);
         let param:Vec<Bson> = Vec::new();
         let compute_result_warp = primary_rbatis_pool!().fetch_decode::<Vec<TotalPre6MonthVO>>(query_sql.as_str(), vec![]).await;
@@ -491,15 +520,38 @@ impl SystemService {
             return Err(Error::from("统计近6个月的活跃情况异常"));
         }
         let rows:Vec<TotalPre6MonthVO> = compute_result_warp.unwrap();
-        return Ok(rows);
+        let result = TotalLogVO{
+            avg:Some(avg),
+            count:Some(current_month_log),
+            log6:Some(rows)
+        };
+        return Ok(result);
     }
 
     /// 统计各个表的数据体量
-    pub async fn compute_object_rows(&self, req: &HttpRequest)->Result<rbson::Array> {
+    pub async fn compute_object_rows(&self, req: &HttpRequest)->Result<rbson::Document> {
         // 最终结果集的容器
-        let mut result: Vec<Bson> = rbson::Array::new();
+        let mut rose_data: Vec<Bson> = rbson::Array::new();
+        let mut word_cloud: Vec<Bson> = rbson::Array::new();
+        let mut result = rbson::Document::new();
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
-        let query_primary_count_sql = format!("select '计划' as `type` , count(1) as `value` from `plan` where `organize` = {};", &user_info.organize);
+
+        let query_notebook_sql = "select a.`name`, count(b.`id`) as value from `note_book` a left join `notes` b on a.`id` = b.`notebook_id` where a.`organize` = ? group by a.`id`";
+        let query_notebook_result_warp = business_rbatis_pool!().fetch_decode(query_notebook_sql, vec![to_value!(user_info.organize)]).await;
+        if query_notebook_result_warp.is_ok(){
+            let business_rows:Vec<TotalTable> = query_notebook_result_warp.unwrap();
+            for item in business_rows {
+                let mut current_data = rbson::Document::new();
+                current_data.insert("name",item.name);
+                current_data.insert("value",item.value);
+                word_cloud.push(Bson::Document(current_data));
+            }
+        }else {
+            error!("在分类别查询笔记簿时，发生异常:{}",query_notebook_result_warp.unwrap_err());
+        }
+        result.insert("word_cloud", word_cloud);
+
+        let query_primary_count_sql = format!("select '计划' as `name` , count(1) as `value` from `plan` where `organize` = {};", &user_info.organize);
         let param:Vec<Bson> = Vec::new();
         let primary_count_result_warp = primary_rbatis_pool!().fetch_decode(query_primary_count_sql.as_str(), vec![]).await;
         // 异常健壮处理
@@ -508,23 +560,23 @@ impl SystemService {
         if primary_count_result_warp.is_err(){
             error!("在统计主库的计划提醒时，发生异常:{}",primary_count_result_warp.unwrap_err());
             let mut plan = rbson::Document::new();
-            plan.insert("type","计划");
+            plan.insert("name","计划");
             plan.insert("value",0);
             error_plan = Bson::Document(plan);
-            result.push(error_plan);
+            rose_data.push(error_plan);
         }else {
             primary_rows = primary_count_result_warp.unwrap();
             for item in primary_rows {
-                result.push(item);
+                rose_data.push(item);
             }
         }
         let query_business_count_sql = format!("select '文件' as `name` , count(1) as `value` from `files` where `organize` = {}\n
                                                     union all\n
                                                     select '图片' as `name` , count(1) as `value` from `pictures` where `organize` = {}\n
                                                     union all\n
-                                                    select '笔记簿' as `name` , count(1) as `value` from `notebook` where `organize` = {}\n
+                                                    select '笔记簿' as `name` , count(1) as `value` from `note_book` where `organize` = {}\n
                                                     union all\n
-                                                    select '笔记' as `name` , count(1) as `value` from `notebook` a inner join `notes` b on a.`id` = b.`notebook_id` where a.`organize` = {}\n
+                                                    select '笔记' as `name` , count(1) as `value` from `note_book` a inner join `notes` b on a.`id` = b.`notebook_id` where a.`organize` = {}\n
                                                     union all\n
                                                     select '动态' as `name` , count(1) as `value` from `news` where `organize` = {}", &user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize,&user_info.organize);
         let param:Vec<Bson> = Vec::new();
@@ -544,36 +596,37 @@ impl SystemService {
             files.insert("name","文件");
             files.insert("value",0);
             error_files = Bson::Document(files);
-            result.push(error_files);
+            rose_data.push(error_files);
             let mut pictures = rbson::Document::new();
             pictures.insert("name","图片");
             pictures.insert("value",0);
             error_pictures = Bson::Document(pictures);
-            result.push(error_pictures);
+            rose_data.push(error_pictures);
             let mut notebook = rbson::Document::new();
             notebook.insert("name","笔记簿");
             notebook.insert("value",0);
             error_notebook = Bson::Document(notebook);
-            result.push(error_notebook);
+            rose_data.push(error_notebook);
             let mut notes = rbson::Document::new();
             notes.insert("name","笔记");
             notes.insert("value",0);
             error_note = Bson::Document(notes);
-            result.push(error_note);
+            rose_data.push(error_note);
             let mut news = rbson::Document::new();
             news.insert("name","动态");
             news.insert("value",0);
             error_news = Bson::Document(news);
-            result.push(error_news);
+            rose_data.push(error_news);
         }else {
             business_rows = business_count_result_warp.unwrap();
             for item in business_rows {
                 let mut current_data = rbson::Document::new();
                 current_data.insert("name",item.name);
                 current_data.insert("value",item.value);
-                result.push(Bson::Document(current_data));
+                rose_data.push(Bson::Document(current_data));
             }
         }
+        result.insert("rose_data", rose_data);
         return Ok(result);
     }
 
@@ -603,12 +656,14 @@ impl SystemService {
             id:None,
             standard_time: arg.standard_time.clone(),
             cycle: Some(cycle),
-            unit: if 1 == cycle { None } else {arg.unit},
+            unit: arg.unit,
+            title:arg.title.clone(),
             content: arg.content.clone(),
+            // 一次性的任务，不用生成下一次执行时间
             next_exec_time: if 1 == cycle { None } else {DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S)},
             organize: Some(user_info.organize),
             user: Some(user_info.account.clone()),
-            display: Some(1),
+            display: arg.display,
             create_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time: None
         };
@@ -657,8 +712,10 @@ impl SystemService {
             id:plan_exist.id,
             standard_time: arg.standard_time.clone(),
             cycle: Some(cycle),
-            unit: if 1 == cycle { None } else {arg.unit},
+            unit: arg.unit,
+            title:arg.title.clone(),
             content: arg.content.clone(),
+            // 一次性的任务，不用生成下一次执行时间
             next_exec_time: if 1 == cycle { None } else {DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S)},
             organize: plan_exist.organize,
             user: Some(user_info.account.clone()),
@@ -742,10 +799,13 @@ impl SystemService {
         // 提前准备任务归档数据
         let plan_archive = PlanArchive{
             id: None,
-            plan_id: plan_exist.id,
             status: Some(3),
-            content: plan_exist.clone().content,
+            title: plan_exist.title.clone(),
+            content: plan_exist.content.clone(),
             archive_time: plan_exist.standard_time.clone(),
+            organize:plan_exist.organize,
+            user:plan_exist.user.clone(),
+            display:plan_exist.display,
             create_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time: None
         };
@@ -837,11 +897,11 @@ impl SystemService {
     }
 
 
-    /// 归档计划提醒的编辑(只能编辑完成与否)
+    /// 归档计划提醒的编辑(只能编辑完成与否，以及是否展示)
     pub async fn edit_plan_archive(&self, req: &HttpRequest,arg: &PlanArchiveDTO) -> Result<u64> {
-        let check_flag = arg.id.is_none() || arg.status.is_none();
+        let check_flag = arg.id.is_none();
         if check_flag{
-            return Err(Error::from(("归档计划id和状态不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("归档计划id不能为空!",util::NOT_PARAMETER)));
         }
         let query_plan_archive_wrap = PlanArchive::select_by_column(primary_rbatis_pool!(),  PlanArchive::id(), &arg.id).await;
         if query_plan_archive_wrap.is_err() {
@@ -852,6 +912,7 @@ impl SystemService {
 
         let mut plan_archive_exist = plan_archive_option.ok_or_else(|| Error::from((format!("id={} 的归档提醒事项不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
         plan_archive_exist.status = arg.status;
+        plan_archive_exist.display = arg.display;
         let result = PlanArchiveMapper::update_plan(primary_rbatis_pool!(),&plan_archive_exist).await;
         if result.is_err() {
             error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());

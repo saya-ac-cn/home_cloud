@@ -9,7 +9,7 @@ edition = "2021"
 #rbatis orm dep must use async-std(Because actix-web relies on tokio0.2)
 rbson = "2.0"
 rbs = { version = "0.1"}
-rbatis = { version = "4"}
+rbatis = { version = "4", features = ["debug_mode"]}
 rbdc-mysql = { version ="0.1"}
 #rbatis orm dep must use async-std(Because actix-web relies on tokio0.2)
 tokio = { version = "1", features = ["full"] }
@@ -57,3 +57,5 @@ simple_excel_writer = "0.2.0"
 cron_tab = "0.1.4"
 # 发送邮件
 lettre="0.10.0-alpha.5"
+#http client,use rust-tls replace to native tls
+reqwest = { version = "0.11.11",default-features = false, features = ["json","cookies","rustls-tls"] }

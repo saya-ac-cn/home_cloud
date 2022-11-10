@@ -126,7 +126,8 @@ pub async fn log_excel(req: HttpRequest, arg: web::Query<LogPageDTO>) -> impl Re
 
 /// 统计近6个月的活跃情况
 #[get("/log/total/pre6")]
-pub async fn compute_pre6_logs(req: HttpRequest,arg: web::Json<JournalTotalDTO>) -> impl Responder {
+pub async fn compute_pre6_logs(req: HttpRequest,arg: web::Query<JournalTotalDTO>) -> impl Responder {
+    log::info!("compute_pre6_logs:{:?}", arg.clone().into_inner());
     let vo = CONTEXT.system_service.compute_pre6_logs(&req,&arg.archive_date.clone()).await;
     return RespVO::from_result(&vo).resp_json();
 }
@@ -165,8 +166,9 @@ pub async fn delete_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responde
 
 /// 分页获取当前活跃的计划提醒
 #[get("/plan/page")]
-pub async fn plan_page(req: HttpRequest, arg: web::Json<PlanPageDTO>) -> impl Responder {
-    let vo = CONTEXT.system_service.plan_page(&req,&arg.0).await;
+pub async fn plan_page(req: HttpRequest, arg: web::Query<PlanPageDTO>) -> impl Responder {
+    log::info!("plan_page:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.system_service.plan_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -179,9 +181,10 @@ pub async fn finish_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responde
 }
 
 /// 分页获取归档计划提醒数据
-#[get("/archive/archive/page")]
-pub async fn plan_archive_page(req: HttpRequest, arg: web::Json<PlanArchivePageDTO>) -> impl Responder {
-    let vo = CONTEXT.system_service.plan_archive_page(&req,&arg.0).await;
+#[get("/archive/plan/page")]
+pub async fn plan_archive_page(req: HttpRequest, arg: web::Query<PlanArchivePageDTO>) -> impl Responder {
+    log::info!("plan_archive_page:{:?}", arg.clone().into_inner());
+    let vo = CONTEXT.system_service.plan_archive_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 

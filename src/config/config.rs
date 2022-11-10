@@ -43,8 +43,11 @@ pub struct ApplicationConfig {
     /// 邮件服务器地址
     pub mail_server: String,
     /// 邮件服务器发送token
-    pub mail_token: String
-
+    pub mail_token: String,
+    /// 高德地图ip定位地址
+    pub amap_url: String,
+    /// 高德地图ip定位密钥
+    pub amap_key: String
 }
 
 /// 默认配置
