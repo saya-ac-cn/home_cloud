@@ -167,18 +167,21 @@ impl OssService {
     }
 
     /// 文件分页
-    pub async fn files_page(&self, req: &HttpRequest, param: &FilesPageDTO) -> Result<Page<FilesVO>>  {
+    pub async fn files_page(&self, req: &HttpRequest,organize:Option<u64>, param: &FilesPageDTO) -> Result<Page<FilesVO>>  {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
-        // 用户只能看到自己组织下的数据
-        arg.organize = Some(user_info.organize);
-
+        if organize.is_none() {
+            let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+            // 用户只能看到自己组织下的数据
+            arg.organize = Some(user_info.organize);
+        }else {
+            arg.organize = organize;
+        }
         let count_result = FilesMapper::select_count(business_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在文件分页统计时，发生异常:{}",count_result.unwrap_err());
@@ -207,7 +210,7 @@ impl OssService {
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         // 只能查看自己组织机构下的数据
 
-        let query_picture_wrap = Pictures::select_by_id_and_organize(primary_rbatis_pool!(),  &id,&user_info.organize).await;
+        let query_picture_wrap = Pictures::select_by_id_and_organize(business_rbatis_pool!(),  &id,&user_info.organize).await;
         if query_picture_wrap.is_err() {
             error!("查询图片异常：{}",query_picture_wrap.unwrap_err());
             return Err(Error::from("查询图片失败!"));

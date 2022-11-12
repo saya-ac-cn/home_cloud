@@ -91,7 +91,7 @@ pub async fn do_plan_notice(date:String) {
         plan_pool.insert(account,user);
     }
 
-    let query_where = PlanPageDTO{id: None,standard_time:Some(date.clone()),cycle: None, unit: None,content: None,next_exec_time: None, user: None,display: None, page_no: None,page_size: None,begin_time: None,end_time: None,organize: None };
+    let query_where = PlanPageDTO{id: None,standard_time:Some(date.clone()),cycle: None, unit: None,title:None,content: None,next_exec_time: None, user: None,display: None, page_no: None,page_size: None,begin_time: None,end_time: None,organize: None };
     let list_result = PlanMapper::select_list(primary_rbatis_pool!(), &query_where).await;
     if list_result.is_err() {
         // 查询此刻的计划提醒发生异常
@@ -104,10 +104,13 @@ pub async fn do_plan_notice(date:String) {
         // 提前准备任务归档数据
         let plan_archive = PlanArchive{
             id: None,
-            plan_id: plan.id,
             status: Some(1),
-            content: plan.clone().content,
+            title: plan.title.clone(),
+            content: plan.content.clone(),
             archive_time: Some(date.clone()),
+            organize:plan.organize,
+            user:plan.user.clone(),
+            display:plan.display,
             create_time: DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time: None
         };
@@ -155,7 +158,6 @@ pub async fn do_plan_notice(date:String) {
         let cron_tab = DateUtils::data_time_to_cron(&standard_time.clone());
         scheduler.remove(plan.id.unwrap());
         scheduler.add(plan.id.unwrap(),cron_tab.as_str());
-        // TODO 发一次邮件给予提示
         if !plan_pool.contains_key(plan.user.clone().unwrap().as_str()){
             return;
         }
@@ -181,13 +183,13 @@ pub async fn do_undone_plan_notice(){
     // 对提醒按照用户进行分组
     let mut map:HashMap<String,Vec<PlanArchiveVO>> = HashMap::new();
     for item in plans {
-        let user_account = item.user_account.clone().unwrap();
-        if map.contains_key(&user_account) {
-            let mut list = map.get(&user_account).unwrap().to_vec();
+        let account = item.user.clone().unwrap();
+        if map.contains_key(&account) {
+            let mut list = map.get(&account).unwrap().to_vec();
             list.push(item);
-            map.insert(user_account, list);
+            map.insert(account, list);
         }else {
-            map.insert(user_account, vec![item]);
+            map.insert(account, vec![item]);
         }
     }
     // 遍历这个map

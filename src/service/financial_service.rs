@@ -27,7 +27,7 @@ extern crate simple_excel_writer as excel;
 
 use excel::*;
 use rbson::Bson;
-use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
+use crate::entity::vo::total_pre_6_financial_month::TotalPre6MonthFinancialVO;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 
 /// 财政服务
@@ -128,7 +128,7 @@ impl FinancialService {
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
-        let archive_date_result = chrono::NaiveDateTime::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
             error!("格式化日期发生异常:{}",archive_date_result.unwrap_err());
             return Err(Error::from("非法的日期格式"));
@@ -174,7 +174,7 @@ impl FinancialService {
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
         let journal = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", id),util::NOT_EXIST)))?;
         // 历史数据不允许操作
-        let archive_date_result = chrono::NaiveDateTime::parse_from_str(journal.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        let archive_date_result = chrono::NaiveDate::parse_from_str(journal.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
             error!("格式化日期发生异常:{}",archive_date_result.unwrap_err());
             return Err(Error::from("非法的日期格式"));
@@ -209,7 +209,7 @@ impl FinancialService {
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
-        let archive_date_result = chrono::NaiveDateTime::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
             error!("格式化日期发生异常:{}",archive_date_result.unwrap_err());
             return Err(Error::from("非法的日期格式"));
@@ -268,7 +268,7 @@ impl FinancialService {
             remarks:arg.remarks.clone()
         };
         // 添加流水明细
-        let add_general_journal_result = GeneralJournal::insert(financial_rbatis_pool!(),&general_journal).await;
+        let add_general_journal_result = GeneralJournal::insert(&mut tx,&general_journal).await;
         if add_general_journal_result.is_err() {
             error!("在保存流水时，发生异常:{}",add_general_journal_result.unwrap_err());
             tx.rollback();
@@ -296,7 +296,7 @@ impl FinancialService {
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
-        let archive_date_result = chrono::NaiveDateTime::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
             error!("格式化日期发生异常:{}",archive_date_result.unwrap_err());
             return Err(Error::from("非法的日期格式"));
@@ -404,7 +404,7 @@ impl FinancialService {
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
         let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &general_journal_exist.journal_id.unwrap()),util::NOT_EXIST)))?;
         // 历史数据不允许操作
-        let archive_date_result = chrono::NaiveDateTime::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
             error!("格式化日期发生异常:{}",archive_date_result.unwrap_err());
             return Err(Error::from("非法的日期格式"));
@@ -642,13 +642,14 @@ impl FinancialService {
         sheet.add_column(Column { width: 25.0 });
         sheet.add_column(Column { width: 25.0 });
         sheet.add_column(Column { width: 25.0 });
+        let empty_str = String::from("");
         wb.write_sheet(&mut sheet, |sheet_writer| {
             let sw = sheet_writer;
             // 写入标题行
             sw.append_row(row!["流水号", "币种","收入","支出","总收支","收支方式","摘要","备注","归档日期","申报用户","申报时间", "修改时间"]);
             for item in rows {
                 //item.id
-                sw.append_row(row![item.id.unwrap().to_f64().unwrap(),item.monetary_name.unwrap(), item.income.unwrap().parse::<f64>().unwrap(), item.outlay.unwrap().parse::<f64>().unwrap(),item.total.unwrap().parse::<f64>().unwrap(),item.payment_means_name.unwrap(),item.abstracts_name.unwrap(),item.remarks.unwrap(),item.archive_date.unwrap(),item.source.unwrap(),item.create_time.unwrap(),item.update_time.unwrap()]);
+                sw.append_row(row![item.id.unwrap().to_f64().unwrap(),item.monetary_name.unwrap(), item.income.unwrap().parse::<f64>().unwrap(), item.outlay.unwrap().parse::<f64>().unwrap(),item.total.unwrap().parse::<f64>().unwrap(),item.payment_means_name.unwrap(),item.abstracts_name.unwrap(),item.remarks.unwrap_or(empty_str.clone()),item.archive_date.unwrap(),item.source.unwrap(),item.create_time.unwrap_or(empty_str.clone()),item.update_time.unwrap_or(empty_str.clone())]);
             }
             Ok(())
         }).expect("write excel error!");
@@ -733,6 +734,7 @@ impl FinancialService {
         sheet.add_column(Column { width: 25.0 });
         sheet.add_column(Column { width: 25.0 });
         sheet.add_column(Column { width: 25.0 });
+        let empty_str = String::from("");
         // 第一行是表头
         let mut line_num:usize = 2;
         wb.write_sheet(&mut sheet, |sheet_writer| {
@@ -758,9 +760,9 @@ impl FinancialService {
                     for general_journal in list {
                         let flag_name =  if "1" == general_journal.flag.unwrap(){"收入"}else { "支出" };
                         if 1 == general_journal_line {
-                            sw.append_row(row![journal_id.to_f64().unwrap(),item.monetary_name.clone().unwrap(), item.income.clone().unwrap().parse::<f64>().unwrap(), item.outlay.clone().unwrap().parse::<f64>().unwrap(),item.total.clone().unwrap().parse::<f64>().unwrap(),item.payment_means_name.clone().unwrap(),item.abstracts_name.clone().unwrap(),item.remarks.clone().unwrap(),item.archive_date.clone().unwrap(),item.source.clone().unwrap(),item.create_time.clone().unwrap(),item.update_time.clone().unwrap(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                            sw.append_row(row![journal_id.to_f64().unwrap(),item.monetary_name.clone().unwrap(), item.income.clone().unwrap().parse::<f64>().unwrap(), item.outlay.clone().unwrap().parse::<f64>().unwrap(),item.total.clone().unwrap().parse::<f64>().unwrap(),item.payment_means_name.clone().unwrap(),item.abstracts_name.clone().unwrap(),item.remarks.clone().unwrap_or(empty_str.clone()),item.archive_date.clone().unwrap(),item.source.clone().unwrap(),item.create_time.clone().unwrap(),item.update_time.clone().unwrap_or(empty_str.clone()),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
                         }else {
-                            sw.append_row(row![(),(),(),(),(),(),(),(),(),(),(),(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                            sw.append_row(row![(),(),(),(),(),(),(),(),(),(),(),(),general_journal.remarks.unwrap_or(empty_str.clone()),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
                         }
                         general_journal_line = general_journal_line + 1;
                     }
@@ -879,6 +881,7 @@ impl FinancialService {
         sheet.add_column(Column { width: 25.0 });
         sheet.add_column(Column { width: 25.0 });
         sheet.add_column(Column { width: 25.0 });
+        let empty_str = String::from("");
         // 第一行是表头
         let mut line_num:usize = 2;
         wb.write_sheet(&mut sheet, |sheet_writer| {
@@ -905,9 +908,9 @@ impl FinancialService {
                     for general_journal in list {
                         let flag_name =  if "1" == general_journal.flag.unwrap(){"收入"}else { "支出" };
                         if 1 == general_journal_line {
-                            sw.append_row(row![general_journal.archive_date.unwrap(), item.income.clone().unwrap().parse::<f64>().unwrap(), item.outlay.clone().unwrap().parse::<f64>().unwrap(),item.total.clone().unwrap().parse::<f64>().unwrap(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                            sw.append_row(row![general_journal.archive_date.unwrap(), item.income.clone().unwrap().parse::<f64>().unwrap(), item.outlay.clone().unwrap().parse::<f64>().unwrap(),item.total.clone().unwrap().parse::<f64>().unwrap(),general_journal.remarks.unwrap_or(empty_str.clone()),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
                         }else {
-                            sw.append_row(row![(),(),(),(),general_journal.remarks.unwrap(),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
+                            sw.append_row(row![(),(),(),(),general_journal.remarks.unwrap_or(empty_str.clone()),flag_name,general_journal.amount.unwrap().parse::<f64>().unwrap()]);
                         }
                         general_journal_line = general_journal_line + 1;
                     }
@@ -926,7 +929,7 @@ impl FinancialService {
 
     /// 计算收支增长率
     pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
-        let user_month_wrap = chrono::NaiveDate::parse_from_str((format!("{}-01",month.as_str())).as_str(),&util::FORMAT_Y_M_D);
+        let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
             return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
         }
@@ -1048,17 +1051,17 @@ impl FinancialService {
     }
 
     /// 计算近6个月的财务流水
-    pub async fn compute_pre6_journal(&self, req: &HttpRequest,month:&String) ->Result<Vec<TotalPre6MonthVO>> {
+    pub async fn compute_pre6_journal(&self, req: &HttpRequest,month:&String) ->Result<Vec<TotalPre6MonthFinancialVO>> {
         // 按月查询统计账单并排序
         let user_info = JWTToken::extract_user_by_request(req).unwrap();
         let query_sql = format!("call count_pre6_journal({}, '{}')", &user_info.organize,month);
         let param:Vec<Bson> = Vec::new();
-        let compute_result_warp = financial_rbatis_pool!().fetch_decode::<Vec<TotalPre6MonthVO>>(query_sql.as_str(), vec![]).await;
+        let compute_result_warp = financial_rbatis_pool!().fetch_decode::<Vec<TotalPre6MonthFinancialVO>>(query_sql.as_str(), vec![]).await;
         if compute_result_warp.is_err(){
             error!("在统计近6个月的财务流水时，发生异常:{}",compute_result_warp.unwrap_err());
             return Err(Error::from("统计近6个月的财务流水异常"));
         }
-        let rows:Vec<TotalPre6MonthVO> = compute_result_warp.unwrap();
+        let rows:Vec<TotalPre6MonthFinancialVO> = compute_result_warp.unwrap();
         return Ok(rows);
     }
 

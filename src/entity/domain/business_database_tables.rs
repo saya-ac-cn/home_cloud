@@ -13,6 +13,7 @@ pub struct News{
 }
 crud!(News {});
 impl_select!(News {select_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
+impl_select!(News {select_by_ids(ids:Vec<u64>) => "`where id in (#{id})`"});
 impl_delete!(News {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_field_name_method!(News{id,topic,label,content,organize,source,create_time});
 

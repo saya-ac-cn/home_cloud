@@ -1,4 +1,4 @@
-use home_cloud::controller::{content_controller, financial_controller, system_controller};
+use home_cloud::controller::{content_controller, financial_controller, oss_controller, system_controller};
 use home_cloud::service::{CONTEXT};
 use actix_web::{web, App, HttpServer};
 use actix_files as fs;
@@ -95,6 +95,27 @@ async fn main() -> std::io::Result<()> {
                     .service(financial_controller::compute_income_percentage)
                     .service(financial_controller::order_month_journal)
                     .service(financial_controller::compute_pre6_journal)
+            )
+            .service(
+                web::scope("/backend/oss")
+                    .service(oss_controller::upload_base64_picture)
+                    .service(oss_controller::upload_file_picture)
+                    .service(oss_controller::page_picture)
+                    .service(oss_controller::picture_delete)
+                    .service(oss_controller::upload_file)
+                    .service(oss_controller::page_files)
+                    .service(oss_controller::files_download)
+                    .service(oss_controller::files_edit)
+                    .service(oss_controller::files_delete)
+            )
+            .service(web::scope("/frontend")
+                .service(content_controller::public_page_news)
+                .service(content_controller::public_page_notes)
+                .service(oss_controller::public_page_files)
+                .service(oss_controller::files_download)
+                .service(content_controller::public_notebook_list)
+                .service(content_controller::public_news_detail)
+                .service(content_controller::public_notes_detail)
             )
     })
     .bind(&CONTEXT.config.server_url)?

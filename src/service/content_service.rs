@@ -1,8 +1,11 @@
+use std::collections::HashMap;
 use std::ops::Div;
+use std::str::Split;
 use actix_web::HttpRequest;
 use chrono::Datelike;
 use log::error;
-use rbson::Bson;
+use rbs::to_value;
+use rbson::{Bson, bson, Document};
 use rust_decimal::{Decimal, RoundingStrategy};
 use rust_decimal::prelude::ToPrimitive;
 use crate::dao::log_mapper::LogMapper;
@@ -25,6 +28,7 @@ use crate::util::Page;
 use crate::error::Error;
 use crate::error::Result;
 use crate::{business_rbatis_pool, primary_rbatis_pool, util};
+use crate::entity::vo::total_news::TotalNewsVO;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 
@@ -107,7 +111,7 @@ impl ContentService {
 
     /// 获取消息动态
     pub async fn get_news_detail(&self,id: &u64) -> Result<NewsVO> {
-        let query_news_wrap = News::select_by_column(primary_rbatis_pool!(),  News::id(), id).await;
+        let query_news_wrap = News::select_by_column(business_rbatis_pool!(),  News::id(), id).await;
         if query_news_wrap.is_err() {
             error!("查询动态异常：{}",query_news_wrap.unwrap_err());
             return Err(Error::from("查询动态失败!"));
@@ -117,19 +121,58 @@ impl ContentService {
         return Ok(NewsVO::from(news_exist))
     }
 
+    /// 获取消息动态详情[公众]
+    pub async fn public_news_detail(&self,organize:&u64,id: &u64) -> Result<rbson::Document> {
+        let query_sql = format!("call news_pre_and_next({}, {})",organize,id);
+        let compute_result_warp = business_rbatis_pool!().fetch_decode::<Vec<NewsVO>>(query_sql.as_str(), vec![]).await;
+        if compute_result_warp.is_err(){
+            error!("在查询id={}附近的动态时，发生异常:{}",id,compute_result_warp.unwrap_err());
+            return Err(Error::from("查询动态异常"));
+        }
+        let rows = compute_result_warp.unwrap();
+        if rows.is_empty(){
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        if rows.len() == 1 && rows[0]. id.unwrap() != *id{
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result= rbson::Document::new();
+        for news in rows {
+            let news_id = news.id.unwrap();
+            let mut _item = rbson::Document::new();
+            _item.insert("id",news.id);
+            _item.insert("topic",news.topic);
+            _item.insert("label",news.label);
+            _item.insert("content",news.content);
+            _item.insert("source",news.source);
+            _item.insert("create_time",news.create_time);
+            if news_id == *id  {
+                result.insert("now",_item);
+            }else if news_id < *id {
+                result.insert("pre",_item);
+            }else {
+                result.insert("next",_item);
+            }
+        }
+        return Ok(result);
+    }
+
     /// 动态分页
-    pub async fn news_page(&self, req: &HttpRequest, param: &NewsPageDTO) -> Result<Page<NewsVO>>  {
+    pub async fn news_page(&self, req: &HttpRequest,organize: Option<u64>, param: &NewsPageDTO) -> Result<Page<NewsVO>>  {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
-        // 用户只能看到自己组织下的数据
-        arg.organize = Some(user_info.organize);
-
+        if organize.is_some() {
+            arg.organize = organize;
+        }else {
+            let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+            // 用户只能看到自己组织下的数据
+            arg.organize = Some(user_info.organize);
+        }
         let count_result = NewsMapper::select_count(business_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在动态分页统计时，发生异常:{}",count_result.unwrap_err());
@@ -185,7 +228,7 @@ impl ContentService {
             return Err(Error::from(("便笺标题和内容不能为空!",util::NOT_PARAMETER)));
         }
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let query_memo_wrap = Memo::select_by_id_organize(primary_rbatis_pool!(),  &arg.id.clone().unwrap(),&user_info.organize).await;
+        let query_memo_wrap = Memo::select_by_id_organize(business_rbatis_pool!(),  &arg.id.clone().unwrap(),&user_info.organize).await;
         if query_memo_wrap.is_err() {
             error!("查询便笺异常：{}",query_memo_wrap.unwrap_err());
             return Err(Error::from("查询便笺失败!"));
@@ -225,7 +268,7 @@ impl ContentService {
 
     /// 获取便笺
     pub async fn get_memo_detail(&self,id: &u64) -> Result<MemoVO> {
-        let query_memo_wrap = Memo::select_by_column(primary_rbatis_pool!(),  Memo::id(), id).await;
+        let query_memo_wrap = Memo::select_by_column(business_rbatis_pool!(),  Memo::id(), id).await;
         if query_memo_wrap.is_err() {
             error!("查询便笺异常：{}",query_memo_wrap.unwrap_err());
             return Err(Error::from("查询便笺失败!"));
@@ -360,11 +403,15 @@ impl ContentService {
     }
 
     /// 获取笔记簿
-    pub async fn list_notebook(&self, req: &HttpRequest,param: &NoteBookDTO) -> Result<Option<Vec<NoteBookVO>>>  {
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+    pub async fn list_notebook(&self, req: &HttpRequest,organize:Option<u64>,param: &NoteBookDTO) -> Result<Option<Vec<NoteBookVO>>>  {
         let mut arg= param.clone();
-        // 用户只能看到自己组织下的数据
-        arg.organize = Some(user_info.organize);
+        if organize.is_none() {
+            // 用户只能看到自己组织下的数据
+            let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+            arg.organize = Some(user_info.organize);
+        }else {
+            arg.organize = organize;
+        }
         let page_result = NoteBookMapper::select_list(business_rbatis_pool!(), &arg).await;
         if page_result.is_err() {
             error!("在检索笔记簿数据时，发生异常:{}",page_result.unwrap_err());
@@ -458,18 +505,58 @@ impl ContentService {
         return Ok(NotesVO::from(notes_exist))
     }
 
+    /// 获取笔记详情[公众]
+    pub async fn public_notes_detail(&self,organize:&u64,id: &u64) -> Result<rbson::Document> {
+        let query_sql = format!("call notes_pre_and_next({}, {})",organize,id);
+        let compute_result_warp = business_rbatis_pool!().fetch_decode::<Vec<NotesVO>>(query_sql.as_str(), vec![]).await;
+        if compute_result_warp.is_err(){
+            error!("在查询id={}附近的笔记时，发生异常:{}",id,compute_result_warp.unwrap_err());
+            return Err(Error::from("查询笔记异常"));
+        }
+        let rows = compute_result_warp.unwrap();
+        if rows.is_empty(){
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        if rows.len() == 1 && rows[0]. id.unwrap() != *id{
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+        }
+        let mut result= rbson::Document::new();
+        for news in rows {
+            let notes_id = news.id.unwrap();
+            let mut _item = rbson::Document::new();
+            _item.insert("id",news.id);
+            _item.insert("topic",news.topic);
+            _item.insert("content",news.content);
+            _item.insert("label",news.label);
+            _item.insert("source",news.source);
+            _item.insert("create_time",news.create_time);
+            if notes_id < *id {
+                result.insert("pre",_item);
+            }else if notes_id > *id{
+                result.insert("next",_item);
+            }else{
+                result.insert("now",_item);
+            }
+        }
+        return Ok(result);
+    }
+
     /// 笔记分页
-    pub async fn page_notes(&self, req: &HttpRequest, param: &NotesPageDTO) -> Result<Page<NotesVO>>  {
+    pub async fn page_notes(&self, req: &HttpRequest, organize: Option<u64>,param: &NotesPageDTO) -> Result<Page<NotesVO>>  {
         let mut extend = ExtendPageDTO{
             page_no: param.page_no,
             page_size: param.page_size,
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
         let mut arg= param.clone();
-        // 用户只能看到自己组织下的数据
-        arg.organize = Some(user_info.organize);
+        if organize.is_none() {
+            let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+            // 用户只能看到自己组织下的数据
+            arg.organize = Some(user_info.organize);
+        }else {
+            arg.organize = organize;
+        }
         let count_result = NotesMapper::select_count(business_rbatis_pool!(), &arg,&extend).await;
         if count_result.is_err(){
             error!("在笔记分页统计时，发生异常:{}",count_result.unwrap_err());
@@ -494,10 +581,22 @@ impl ContentService {
     }
 
     /// 计算近6个月的动态发布情况
-    pub async fn compute_pre6_news(&self, req: &HttpRequest,month:&String) ->Result<rbson::Document> {
+    pub async fn compute_pre6_news(&self, req: &HttpRequest,month:&String) ->Result<TotalNewsVO> {
+
+        let user_info = JWTToken::extract_user_by_request(req).unwrap();
         let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
-            return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 查询用户在制定月份发表的动态
+        let query_current_month_news_sql = "select count(1) from `news` where `organize` = ? and  `create_time` like concat(date_format(?,'%Y-%m'),'%')";
+        let current_month_news_result_warp = business_rbatis_pool!().fetch_decode::<u64>(query_current_month_news_sql, vec![to_value!(user_info.organize),to_value!(month.as_str())]).await;
+        let mut current_month_news:u64 = 0;
+        if current_month_news_result_warp.is_ok(){
+            current_month_news = current_month_news_result_warp.unwrap()
+        }else {
+            error!("在查询指定月份的动态数据总数时，发生异常:{}",current_month_news_result_warp.unwrap_err());
         }
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
@@ -511,39 +610,7 @@ impl ContentService {
             // 当月所有的天数
             DateUtils::get_current_month_days(user_month.year(),user_month.month())
         };
-        let start= format!("{}-{:0>2}-01 00:00:00",user_month.year(),user_month.month());
-        let end= format!("{}-{:0>2}-{:0>2} 23:59:59",user_month.year(),user_month.month(),days);
-
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
-        let arg = NewsPageDTO{
-            id: None,
-            topic: None,
-            label: None,
-            content: None,
-            source: None,
-            page_no: None,
-            page_size: None,
-            begin_time: None,
-            end_time: None,
-            organize: Some(user_info.organize)
-        };
-        let extend = ExtendPageDTO{
-            page_no: Some(1),
-            page_size: Some(10),
-            begin_time:Some(start),
-            end_time:Some(end),
-        };
-        let count_result = NewsMapper::select_count(business_rbatis_pool!(), &arg,&extend).await;
-        if count_result.is_err(){
-            error!("在统计指定日期范围的动态时，发生异常:{}",count_result.unwrap_err());
-            return Err(Error::from("动态条数异常"));
-        }
-        let total_row = count_result.unwrap().unwrap();
-        let total = Decimal::from(total_row);
-        let avg_total = total.div(Decimal::from(days));
-
-        // 按月查询统计账单并排序
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let avg:u64 = current_month_news/(days as u64);
         let query_sql = format!("call count_pre6_news({}, '{}')", &user_info.organize,month);
         let compute_result_warp = business_rbatis_pool!().fetch_decode::<Vec<TotalPre6MonthVO>>(query_sql.as_str(), vec![]).await;
         if compute_result_warp.is_err(){
@@ -551,18 +618,11 @@ impl ContentService {
             return Err(Error::from("统计近6个月的动态发布异常"));
         }
         let rows = compute_result_warp.unwrap();
-        let mut result = rbson::Document::new();
-        result.insert("count",total.to_u64());
-        result.insert("avg",avg_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero).to_f64());
-        // TODO 迫于语言 曲线救国
-        let mut news6:Vec<Bson>= rbson::Array::new();
-        for item in rows {
-            let mut current_data = rbson::Document::new();
-            current_data.insert("total_month",item.total_month);
-            current_data.insert("count",item.count);
-            news6.push(Bson::Document(current_data));
-        }
-        result.insert("news6", news6);
+        let result = TotalNewsVO{
+            avg:Some(avg),
+            count:Some(current_month_news),
+            news6:Some(rows)
+        };
         return Ok(result);
     }
 

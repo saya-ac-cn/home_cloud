@@ -3,10 +3,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlanArchiveDTO {
     pub id:Option<u64>,
-    pub plan_id:Option<u64>,
+    pub title:Option<String>,
     pub content:Option<String>,
     pub status:Option<u32>,
     pub archive_time:Option<String>,
+    pub organize:Option<u64>,
+    pub user:Option<String>,
+    pub display:Option<u32>,
     pub create_time: Option<String>,
     pub update_time: Option<String>,
 }
@@ -15,7 +18,6 @@ pub struct PlanArchiveDTO {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlanArchivePageDTO{
     pub id:Option<u64>,
-    pub plan_id:Option<u64>,
     pub content:Option<String>,
     pub status:Option<u32>,
     pub archive_time:Option<String>,

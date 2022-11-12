@@ -5,13 +5,15 @@ use crate::entity::domain::primary_database_tables::PlanArchive;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlanArchiveVO{
     pub id:Option<u64>,
-    pub plan_id:Option<u64>,
     pub status:Option<u32>,
+    pub title:Option<String>,
     pub content:Option<String>,
-    pub user_account:Option<String>,
     pub user_name:Option<String>,
     pub user_mail:Option<String>,
     pub archive_time:Option<String>,
+    pub organize:Option<u64>,
+    pub user:Option<String>,
+    pub display:Option<u32>,
     pub create_time:Option<String>,
     pub update_time:Option<String>
 }
@@ -21,13 +23,15 @@ impl From<PlanArchive> for PlanArchiveVO {
     fn from(arg: PlanArchive) -> Self {
         Self {
             id: arg.id,
-            plan_id: arg.plan_id,
             status:arg.status,
+            title:arg.title,
             content: arg.content,
-            user_account:None,
             user_name:None,
             user_mail:None,
             archive_time: arg.archive_time,
+            organize: arg.organize,
+            user: arg.user,
+            display: arg.display,
             create_time: arg.create_time,
             update_time: arg.update_time
         }

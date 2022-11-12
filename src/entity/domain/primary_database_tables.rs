@@ -56,7 +56,7 @@ impl_field_name_method!(Log{id,user,category,date});
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogType{
     pub category:Option<String>,
-    pub describe:Option<String>,
+    pub detail:Option<String>,
 }
 crud!(LogType {});
 impl_field_name_method!(LogType{category});
@@ -67,6 +67,7 @@ pub struct Plan{
     pub standard_time:Option<String>,
     pub cycle:Option<u32>,
     pub unit:Option<u32>,
+    pub title:Option<String>,
     pub content:Option<String>,
     pub next_exec_time:Option<String>,
     pub organize:Option<u64>,
@@ -82,15 +83,18 @@ impl_field_name_method!(Plan{id,organize,user,display,standard_time,next_exec_ti
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlanArchive{
     pub id:Option<u64>,
-    pub plan_id:Option<u64>,
     pub status:Option<u32>,
+    pub title:Option<String>,
     pub content:Option<String>,
     pub archive_time:Option<String>,
+    pub organize:Option<u64>,
+    pub user:Option<String>,
+    pub display:Option<u32>,
     pub create_time: Option<String>,
     pub update_time: Option<String>,
 }
 crud!(PlanArchive {});
-impl_field_name_method!(PlanArchive{id,plan_id,status,archive_time});
+impl_field_name_method!(PlanArchive{id,status,archive_time});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DbDumpLog{

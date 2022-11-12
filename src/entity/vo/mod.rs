@@ -27,7 +27,9 @@ pub mod plan_archive;
 pub mod db_dump_log;
 pub mod total_pre_6_month;
 pub mod total_table;
-
+pub mod total_pre_6_financial_month;
+pub mod total_log;
+pub mod total_news;
 pub struct ResultTools{}
 impl ResultTools {
     pub fn from_map(arg: String) -> HttpResponse {

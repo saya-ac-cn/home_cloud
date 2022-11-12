@@ -47,7 +47,7 @@ pub async fn upload_file(req: HttpRequest,payload: Multipart) -> impl Responder 
 #[get("/files/page")]
 pub async fn page_files(req: HttpRequest,arg: web::Query<FilesPageDTO>) -> impl Responder {
     log::info!("page_files:{:?}", arg.clone().into_inner());
-    let vo = CONTEXT.oss_service.files_page(&req,&arg.into_inner()).await;
+    let vo = CONTEXT.oss_service.files_page(&req,None,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -73,4 +73,13 @@ pub async fn files_download(path: web::Path<u64>) -> impl Responder {
     let id = path.into_inner();
     let vo = CONTEXT.oss_service.files_download(id).await;
     return vo;
+}
+
+/// 获取文件分页列表[公众]
+#[get("/page/files/{id}")]
+pub async fn public_page_files(req: HttpRequest,path: web::Path<u64>,arg: web::Query<FilesPageDTO>) -> impl Responder {
+    log::info!("page_files:{:?}", arg.clone().into_inner());
+    let organize = path.into_inner();
+    let vo = CONTEXT.oss_service.files_page(&req,Some(organize),&arg.into_inner()).await;
+    return RespVO::from_result(&vo).resp_json();
 }
