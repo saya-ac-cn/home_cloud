@@ -896,7 +896,6 @@ impl SystemService {
         return Ok(result);
     }
 
-
     /// 归档计划提醒的编辑(只能编辑完成与否，以及是否展示)
     pub async fn edit_plan_archive(&self, req: &HttpRequest,arg: &PlanArchiveDTO) -> Result<u64> {
         let check_flag = arg.id.is_none();
@@ -964,6 +963,80 @@ impl SystemService {
         }
         let page_rows = page_result.unwrap();
         result.records = page_rows;
+        return Ok(result);
+    }
+
+    /// 获取消息动态详情[公众]
+    pub async fn plan_grid(&self,organize:&u64,query_month:&str) -> Result<Vec<Bson>>{
+        // 只接受前端传入 archive_date = 年-月
+        let _month = format!("{}-01",query_month);
+        let month = _month.as_str();
+        // 前端入参必须是该月的1号
+        let user_month_wrap = chrono::NaiveDate::parse_from_str(month,&util::FORMAT_Y_M_D);
+        if user_month_wrap.is_err() {
+            return Err(Error::from(("查询时间格式有误!", util::NOT_PARAMETER)));
+        }
+        let user_month = user_month_wrap.unwrap();
+        // 当月所有的天数
+        let days = (DateUtils::get_current_month_days(user_month.year(),user_month.month())) as u64;
+        // 得到本月1号是周几(从周末开始计算)
+        let first_day = (user_month.weekday().num_days_from_sunday() + 1) as u64;
+        // 表格中单元格个数（1号前的空单元格加上日历的单元格）
+        let mut grid_count = days + first_day - 1;
+        // 总行数
+        let table_line = if grid_count % 7 == 0 {
+            grid_count / 7
+        } else {
+            grid_count / 7 + 1
+        };
+        let mut result: Vec<Bson> = rbson::Array::new();
+        // 统计有效的单元格（加上月尾的空白单元格）
+        grid_count = table_line * 7;
+        let query_sql = format!("call merge_plan({}, '{}')",organize,month);
+        let compute_result_warp = primary_rbatis_pool!().fetch_decode::<Vec<PlanArchiveVO>>(query_sql.as_str(), vec![]).await;
+        if compute_result_warp.is_err(){
+            error!("在查询日期={}附近的计划安排时，发生异常:{}",month,compute_result_warp.unwrap_err());
+            return Err(Error::from("查询计划安排异常"));
+        }
+        let rows = compute_result_warp.unwrap();
+        // 对计划按照当月号数进行分组
+        let mut map:HashMap<u64,Vec<PlanArchiveVO>> = HashMap::new();
+        for item in rows {
+            let day_number = item.id.unwrap();
+            if map.contains_key(&day_number) {
+                let mut list = map.get(&day_number).unwrap().to_vec();
+                list.push(item);
+                map.insert(day_number, list);
+            }else {
+                map.insert(day_number, vec![item]);
+            }
+        }
+        for number in 1..grid_count {
+            let mut day = rbson::Document::new();
+            let mut plan: Vec<Bson> = rbson::Array::new();
+            if number >= first_day && number <= (days + first_day - 1) {
+                day.insert("flag", 1);
+                day.insert("number", number - (first_day - 1));
+                if map.contains_key(&number) {
+                    // 本日有安排
+                    let plans = map.get(&number).unwrap().to_vec();
+                    for item in plans {
+                        let mut value = rbson::Document::new();
+                        value.insert("archive_time", item.archive_time);
+                        value.insert("title", item.title);
+                        value.insert("content", item.content);
+                        plan.push(Bson::Document(value));
+                    }
+                    day.insert("value", plan);
+                }
+            }else {
+                // 输出空白
+                day.insert("flag", 0);
+                day.insert("number", 0);
+                day.insert("value", plan);
+            }
+            result.push(Bson::Document(day));
+        }
         return Ok(result);
     }
 

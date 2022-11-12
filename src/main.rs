@@ -116,6 +116,7 @@ async fn main() -> std::io::Result<()> {
                 .service(content_controller::public_notebook_list)
                 .service(content_controller::public_news_detail)
                 .service(content_controller::public_notes_detail)
+                .service(system_controller::plan_grid)
             )
     })
     .bind(&CONTEXT.config.server_url)?

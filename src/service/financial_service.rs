@@ -1040,7 +1040,7 @@ impl FinancialService {
         }
         let user_month = user_month_wrap.unwrap();
         // 按月查询统计账单并排序
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_info= JWTToken::extract_user_by_request(req).unwrap();
         let bill_wrap = JournalMapper::bill_rank(financial_rbatis_pool!(), &user_info.organize,&user_month).await;
         if bill_wrap.is_err(){
             error!("在统计指定月份中各摘要的排名时，发生异常:{}",bill_wrap.unwrap_err());

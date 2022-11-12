@@ -211,3 +211,11 @@ pub async fn db_dump_log_page(req: HttpRequest, arg: web::Query<DbDumpLogPageDTO
     let vo = CONTEXT.system_service.db_dump_log_page(&req,&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
+
+/// 获取计划安排-表格形式[公众]
+#[get("/plan/{organize}")]
+pub async fn plan_grid(path: web::Path<u64>,arg: web::Query<JournalTotalDTO>) -> impl Responder {
+    let organize = path.into_inner();
+    let vo = CONTEXT.system_service.plan_grid(&organize,&arg.archive_date.clone()).await;
+    return RespVO::from_result(&vo).resp_json();
+}
