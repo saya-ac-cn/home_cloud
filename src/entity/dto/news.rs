@@ -5,6 +5,7 @@ pub struct NewsDTO {
     pub id:Option<u64>,
     pub topic:Option<String>,
     pub label:Option<String>,
+    pub abstracts:Option<String>,
     pub content:Option<String>,
     pub organize:Option<u64>,
     pub source:Option<String>,

@@ -31,6 +31,7 @@ use crate::{business_rbatis_pool, primary_rbatis_pool, util};
 use crate::entity::vo::total_news::TotalNewsVO;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
+use crate::util::editor::Editor;
 
 /// 文本（消息）服务
 pub struct ContentService {}
@@ -44,10 +45,13 @@ impl ContentService {
             return Err(Error::from(("动态标题和内容不能为空!",util::NOT_PARAMETER)));
         }
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        // 生成一次简述
+        let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let news = News{
             id:None,
             topic:arg.topic.clone(),
             label:arg.label.clone(),
+            abstracts:Some(abstracts),
             content:arg.content.clone(),
             organize: Some(user_info.organize),
             source:Some(user_info.account.clone()),
@@ -77,10 +81,13 @@ impl ContentService {
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
         let news_exist = news_option.ok_or_else(|| Error::from((format!("id={} 的动态不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
+        // 生成一次简述
+        let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let news = News{
             id:arg.id,
             topic: arg.topic.clone(),
             label: arg.label.clone(),
+            abstracts:Some(abstracts),
             content: arg.content.clone(),
             organize: news_exist.organize,
             source: Some(user_info.account.clone()),
@@ -428,11 +435,14 @@ impl ContentService {
             return Err(Error::from(("笔记标题和内容不能为空!",util::NOT_PARAMETER)));
         }
         let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        // 生成一次简述
+        let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let notes = Notes{
             id:None,
             notebook_id: arg.notebook_id,
             label:arg.label.clone(),
             topic: arg.topic.clone(),
+            abstracts:Some(abstracts),
             content:arg.content.clone(),
             source:Some(user_info.account.clone()),
             create_time:DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
@@ -462,11 +472,14 @@ impl ContentService {
         }
         let notes_option = query_notes_wrap.unwrap().into_iter().next();
         let notes_exist = notes_option.ok_or_else(|| Error::from((format!("id={} 的笔记不存在!", arg.id.unwrap()), util::NOT_EXIST)))?;
+        // 生成一次简述
+        let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let notes = Notes{
             id:arg.id,
             notebook_id: arg.notebook_id,
             label:arg.label.clone(),
             topic: arg.topic.clone(),
+            abstracts:Some(abstracts),
             content:arg.content.clone(),
             source:Some(user_info.account.clone()),
             create_time:None,

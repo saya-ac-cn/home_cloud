@@ -6,6 +6,7 @@ pub struct NotesDTO {
     pub notebook_id:Option<u64>,
     pub label:Option<String>,
     pub topic:Option<String>,
+    pub abstracts:Option<String>,
     pub content:Option<String>,
     pub source:Option<String>,
     pub create_time:Option<String>,
