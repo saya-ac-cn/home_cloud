@@ -1011,15 +1011,17 @@ impl SystemService {
                 map.insert(day_number, vec![item]);
             }
         }
-        for number in 1..grid_count {
+        for number in 1..(grid_count+1) {
             let mut day = rbson::Document::new();
             let mut plan: Vec<Bson> = rbson::Array::new();
             if number >= first_day && number <= (days + first_day - 1) {
+                // 今日的号数
+                let today = number - (first_day - 1);
                 day.insert("flag", 1);
-                day.insert("number", number - (first_day - 1));
-                if map.contains_key(&number) {
+                day.insert("number", today);
+                if map.contains_key(&today) {
                     // 本日有安排
-                    let plans = map.get(&number).unwrap().to_vec();
+                    let plans = map.get(&today).unwrap().to_vec();
                     for item in plans {
                         let mut value = rbson::Document::new();
                         value.insert("archive_time", item.archive_time);
@@ -1033,7 +1035,6 @@ impl SystemService {
                 // 输出空白
                 day.insert("flag", 0);
                 day.insert("number", 0);
-                day.insert("value", plan);
             }
             result.push(Bson::Document(day));
         }
