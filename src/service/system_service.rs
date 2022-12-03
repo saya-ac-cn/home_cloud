@@ -811,13 +811,15 @@ impl SystemService {
         };
         let mut scheduler = SCHEDULER.lock().unwrap();
         if 1 == plan_exist.cycle.unwrap() {
-            // 一次性的任务，计划提醒表(plan)按兵不动，只用归档
+            // 一次性的任务，计划提醒表(plan)数据删除，只用归档
             let write_result = PlanArchive::insert(primary_rbatis_pool!(),&plan_archive).await;
             if  write_result.is_err(){
                 error!("在归档计划提醒事项时id={}，archive_time={:?}，发生异常:{}",plan_exist.id.unwrap(),plan_exist.standard_time.clone(),write_result.unwrap_err());
             }
             // 移除这个调度任务
             scheduler.remove(*id);
+            // 计划提醒表(plan)数据删除
+            let write_result = Plan::delete_by_id_organize(primary_rbatis_pool!(),id,&user_info.organize).await;
             return Ok(0);
         }
         // 对于循环任务，需要生成下次的执行时间
