@@ -21,7 +21,7 @@ pub fn init_log() {
     }
     fast_log::init(cfg);
     if CONTEXT.config.debug == false {
-        println!("[abs_admin] release_mode is up! [file_log] open,[console_log] disabled!");
+        println!("[home_cloud] release_mode is up! [file_log] open,[console_log] disabled!");
     }
 }
 

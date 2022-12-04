@@ -21,9 +21,11 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .wrap(home_cloud::middleware::auth::Auth)
+            // 登录登出接口单独处理（因为都不在已有的分组中）
             .route("/backend/login", web::post().to(system_controller::login),)
             .route("/backend/logout", web::post().to(system_controller::logout),)
-            .service(fs::Files::new("/warehouse", "/Users/saya/warehouse"))
+            // 映射静态资源目录
+            .service(fs::Files::new("/warehouse", &CONTEXT.config.data_dir))
             .service(
                 web::scope("/backend/system")
                     .service(system_controller::token_refresh)
