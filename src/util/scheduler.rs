@@ -37,10 +37,10 @@ pub async fn do_execute_mysqldump(){
     let start_time = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S);
     // 确定要备份的路径
     let archive_date = DateUtils::now().sub(Duration::days(1));
-    let today_op = DateTimeUtil::naive_date_time_to_str(&Some(archive_date),&util::FORMAT_Y_M_D_H_M_S);
+    let today_op = DateTimeUtil::naive_date_time_to_str(&Some(archive_date),&util::FORMAT_YMD);
     let today = today_op.unwrap();
     // 数据备份的相对路径
-    let db_path = format!("/{}/db/db_dump_{}.sql",util::DOCUMENT_PATH,today);
+    let db_path = format!("/{}/db_dump_{}.sql",util::DATABASE_PATH,today);
     // 数据备份的完整路径
     let save_path = format!("{}{}", &CONTEXT.config.data_dir,db_path.clone());
     let mut command = Command::new("sh");

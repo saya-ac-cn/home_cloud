@@ -19,7 +19,7 @@ impl MailUtils {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>极客印记-邮件系统</title>
+    <title>亲亲里-邮件系统</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -56,12 +56,12 @@ impl MailUtils {
             </div>
             <div style="height: 60px;display: flex;flex-direction: column;align-items: flex-end;justify-content: center;line-height: inherit;font-family: 'Lucida Grande', Helvetica, Arial, sans-serif;font-size: 16px;color: #333;font-smooth: always;-webkit-font-smoothing: antialiased;">
                 <div style="width: 200px;display: flex;flex-direction: column;align-items: center;justify-content: center;">
-                    <div>极客印记·运营中心</div>
+                    <div>亲亲里·运营中心</div>
                     <div>${send_date}</div>
                 </div>
             </div>
             <div style="height: 150px;display: flex;flex-direction: column;align-items: center;justify-content: center;font-family: 'Geneva', Helvetica, Arial, sans-serif;font-smooth: always;-webkit-font-smoothing: antialiased;font-size: 14px;color: #888;">
-                Copyright &copy; <script>document.write(new Date().getFullYear())</script> saya.ac.cn, 极客印记 All Rights Reserved
+                Copyright &copy; <script>document.write(new Date().getFullYear())</script> saya.ac.cn, 亲亲里 All Rights Reserved
             </div>
         </div>
     </div>
@@ -75,7 +75,7 @@ impl MailUtils {
 
         let mut email_builder = Message::builder();
 
-        let email_from = format!("极客印记 <{}>",&CONTEXT.config.from_mail);
+        let email_from = format!("亲亲里 <{}>",&CONTEXT.config.from_mail);
         // 发件人
         email_builder = email_builder.from(email_from.parse().unwrap());
         // 收件人
@@ -83,7 +83,7 @@ impl MailUtils {
             email_builder = email_builder.to(format!("管理员 <{}>",item).parse().unwrap());
         }
         // 主题
-        email_builder = email_builder.subject("【极客印记】应用通知");
+        email_builder = email_builder.subject("【亲亲里】应用通知");
         // 邮件内容
         let email_message = email_builder.multipart(
             MultiPart::alternative() // This is composed of two parts.
@@ -115,7 +115,7 @@ impl MailUtils {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>极客印记-邮件系统</title>
+    <title>亲亲里-邮件系统</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -141,12 +141,12 @@ impl MailUtils {
             </div>
             <div style="height: 60px;display: flex;flex-direction: column;align-items: flex-end;justify-content: center;line-height: inherit;font-family: 'Lucida Grande', Helvetica, Arial, sans-serif;font-size: 16px;color: #333;font-smooth: always;-webkit-font-smoothing: antialiased;">
                 <div style="width: 200px;display: flex;flex-direction: column;align-items: center;justify-content: center;">
-                    <div>极客印记·运营中心</div>
+                    <div>亲亲里·运营中心</div>
                     <div>${send_date}</div>
                 </div>
             </div>
             <div style="height: 150px;display: flex;flex-direction: column;align-items: center;justify-content: center;font-family: 'Geneva', Helvetica, Arial, sans-serif;font-smooth: always;-webkit-font-smoothing: antialiased;font-size: 14px;color: #888;">
-                Copyright &copy; <script>document.write(new Date().getFullYear())</script> saya.ac.cn, 极客印记 保留所有权利。
+                Copyright &copy; <script>document.write(new Date().getFullYear())</script> saya.ac.cn, 亲亲里 保留所有权利。
             </div>
         </div>
     </div>
@@ -177,7 +177,7 @@ impl MailUtils {
             .replace("${plan_content}", content.as_str())
             .replace("${plan_title}", title.as_str());
         // 准备收发件人
-        let email_from = format!("极客印记 <{}>",&CONTEXT.config.from_mail);
+        let email_from = format!("亲亲里 <{}>",&CONTEXT.config.from_mail);
         let to_user = user.name.clone().unwrap();
         let to_add = user.email.clone().unwrap();
         let to_mail = format!("{} <{}>",to_user,to_add);
@@ -188,7 +188,7 @@ impl MailUtils {
         // 收件人
         .to(to_mail.parse().unwrap())
         // 主题
-        .subject("【极客印记】提醒事项");
+        .subject("【亲亲里】提醒事项");
         // 邮件内容
         let email_message = email_builder.multipart(
             MultiPart::alternative()
@@ -217,12 +217,12 @@ impl MailUtils {
     pub fn send_example() {
         let email = Message::builder()
             // 发件人
-            .from("极客印记 <504804540@qq.com>".parse().unwrap())
+            .from("亲亲里 <504804540@qq.com>".parse().unwrap())
             // 收件人
             .to("管理员 <saya@saya.ac.cn>".parse().unwrap())
             .to("管理员 <228476495@qq.com>".parse().unwrap())
             // 主题
-            .subject("【极客印记】系统通知")
+            .subject("【亲亲里】系统通知")
             // 邮件内容
             .body(String::from("Be happy!"))
             .unwrap();
