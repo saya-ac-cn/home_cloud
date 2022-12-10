@@ -38,6 +38,9 @@
             <if test="notes.organize != 0">
               `  b.`organize` = #{notes.organize}`
             </if>
+            <if test="notes.status != 0">
+              `  and b.status = #{notes.status}`
+            </if>
             <if test="notes.source != ''">
               `  and a.`source` = #{notes.source}`
             </if>
@@ -68,6 +71,9 @@
         <where>
             <if test="notes.organize != 0">
               `  b.`organize` = #{notes.organize}`
+            </if>
+            <if test="notes.status != 0">
+                `  and b.status = #{notes.status}`
             </if>
             <if test="notes.source != ''">
               `  and a.`source` = #{notes.source}`

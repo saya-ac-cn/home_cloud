@@ -37,7 +37,7 @@
             <if test="notebook.source != ''">
               `  and a.`source` = #{notebook.source}`
             </if>
-            <if test="notebook.status != ''">
+            <if test="notebook.status != 0">
               `  and a.status = #{notebook.status}`
             </if>
         </where>
