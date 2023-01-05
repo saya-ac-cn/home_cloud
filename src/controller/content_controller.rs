@@ -1,4 +1,3 @@
-use actix_http::body::None;
 use actix_web::{web, post, get, put, delete, Responder, HttpRequest};
 use crate::entity::dto::journal::JournalTotalDTO;
 use crate::entity::dto::memo::{MemoDTO, MemoPageDTO};
@@ -7,7 +6,6 @@ use crate::entity::dto::notebook::NoteBookDTO;
 use crate::entity::dto::notes::{NotesDTO, NotesPageDTO};
 use crate::entity::vo::{RespVO, ResultTools};
 use crate::service::CONTEXT;
-use crate::util;
 
 /// 添加动态
 #[post("/news")]
@@ -188,7 +186,10 @@ pub async fn public_page_news(req: HttpRequest,path: web::Path<u64>,arg: web::Qu
 pub async fn public_page_notes(req: HttpRequest,path:web::Path<u64>,arg: web::Query<NotesPageDTO>) -> impl Responder {
     log::info!("page_notes:{:?}", arg.clone().into_inner());
     let organize = path.into_inner();
-    let vo = CONTEXT.content_service.page_notes(&req,Some(organize),&arg.into_inner()).await;
+    let mut param = arg.into_inner().clone();
+    // 公众只能看被允许的笔记列表
+    param.status=Some(1);
+    let vo = CONTEXT.content_service.page_notes(&req,Some(organize),&param).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -197,7 +198,10 @@ pub async fn public_page_notes(req: HttpRequest,path:web::Path<u64>,arg: web::Qu
 pub async fn public_notebook_list(req: HttpRequest,path:web::Path<u64>,arg: web::Query<NoteBookDTO>) -> impl Responder {
     log::info!("notebook_list:{:?}", arg.clone().into_inner());
     let organize = path.into_inner();
-    let vo = CONTEXT.content_service.list_notebook(&req,Some(organize),&arg.into_inner()).await;
+    let mut param = arg.into_inner().clone();
+    // 公众只能看被允许的笔记簿列表
+    param.status=Some(1);
+    let vo = CONTEXT.content_service.list_notebook(&req,Some(organize),&param).await;
     return RespVO::from_result(&vo).resp_json();
 }
 

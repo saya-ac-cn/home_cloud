@@ -91,11 +91,14 @@ impl SystemService {
     pub async fn user_get_info(&self, req: &HttpRequest, user: &User) -> Result<SignInVO> {
         //去除密码，增加安全性
         let mut user = user.clone();
-        let ip = if req.peer_addr().is_some() {
-            req.peer_addr().unwrap().ip().to_string()
-        } else {
+        // 如果服务前面没有代理，应该可以从请求peer_addr()中检索到它。
+        // 否则，您可以检索请求connection_info()，并从中检索realip_remote_addr()
+        let ip = if req.connection_info().realip_remote_addr().is_some(){
             req.connection_info().realip_remote_addr().unwrap().parse().unwrap()
+        }else {
+            req.peer_addr().unwrap().ip().to_string()
         };
+
         let city = if ip.eq("127.0.0.1") || ip.eq("localhost") {
             String::from("局域网地址")
         }else {

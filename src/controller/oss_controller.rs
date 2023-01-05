@@ -80,6 +80,9 @@ pub async fn files_download(path: web::Path<u64>) -> impl Responder {
 pub async fn public_page_files(req: HttpRequest,path: web::Path<u64>,arg: web::Query<FilesPageDTO>) -> impl Responder {
     log::info!("page_files:{:?}", arg.clone().into_inner());
     let organize = path.into_inner();
-    let vo = CONTEXT.oss_service.files_page(&req,Some(organize),&arg.into_inner()).await;
+    let mut param = arg.into_inner().clone();
+    // 公众只能看被允许的文件列表
+    param.status=Some(1);
+    let vo = CONTEXT.oss_service.files_page(&req,Some(organize),&param).await;
     return RespVO::from_result(&vo).resp_json();
 }

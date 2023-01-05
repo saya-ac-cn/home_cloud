@@ -21,6 +21,7 @@ pub struct NotesPageDTO{
     pub label:Option<String>,
     pub topic:Option<String>,
     pub content:Option<String>,
+    pub status:Option<u32>,
     pub source:Option<String>,
 
     pub page_no: Option<u64>,
