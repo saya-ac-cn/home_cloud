@@ -8,18 +8,21 @@ mod oss_service;
 mod content_service;
 /// 财政金融服务
 mod financial_service;
+/// 缓存服务
+mod redis_service;
 
 use rbatis::rbatis::Rbatis;
 pub use system_service::*;
 pub use oss_service::*;
 pub use content_service::*;
 pub use financial_service::*;
+pub use redis_service::RedisService;
 
 pub use crate::config::config::ApplicationConfig;
+use crate::util::scheduler::Scheduler;
 use std::sync::Mutex;
 use lazy_static::lazy_static;
-use rbdc_mysql::driver::MysqlDriver;
-use crate::util::scheduler::Scheduler;
+
 
 // 第一种初始化方法
 // /// CONTEXT is all of the service struct
@@ -64,28 +67,32 @@ pub struct ServiceContext {
     pub system_service: SystemService,
     pub oss_service: OssService,
     pub content_service: ContentService,
-    pub financial_service: FinancialService
+    pub financial_service: FinancialService,
+    pub redis_service: RedisService,
 }
 
 impl ServiceContext {
     /// init database pool
-    pub fn init_pool(&self) {
-        async_std::task::block_on(async {
-            self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url).await
-        });
-        async_std::task::block_on(async {
-            self.init_datasource(&self.business_rbatis,&self.config.business_database_url).await;
-        });
-        async_std::task::block_on(async {
-            self.init_datasource(&self.financial_rbatis,&self.config.financial_database_url).await;
-        });
+    pub async fn init_pool(&self) {
+        // futures::executor::block_on(async {
+        //     self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await
+        // });
+        self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await;
+        self.init_datasource(&self.business_rbatis,&self.config.business_database_url,"business_pool").await;
+        self.init_datasource(&self.financial_rbatis,&self.config.financial_database_url,"financial_pool").await;
+        log::info!(
+            " - Local:   http://{}",
+            self.config.server_url.replace("0.0.0.0", "127.0.0.1")
+        );
     }
 
-    pub async fn init_datasource(&self,rbatis:&Rbatis,url:&str){
-        //连接数据库
-        println!("[home_cloud] rbatis pool init ({})...",url);
-        rbatis.init(MysqlDriver {}, url).expect("[home_cloud] rbatis pool init fail!");
-        log::info!("[home_cloud] rbatis pool init success! pool state = {:?}",rbatis.get_pool().expect("pool not init!").status());
+    pub async fn init_datasource(&self,rbatis:&Rbatis,url:&str,name:&str){
+        log::info!("[home_cloud] rbatis {} init ({})...",name,url);
+        let driver = rbdc_mysql::driver::MysqlDriver {};
+        let driver_name = format!("{:?}", driver);
+        rbatis.init(driver, url).expect(&format!("[home_cloud] rbatis {} init fail!",name));
+        rbatis.acquire().await.expect(&format!("rbatis connect database(driver={},url={}) fail", driver_name, url));
+        log::info!("[home_cloud] rbatis {} init success! pool state = {:?}",name,rbatis.get_pool().expect("pool not init!").status());
     }
 
 }
@@ -94,13 +101,14 @@ impl Default for ServiceContext {
     fn default() -> Self {
         let config = ApplicationConfig::default();
         ServiceContext {
-            primary_rbatis: crate::entity::init_rbatis(&config),
-            business_rbatis: crate::entity::init_rbatis(&config),
-            financial_rbatis: crate::entity::init_rbatis(&config),
+            primary_rbatis: crate::domain::init_rbatis(&config),
+            business_rbatis: crate::domain::init_rbatis(&config),
+            financial_rbatis: crate::domain::init_rbatis(&config),
             system_service: SystemService {},
             oss_service: OssService {},
             content_service: ContentService {},
             financial_service: FinancialService {},
+            redis_service: RedisService::new(&config.redis_url),
             config,
         }
     }

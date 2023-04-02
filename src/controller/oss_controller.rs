@@ -1,9 +1,9 @@
 use actix_multipart::Multipart;
 use actix_web::{web, get, post,put,delete, Responder, HttpRequest};
-use crate::entity::dto::files::{FilesDTO, FilesPageDTO};
-use crate::entity::dto::picture_base64::Base64PictureDTO;
-use crate::entity::dto::pictures::PicturesPageDTO;
-use crate::entity::vo::{RespVO};
+use crate::domain::dto::files::{FilesDTO, FilesPageDTO};
+use crate::domain::dto::picture_base64::Base64PictureDTO;
+use crate::domain::dto::pictures::PicturesPageDTO;
+use crate::domain::vo::{RespVO};
 use crate::service::CONTEXT;
 
 /// 上传Base64类型的图片

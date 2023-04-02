@@ -3,17 +3,17 @@ use log::{error, info};
 use crate::service::{CONTEXT, SCHEDULER};
 use chrono::{Duration, FixedOffset, Local, TimeZone};
 use cron_tab::Cron;
-use crate::dao::plan_mapper::PlanMapper;
-use crate::entity::domain::primary_database_tables::{DbDumpLog, Plan, PlanArchive, User};
-use crate::entity::dto::plan::PlanPageDTO;
+use crate::domain::mapper::plan_mapper::PlanMapper;
+use crate::domain::table::{DbDumpLog, PlanArchive, User};
+use crate::domain::dto::plan::PlanPageDTO;
 use crate::{primary_rbatis_pool, util};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::scheduler;
 use std::process::Command;
 use std::fs::File;
 use std::ops::Sub;
-use crate::dao::plan_archive_mapper::PlanArchiveMapper;
-use crate::entity::vo::plan_archive::PlanArchiveVO;
+use crate::domain::mapper::plan_archive_mapper::PlanArchiveMapper;
+use crate::domain::vo::plan_archive::PlanArchiveVO;
 use crate::util::mail_util::MailUtils;
 
 /// 调度任务 https://crates.io/crates/cron_tab
@@ -26,7 +26,7 @@ impl Default for Scheduler {
     fn default() -> Self {
         Scheduler{
             // https://www.javaroad.cn/questions/71579 东八区，必须设置，否则定时任务将到点不执行
-            scheduler:cron_tab::Cron::new(Local::from_offset(&FixedOffset::east(8))),
+            scheduler: cron_tab::Cron::new(Local::from_offset(&FixedOffset::east_opt(8*3600).unwrap())),
             plan_pool: HashMap::new()
         }
     }
@@ -44,7 +44,7 @@ pub async fn do_execute_mysqldump(){
     // 数据备份的完整路径
     let save_path = format!("{}{}", &CONTEXT.config.data_dir,db_path.clone());
     let mut command = Command::new("sh");
-    command.arg("-c").arg(&CONTEXT.config.mysqldump);
+    // TODO command.arg("-c").arg(&CONTEXT.config.mysqldump);
     command.stdout(File::create(save_path).unwrap());
     let code = command.status().unwrap().code();
     let end_time = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S);
@@ -141,19 +141,31 @@ pub async fn do_plan_notice(date:String) {
         let edit_plan_result = PlanMapper::update_plan(&mut tx, &plan).await;
         if edit_plan_result.is_err() {
             error!("在修改id={}的计划提醒时，发生异常:{}",plan.id.as_ref().unwrap(),edit_plan_result.unwrap_err());
-            tx.rollback();
-            continue;
+            let check = tx.rollback().await;
+            if check.is_ok() {
+                continue;
+            }else {
+                return;
+            }
         }
 
         // 预写入任务归档数据
         let add_plan_archive_result = PlanArchive::insert(&mut tx,&plan_archive).await;
         if add_plan_archive_result.is_err() {
             error!("在归档计划提醒时，发生异常:{}",add_plan_archive_result.unwrap_err());
-            tx.rollback();
-            continue;
+            let check = tx.rollback().await;
+            if check.is_ok() {
+                continue;
+            }else {
+                return;
+            }
         }
         // 所有的写入都成功，最后正式提交
-        tx.commit().await;
+        let check = tx.commit().await;
+        if check.is_err() {
+            error!("在归档计划提醒时，发生异常:{}",check.unwrap_err());
+            return;
+        }
         // 生成定时cron表达式
         let cron_tab = DateUtils::data_time_to_cron(&standard_time.clone());
         scheduler.remove(plan.id.unwrap());
@@ -226,27 +238,28 @@ impl Scheduler {
 
     /// 调度任务的初始化
     pub async fn start() {
-        // 查询现存所有活跃的提醒计划
-        let plan_result= Plan::select_all(primary_rbatis_pool!()).await;
         let mut poll = SCHEDULER.lock().unwrap();
         // 添加一个未完成计划的定时任务
-        poll.scheduler.add_fn("0 0 2 * * ?",scheduler::undone_plan_notice);
+        //poll.scheduler.add_fn("0 31 21 * * ?",scheduler::undone_plan_notice);
+        //poll.scheduler.add_fn("0 */1 * * * ?",scheduler::undone_plan_notice);
         // 添加一个备份数据库的定时任务
-        poll.scheduler.add_fn("0 0 3 * * ?",scheduler::execute_mysqldump);
-        if plan_result.is_ok(){
-            let plans:Vec<Plan> = plan_result.unwrap();
-            for plan in plans {
-                let standard_time_result = chrono::NaiveDateTime::parse_from_str(plan.standard_time.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
-                if standard_time_result.is_err() {
-                    error!("格式化日期发生异常:{}",standard_time_result.unwrap_err());
-                    return;
-                }
-                let standard_time = standard_time_result.unwrap();
-
-                let cron_tab = DateUtils::data_time_to_cron(&standard_time);
-                poll.add(plan.id.unwrap(),cron_tab.as_str());
-            }
-        }
+        // poll.scheduler.add_fn("0 0 3 * * ?",scheduler::execute_mysqldump);
+        // // 查询现存所有活跃的提醒计划
+        // let plan_result= Plan::select_all(primary_rbatis_pool!()).await;
+        // if plan_result.is_ok(){
+        //     let plans:Vec<Plan> = plan_result.unwrap();
+        //     for plan in plans {
+        //         let standard_time_result = chrono::NaiveDateTime::parse_from_str(plan.standard_time.clone().unwrap().as_str(),&util::FORMAT_Y_M_D_H_M_S);
+        //         if standard_time_result.is_err() {
+        //             error!("格式化日期发生异常:{}",standard_time_result.unwrap_err());
+        //             return;
+        //         }
+        //         let standard_time = standard_time_result.unwrap();
+        //
+        //         let cron_tab = DateUtils::data_time_to_cron(&standard_time);
+        //         poll.add(plan.id.unwrap(),cron_tab.as_str());
+        //     }
+        // }
         poll.scheduler.start();
         // sleep 2 second
         info!(" - cron pool init finish!");

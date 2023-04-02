@@ -3,7 +3,7 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 use std::string::String;
 use lettre::message::{header, MultiPart, SinglePart};
-use crate::entity::domain::primary_database_tables::User;
+use crate::domain::table::User;
 use crate::service::CONTEXT;
 use crate::util;
 use crate::util::date_time::{DateTimeUtil, DateUtils};

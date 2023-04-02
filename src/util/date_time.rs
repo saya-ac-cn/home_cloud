@@ -123,7 +123,8 @@ impl DateUtils {
         // 世界时间
         let utc = chrono::Utc::now();
         // 东8区
-        let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        //let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        let east8:chrono::FixedOffset = chrono::FixedOffset::east_opt(8 * 3600).unwrap();
         utc.with_timezone(&east8)
     }
 
@@ -132,7 +133,7 @@ impl DateUtils {
         // 世界时间
         let utc = chrono::Utc::now();
         // 东8区
-        let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        let east8:chrono::FixedOffset = chrono::FixedOffset::east_opt(8 * 3600).unwrap();
         utc.with_timezone(&east8)
     }
 }

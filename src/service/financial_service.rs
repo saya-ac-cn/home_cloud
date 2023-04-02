@@ -6,28 +6,26 @@ use chrono::{Datelike};
 use log::error;
 use rust_decimal::{Decimal, RoundingStrategy};
 use rust_decimal::prelude::{ToPrimitive, Zero};
-use crate::dao::general_journal_mapper::GeneralJournalMapper;
-use crate::dao::journal_mapper::JournalMapper;
-use crate::dao::log_mapper::LogMapper;
-use crate::entity::domain::financial_database_tables::{Abstracts, GeneralJournal, Journal, Monetary, PaymentMeans};
-use crate::entity::dto::general_journal::GeneralJournalDTO;
-use crate::entity::dto::journal::{JournalDTO, JournalPageDTO};
-use crate::entity::dto::page::ExtendPageDTO;
-use crate::entity::vo::abstracts::AbstractsVO;
-use crate::entity::vo::general_journal::{GeneralJournalCollectVO, GeneralJournalVO};
-use crate::entity::vo::journal::JournalVO;
-use crate::entity::vo::jwt::JWTToken;
-use crate::entity::vo::monetary::MonetaryVO;
-use crate::entity::vo::payment_means::PaymentMeansVO;
-use crate::error::Result;
-use crate::error::Error;
+use crate::domain::mapper::general_journal_mapper::GeneralJournalMapper;
+use crate::domain::mapper::journal_mapper::JournalMapper;
+use crate::domain::mapper::log_mapper::LogMapper;
+use crate::domain::table::{Abstracts, GeneralJournal, Journal, Monetary, PaymentMeans};
+use crate::domain::dto::general_journal::GeneralJournalDTO;
+use crate::domain::dto::journal::{JournalDTO, JournalPageDTO};
+use crate::domain::dto::page::ExtendPageDTO;
+use crate::domain::vo::abstracts::AbstractsVO;
+use crate::domain::vo::general_journal::{GeneralJournalCollectVO, GeneralJournalVO};
+use crate::domain::vo::journal::JournalVO;
+use crate::domain::vo::monetary::MonetaryVO;
+use crate::domain::vo::payment_means::PaymentMeansVO;
+use crate::domain::vo::total_pre_6_financial_month::TotalPre6MonthFinancialVO;
+use crate::util::error::{Result,Error};
 use crate::{financial_rbatis_pool, primary_rbatis_pool, util};
 use crate::util::Page;
 extern crate simple_excel_writer as excel;
-
+use crate::domain::vo::user_context::UserContext;
 use excel::*;
-use rbson::Bson;
-use crate::entity::vo::total_pre_6_financial_month::TotalPre6MonthFinancialVO;
+use serde_json::{json, Map, Value};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 
 /// 财政服务
@@ -39,15 +37,15 @@ impl FinancialService {
     pub async fn add_journal(&self, req: &HttpRequest,arg: &JournalDTO) -> Result<u64> {
         let check_flag = arg.monetary_id.is_none() || arg.means_id.is_none() || arg.abstract_id.is_none() || arg.details.is_none() || arg.archive_date.is_none();
         if check_flag{
-            return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER_CODE)));
         }
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 总收入
         let mut income:Decimal = Decimal::from(0);
         // 总支出
         let mut outlay:Decimal = Decimal::from(0);
         // 从流水明细中，计算总收入 & 总支出
-        let general_journal = arg.details.clone().ok_or_else(|| Error::from(("流水明细不能为空",util::NOT_CHECKING)))?;
+        let general_journal = arg.details.clone().ok_or_else(|| Error::from(("流水明细不能为空",util::NOT_PARAMETER_CODE)))?;
         for info in general_journal {
             let flag = info.flag.unwrap();
             let amount = info.amount.unwrap();
@@ -58,7 +56,7 @@ impl FinancialService {
                 // 支出
                 outlay = outlay.add(amount);
             } else {
-                return Err(Error::from(("未知的收支类型!",util::CODE_FAIL)));
+                return Err(Error::from(("未知的收支类型!",util::FAIL_CODE)));
             }
         }
         // 当日总收支（存入+支取）
@@ -85,7 +83,7 @@ impl FinancialService {
         let add_journal_result = Journal::insert(&mut tx,&journal).await;
         if add_journal_result.is_err() {
             error!("在保存流水时，发生异常:{}",add_journal_result.unwrap_err());
-            tx.rollback();
+            tx.rollback().await;
             return Err(Error::from("保存流水失败"));
         }
         let journal_id = add_journal_result.unwrap().last_insert_id.as_u64();
@@ -104,12 +102,12 @@ impl FinancialService {
         let add_general_journal_result = GeneralJournal::insert_batch(&mut tx, &details, details.len() as u64).await;
         if add_general_journal_result.is_err() {
             error!("在保存流水时，发生异常:{}",add_general_journal_result.unwrap_err());
-            tx.rollback();
+            tx.rollback().await;
             return Err(Error::from("保存流水失败"));
         }
         // 所有的写入都成功，最后正式提交
         tx.commit().await;
-        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX025")).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX025")).await;
         return Ok(add_general_journal_result?.rows_affected);
     }
 
@@ -117,16 +115,16 @@ impl FinancialService {
     pub async fn edit_journal(&self, req: &HttpRequest,arg: &JournalDTO) -> Result<u64> {
         let check_flag = arg.id.is_none() || arg.monetary_id.is_none() || arg.means_id.is_none() || arg.abstract_id.is_none() || arg.archive_date.is_none();
         if check_flag{
-            return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER_CODE)));
         }
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let query_journal_wrap = Journal::select_by_id_organize(financial_rbatis_pool!(),  &arg.id.clone().unwrap(),&user_info.organize).await;
         if query_journal_wrap.is_err() {
             error!("查询流水异常：{}",query_journal_wrap.unwrap_err());
             return Err(Error::from("查询流水失败!"));
         }
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
-        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
+        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST_CODE)))?;
         // 历史数据不允许操作
         let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
@@ -134,7 +132,7 @@ impl FinancialService {
             return Err(Error::from("非法的日期格式"));
         }
         let archive_date = archive_date_result.unwrap();
-        let current = DateUtils::now().date();
+        let current = DateUtils::now().date_naive();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -158,13 +156,13 @@ impl FinancialService {
             error!("在修改id={}的流水时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("流水修改失败"));
         }
-        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX026")).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX026")).await;
         return Ok(result?.rows_affected);
     }
 
     /// 级联删除流水（主+子）
     pub async fn delete_journal(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 只能删除自己组织机构下的数据
         let query_journal_wrap = Journal::select_by_id_organize(financial_rbatis_pool!(),  &id,&user_info.organize).await;
         if query_journal_wrap.is_err() {
@@ -172,7 +170,7 @@ impl FinancialService {
             return Err(Error::from("查询流水失败!"));
         }
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
-        let journal = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", id),util::NOT_EXIST)))?;
+        let journal = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", id),util::NOT_EXIST_CODE)))?;
         // 历史数据不允许操作
         let archive_date_result = chrono::NaiveDate::parse_from_str(journal.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
@@ -180,7 +178,7 @@ impl FinancialService {
             return Err(Error::from("非法的日期格式"));
         }
         let archive_date = archive_date_result.unwrap();
-        let current = DateUtils::now().date();
+        let current = DateUtils::now().date_naive();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许删除本月的流水，历史流水已归档，不允许操作"));
         }
@@ -189,7 +187,7 @@ impl FinancialService {
             error!("删除流水时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除流水失败!"));
         }
-        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX026")).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX026")).await;
         return Ok(write_result?.rows_affected);
     }
 
@@ -197,9 +195,9 @@ impl FinancialService {
     pub async fn add_general_journal(&self, req: &HttpRequest,arg: &GeneralJournalDTO) -> Result<u64>{
         let check_flag = arg.journal_id.is_none() || arg.flag.is_none() || arg.flag.as_ref().unwrap().is_empty() ||arg.amount.is_none() || arg.remarks.is_none() || arg.remarks.as_ref().unwrap().is_empty();
         if check_flag{
-            return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER_CODE)));
         }
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 找到流水记录
         let query_journal_wrap = Journal::select_by_id_organize(financial_rbatis_pool!(),  &arg.journal_id.clone().unwrap(),&user_info.organize).await;
         if query_journal_wrap.is_err() {
@@ -207,7 +205,7 @@ impl FinancialService {
             return Err(Error::from("查询流水失败!"));
         }
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
-        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
+        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST_CODE)))?;
         // 历史数据不允许操作
         let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
@@ -215,7 +213,7 @@ impl FinancialService {
             return Err(Error::from("非法的日期格式"));
         }
         let archive_date = archive_date_result.unwrap();
-        let current = DateUtils::now().date();
+        let current = DateUtils::now().date_naive();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -231,7 +229,7 @@ impl FinancialService {
             // 支出
             outlay = outlay.add(amount);
         } else {
-            return Err(Error::from(("未知的收支类型!",util::CODE_FAIL)));
+            return Err(Error::from(("未知的收支类型!",util::FAIL_CODE)));
         }
         let mut total = Decimal::from(0);
         total = total.add(income.clone());
@@ -257,7 +255,7 @@ impl FinancialService {
         let edit_journal_result = JournalMapper::update_journal(&mut tx, &journal).await;
         if edit_journal_result.is_err() {
             error!("在修改id={}的流水时，发生异常:{}",arg.id.as_ref().unwrap(),edit_journal_result.unwrap_err());
-            tx.rollback();
+            tx.rollback().await;
             return Err(Error::from("流水修改失败"));
         }
         let general_journal = GeneralJournal{
@@ -271,12 +269,12 @@ impl FinancialService {
         let add_general_journal_result = GeneralJournal::insert(&mut tx,&general_journal).await;
         if add_general_journal_result.is_err() {
             error!("在保存流水时，发生异常:{}",add_general_journal_result.unwrap_err());
-            tx.rollback();
+            tx.rollback().await;
             return Err(Error::from("保存流水失败"));
         }
         // 所有的写入都成功，最后正式提交
         tx.commit().await;
-        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX028")).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX028")).await;
         return Ok(edit_journal_result?.rows_affected);
     }
 
@@ -284,9 +282,9 @@ impl FinancialService {
     pub async fn edit_general_journal(&self, req: &HttpRequest,arg: &GeneralJournalDTO) -> Result<u64>{
         let check_flag = arg.id.is_none() || arg.journal_id.is_none() || arg.flag.is_none() || arg.flag.as_ref().unwrap().is_empty() || arg.amount.is_none() || arg.remarks.is_none() || arg.remarks.as_ref().unwrap().is_empty();
         if check_flag{
-            return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER_CODE)));
         }
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 找出流水记录
         let query_journal_wrap = Journal::select_by_id_organize(financial_rbatis_pool!(),  &arg.journal_id.clone().unwrap(),&user_info.organize).await;
         if query_journal_wrap.is_err() {
@@ -294,7 +292,7 @@ impl FinancialService {
             return Err(Error::from("查询流水失败!"));
         }
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
-        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
+        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST_CODE)))?;
         // 历史数据不允许操作
         let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
@@ -302,18 +300,18 @@ impl FinancialService {
             return Err(Error::from("非法的日期格式"));
         }
         let archive_date = archive_date_result.unwrap();
-        let current = DateUtils::now().date();
+        let current = DateUtils::now().date_naive();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
         // 找到修改前的流水明细
-        let query_general_journal_wrap = GeneralJournal::select_by_column(financial_rbatis_pool!(),  GeneralJournal::id(), &arg.id).await;
+        let query_general_journal_wrap = GeneralJournal::select_by_column(financial_rbatis_pool!(),  "id", &arg.id).await;
         if query_general_journal_wrap.is_err() {
             error!("查询流水明细异常：{}",query_general_journal_wrap.unwrap_err());
             return Err(Error::from("查询流水明细失败!"));
         }
         let general_journal_option: Option<GeneralJournal> = query_general_journal_wrap.unwrap().into_iter().next();
-        let general_journal_exist = general_journal_option.ok_or_else(|| Error::from((format!("id={} 的流水明细不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST)))?;
+        let general_journal_exist = general_journal_option.ok_or_else(|| Error::from((format!("id={} 的流水明细不存在!", &arg.id.clone().unwrap()),util::NOT_EXIST_CODE)))?;
         // 把原来的流水金额 减去 要修改的流水明细金额
         let mut income = journal_exist.income.unwrap();
         let mut outlay = journal_exist.outlay.unwrap();
@@ -324,7 +322,7 @@ impl FinancialService {
         } else if "2" == last_version_flag{
             outlay = outlay.sub(last_version_amount);
         } else {
-            return Err(Error::from(("未知的收支类型!",util::CODE_FAIL)));
+            return Err(Error::from(("未知的收支类型!",util::FAIL_CODE)));
         }
         // 把核减后的流水金额 加上 本次修改后的金额
         let current_version_flag = arg.flag.clone().unwrap();
@@ -334,7 +332,7 @@ impl FinancialService {
         } else if "2" == current_version_flag{
             outlay = outlay.add(current_version_amount);
         } else {
-            return Err(Error::from(("未知的收支类型!",util::CODE_FAIL)));
+            return Err(Error::from(("未知的收支类型!",util::FAIL_CODE)));
         }
         // 把最终的收支进行一次汇总
         let mut total = Decimal::from(0);
@@ -361,7 +359,7 @@ impl FinancialService {
         let edit_journal_result = JournalMapper::update_journal(&mut tx, &journal).await;
         if edit_journal_result.is_err() {
             error!("在修改id={}的流水时，发生异常:{}",arg.journal_id.as_ref().unwrap(),edit_journal_result.unwrap_err());
-            tx.rollback();
+            tx.rollback().await;
             return Err(Error::from("流水修改失败"));
         }
         // 修改流水明细
@@ -375,34 +373,34 @@ impl FinancialService {
         let edit_general_journal_result = GeneralJournalMapper::update_general_journal(&mut tx, &general_journal).await;
         if edit_general_journal_result.is_err() {
             error!("在修改id={}的流水明细时，发生异常:{}",arg.id.as_ref().unwrap(),edit_general_journal_result.unwrap_err());
-            tx.rollback();
+            tx.rollback().await;
             return Err(Error::from("流水明细修改失败"));
         }
         // 所有的写入都成功，最后正式提交
         tx.commit().await;
-        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX029")).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX029")).await;
         return Ok(edit_general_journal_result?.rows_affected);
     }
 
     /// 删除流水明细
     pub async fn delete_general_journal(&self, req: &HttpRequest,id: &u64) -> Result<u64>{
         // 找出流水明细
-        let query_general_journal_wrap = GeneralJournal::select_by_column(financial_rbatis_pool!(),  GeneralJournal::id(), &id).await;
+        let query_general_journal_wrap = GeneralJournal::select_by_column(financial_rbatis_pool!(),  "id", &id).await;
         if query_general_journal_wrap.is_err() {
             error!("查询流水明细异常：{}",query_general_journal_wrap.unwrap_err());
             return Err(Error::from("查询流水明细失败!"));
         }
         let general_journal_option: Option<GeneralJournal> = query_general_journal_wrap.unwrap().into_iter().next();
-        let general_journal_exist = general_journal_option.ok_or_else(|| Error::from((format!("id={} 的流水明细不存在!", id),util::NOT_EXIST)))?;
+        let general_journal_exist = general_journal_option.ok_or_else(|| Error::from((format!("id={} 的流水明细不存在!", id),util::NOT_EXIST_CODE)))?;
         // 找出关联的流水
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let query_journal_wrap = Journal::select_by_id_organize(financial_rbatis_pool!(),  &general_journal_exist.journal_id.clone().unwrap(),&user_info.organize).await;
         if query_journal_wrap.is_err() {
             error!("查询流水异常：{}",query_journal_wrap.unwrap_err());
             return Err(Error::from("查询流水失败!"));
         }
         let journal_option: Option<Journal> = query_journal_wrap.unwrap().into_iter().next();
-        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &general_journal_exist.journal_id.unwrap()),util::NOT_EXIST)))?;
+        let journal_exist = journal_option.ok_or_else(|| Error::from((format!("id={} 的流水不存在!", &general_journal_exist.journal_id.unwrap()),util::NOT_EXIST_CODE)))?;
         // 历史数据不允许操作
         let archive_date_result = chrono::NaiveDate::parse_from_str(journal_exist.archive_date.clone().unwrap().as_str(),&util::FORMAT_Y_M_D);
         if archive_date_result.is_err() {
@@ -410,7 +408,7 @@ impl FinancialService {
             return Err(Error::from("非法的日期格式"));
         }
         let archive_date = archive_date_result.unwrap();
-        let current = DateUtils::now().date();
+        let current = DateUtils::now().date_naive();
         if current.year() != archive_date.year() || current.month() != archive_date.month(){
             return Err(Error::from("只允许修改本月的流水，历史流水已归档，不允许操作"));
         }
@@ -427,7 +425,7 @@ impl FinancialService {
             } else if "2" == last_version_flag{
                 outlay = outlay.sub(last_version_amount);
             } else {
-                return Err(Error::from(("未知的收支类型!",util::CODE_FAIL)));
+                return Err(Error::from(("未知的收支类型!",util::FAIL_CODE)));
             }
             // 重新计算一下流水的总金额
             // 把最终的收支进行一次汇总
@@ -440,7 +438,7 @@ impl FinancialService {
             let delete_general_journal_result =  GeneralJournalMapper::delete_general_journal(&mut tx, id).await;
             if delete_general_journal_result.is_err() {
                 error!("在删除流水明细时，发生异常:{}",delete_general_journal_result.unwrap_err());
-                tx.rollback();
+                tx.rollback().await;
                 return Err(Error::from("删除流水明细失败"));
             }
             // 修改流水
@@ -463,7 +461,7 @@ impl FinancialService {
             let edit_journal_result = JournalMapper::update_journal(&mut tx, &journal).await;
             if edit_journal_result.is_err() {
                 error!("在修改id={}的流水时，发生异常:{}",journal_exist.id.unwrap(),edit_journal_result.unwrap_err());
-                tx.rollback();
+                tx.rollback().await;
                 return Err(Error::from("流水修改失败"));
             }
             // 所有的写入都成功，最后正式提交
@@ -476,7 +474,7 @@ impl FinancialService {
                 return Err(Error::from("删除流水失败!"));
             }
         }
-        LogMapper::record_log_by_jwt(primary_rbatis_pool!(),&user_info,String::from("OX030")).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX030")).await;
         Ok(1)
     }
 
@@ -485,11 +483,11 @@ impl FinancialService {
         let query_wrap_result = Monetary::select_all(financial_rbatis_pool!()).await;
         if query_wrap_result.is_err() {
             error!("在查询货币列表时，发生异常:{}",query_wrap_result.unwrap_err());
-            return Err(Error::from(("货币列表查询失败",util::CODE_FAIL)));
+            return Err(Error::from(("货币列表查询失败",util::FAIL_CODE)));
         }
         let query_result: Vec<Monetary> = query_wrap_result.unwrap();
         if query_result.is_empty() {
-            return Err(Error::from(("货币数据不存在",util::NOT_EXIST)));
+            return Err(Error::from(("货币数据不存在",util::NOT_EXIST_CODE)));
         }
         let mut result:Vec<MonetaryVO> = Vec::new();
         for item in query_result {
@@ -503,11 +501,11 @@ impl FinancialService {
         let query_wrap_result = Abstracts::select_all(financial_rbatis_pool!()).await;
         if query_wrap_result.is_err() {
             error!("在查询摘要时，发生异常:{}",query_wrap_result.unwrap_err());
-            return Err(Error::from(("摘要查询失败",util::CODE_FAIL)));
+            return Err(Error::from(("摘要查询失败",util::FAIL_CODE)));
         }
         let query_result: Vec<Abstracts> = query_wrap_result.unwrap();
         if query_result.is_empty() {
-            return Err(Error::from(("摘要数据不存在",util::NOT_EXIST)));
+            return Err(Error::from(("摘要数据不存在",util::NOT_EXIST_CODE)));
         }
         let mut result:Vec<AbstractsVO> = Vec::new();
         for item in query_result {
@@ -521,11 +519,11 @@ impl FinancialService {
         let query_wrap_result = PaymentMeans::select_all(financial_rbatis_pool!()).await;
         if query_wrap_result.is_err() {
             error!("在查询收支方式时，发生异常:{}",query_wrap_result.unwrap_err());
-            return Err(Error::from(("收支方式查询失败",util::CODE_FAIL)));
+            return Err(Error::from(("收支方式查询失败",util::FAIL_CODE)));
         }
         let query_result : Vec<PaymentMeans> = query_wrap_result.unwrap();
         if query_result.is_empty() {
-            return Err(Error::from(("摘要数据不存在",util::NOT_EXIST)));
+            return Err(Error::from(("摘要数据不存在",util::NOT_EXIST_CODE)));
         }
         let mut result:Vec<PaymentMeansVO> = Vec::new();
         for item in query_result {
@@ -542,7 +540,7 @@ impl FinancialService {
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -554,7 +552,7 @@ impl FinancialService {
         }
         let total_row = count_result.unwrap().unwrap();
         if total_row <= 0 {
-            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST_CODE)));
         }
         let mut result = Page::<JournalVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
@@ -578,7 +576,7 @@ impl FinancialService {
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -601,7 +599,13 @@ impl FinancialService {
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_info_wrap = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE));
+        if user_info_wrap.is_err() {
+            error!("在导出流水数据时，发生异常:{}",user_info_wrap.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let user_info = user_info_wrap.unwrap();
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -669,7 +673,13 @@ impl FinancialService {
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_info_wrap = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE));
+        if user_info_wrap.is_err() {
+            error!("在导出流水明细时，发生异常:{}",user_info_wrap.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let user_info = user_info_wrap.unwrap();
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -787,7 +797,7 @@ impl FinancialService {
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).ok_or_else(|| Error::from(("获取用户信息失败，请登录",util::NOT_CHECKING)))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -799,7 +809,7 @@ impl FinancialService {
         }
         let total_row = count_result.unwrap().unwrap();
         if total_row <= 0 {
-            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST)));
+            return Err(Error::from(("未查询到符合条件的数据",util::NOT_EXIST_CODE)));
         }
         let mut result = Page::<JournalVO>::page_query( total_row, &extend);
         // 重新设置limit起始位置
@@ -824,7 +834,13 @@ impl FinancialService {
             begin_time:param.begin_time.clone(),
             end_time:param.end_time.clone()
         };
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_info_wrap = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE));
+        if user_info_wrap.is_err() {
+            error!("在导出流水明细汇总时，发生异常:{}",user_info_wrap.unwrap_err());
+            response.status(StatusCode::INTERNAL_SERVER_ERROR);
+            return response.finish()
+        }
+        let user_info = user_info_wrap.unwrap();
         let mut arg= param.clone();
         // 用户只能看到自己组织下的数据
         arg.organize = Some(user_info.organize);
@@ -928,14 +944,14 @@ impl FinancialService {
     }
 
     /// 计算收支增长率
-    pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
+    pub async fn compute_account_growth_rate(&self, req: &HttpRequest,month:&String) ->Result<Value> {
         let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
-            return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER)));
+            return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER_CODE)));
         }
         let user_month = user_month_wrap.unwrap();
         // 判断是否为当前月
-        let current_month = DateUtils::now().date();
+        let current_month = DateUtils::now().date_naive();
         // 总天数，计算日均用
         let days = if current_month.year() == user_month.year() && current_month.month() == user_month.month(){
             // 当前月只计算 已经过去的天数
@@ -948,7 +964,7 @@ impl FinancialService {
         let last_month = DateUtils::month_compute(&user_month,-1);
         // 得到去年同期这个月的时间
         let last_year = DateUtils::month_compute(&user_month,-12);
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 本月（用户请求的月份）的统计
         let _current_month_wrap = JournalMapper::total_balance(financial_rbatis_pool!(), &user_info.organize,&user_month).await;
         if _current_month_wrap.is_err(){
@@ -996,20 +1012,20 @@ impl FinancialService {
             y2y = (_current_month_total.sub(_last_year_total)).div(_last_year_total);
             y2y = y2y.mul(Decimal::from(100));
         }
-        let mut result:HashMap<&str,Decimal> = HashMap::new();
-        result.insert("account",_current_month_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
-        result.insert("avg",current_avg_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
-        result.insert("m2m",m2m.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
-        result.insert("y2y",y2y.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
-        Ok(result)
+        let mut result:Map<String,Value> = Map::new();
+        result.insert(String::from("account"),json!(_current_month_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero)));
+        result.insert(String::from("avg"),json!(current_avg_total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero)));
+        result.insert(String::from("m2m"),json!(m2m.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero)));
+        result.insert(String::from("y2y"),json!(y2y.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero)));
+        Ok(json!(result))
     }
 
     /// 计算指定月份的收入比重
-    pub async fn compute_income_percentage(&self, req: &HttpRequest,month:&String) ->Result<HashMap<&str,Decimal>> {
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+    pub async fn compute_income_percentage(&self, req: &HttpRequest,month:&String) ->Result<Value> {
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
-            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
+            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER_CODE)));
         }
         let user_month = user_month_wrap.unwrap();
         // 本月（用户请求的月份）的统计
@@ -1022,25 +1038,25 @@ impl FinancialService {
 
         let income = _current_month_row.income.unwrap_or(Decimal::zero());
         let total = _current_month_row.total.unwrap_or(Decimal::zero());
-        let mut result:HashMap<&str,Decimal> = HashMap::new();
+        let mut result:Map<String,Value> = Map::new();
         if total.is_zero() {
-            result.insert("percentage",total);
+            result.insert(String::from("percentage"),json!(total));
         }else {
-            result.insert("percentage",income.div(total).round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
+            result.insert(String::from("percentage"),json!(income.div(total).round_dp_with_strategy(2,RoundingStrategy::AwayFromZero)));
         }
-        result.insert("account",total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero));
-        Ok(result)
+        result.insert(String::from("account"),json!(total.round_dp_with_strategy(2,RoundingStrategy::AwayFromZero)));
+        Ok(json!(result))
     }
 
     /// 计算指定月份中各摘要的排名
     pub async fn order_month_journal(&self, req: &HttpRequest,month:&String) ->Result<Vec<JournalVO>> {
         let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
-            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER)));
+            return Err(Error::from(("统计月份不能为空!", util::NOT_PARAMETER_CODE)));
         }
         let user_month = user_month_wrap.unwrap();
         // 按月查询统计账单并排序
-        let user_info= JWTToken::extract_user_by_request(req).unwrap();
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let bill_wrap = JournalMapper::bill_rank(financial_rbatis_pool!(), &user_info.organize,&user_month).await;
         if bill_wrap.is_err(){
             error!("在统计指定月份中各摘要的排名时，发生异常:{}",bill_wrap.unwrap_err());
@@ -1053,10 +1069,9 @@ impl FinancialService {
     /// 计算近6个月的财务流水
     pub async fn compute_pre6_journal(&self, req: &HttpRequest,month:&String) ->Result<Vec<TotalPre6MonthFinancialVO>> {
         // 按月查询统计账单并排序
-        let user_info = JWTToken::extract_user_by_request(req).unwrap();
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let query_sql = format!("call count_pre6_journal({}, '{}')", &user_info.organize,month);
-        let param:Vec<Bson> = Vec::new();
-        let compute_result_warp = financial_rbatis_pool!().fetch_decode::<Vec<TotalPre6MonthFinancialVO>>(query_sql.as_str(), vec![]).await;
+        let compute_result_warp = financial_rbatis_pool!().query_decode::<Vec<TotalPre6MonthFinancialVO>>(query_sql.as_str(), vec![]).await;
         if compute_result_warp.is_err(){
             error!("在统计近6个月的财务流水时，发生异常:{}",compute_result_warp.unwrap_err());
             return Err(Error::from("统计近6个月的财务流水异常"));
