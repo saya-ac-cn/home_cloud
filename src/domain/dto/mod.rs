@@ -16,14 +16,3 @@ pub mod plan;
 pub mod plan_archive;
 pub mod db_dump_log;
 use serde::{Deserialize, Serialize};
-
-
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct EmptyDTO {}
-
-/// IdDTO
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct IdDTO {
-    pub id: Option<String>,
-}

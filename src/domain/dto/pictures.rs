@@ -2,16 +2,28 @@ use serde::{Deserialize, Serialize};
 /// 图片数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PicturesDTO {
+    /// 主键id
     pub id:Option<u64>,
+    /// 所属分类
     pub category:Option<u32>,
+    /// 文件名
     pub file_name:Option<String>,
+    /// 描述
     pub descript:Option<String>,
+    /// 服务器上存储路径
     pub file_url:Option<String>,
+    /// 对外访问相对路径
     pub web_url:Option<String>,
+    /// 所属组织
     pub organize:Option<u64>,
+    /// 所属用户
     pub source:Option<String>,
+    /// 创建时间
     pub create_time:Option<String>,
+    /// 修改时间
     pub update_time:Option<String>,
+    /// 会话token
+    pub token: Option<String>,
 }
 
 /// 图片分页数据传输层

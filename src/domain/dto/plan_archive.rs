@@ -2,16 +2,28 @@ use serde::{Deserialize, Serialize};
 /// 任务归档数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PlanArchiveDTO {
+    /// 主键id
     pub id:Option<u64>,
+    /// 标题
     pub title:Option<String>,
+    /// 正文
     pub content:Option<String>,
+    /// 状态
     pub status:Option<u32>,
+    /// 归属执行时间
     pub archive_time:Option<String>,
+    /// 归属组织
     pub organize:Option<u64>,
+    /// 归属用户
     pub user:Option<String>,
+    /// 是否对外呈现
     pub display:Option<u32>,
+    /// 创建时间
     pub create_time: Option<String>,
+    /// 修改时间
     pub update_time: Option<String>,
+    /// 会话token
+    pub token: Option<String>,
 }
 
 /// 任务归档分页数据传输层

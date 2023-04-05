@@ -1,14 +1,23 @@
 use serde::{Deserialize, Serialize};
 /// 便笺数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct MemoDTO {
+pub struct MemoDTO{
+    /// 主键id
     pub id:Option<u64>,
+    /// 所属组织
     pub organize:Option<u64>,
+    /// 所属用户
     pub source:Option<String>,
+    /// 标题
     pub title:Option<String>,
+    /// 正文
     pub content:Option<String>,
+    /// 创建时间
     pub create_time:Option<String>,
+    /// 修改时间
     pub update_time:Option<String>,
+    /// 会话token
+    pub token: Option<String>,
 }
 
 /// 便笺分页数据传输层

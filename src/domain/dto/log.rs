@@ -1,13 +1,20 @@
 use serde::{Deserialize, Serialize};
 /// 通用日志数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LogDTO {
+pub struct LogDTO{
+    /// 主键id
     pub id:Option<u64>,
+    /// 所属组织
     pub organize: Option<u64>,
+    /// 所属用户
     pub user:Option<String>,
+    /// 日志类型
     pub category:Option<String>,
+    /// 所在ip
     pub ip:Option<String>,
+    /// 所在城市
     pub city:Option<String>,
+    /// 操作日期
     pub date:Option<String>,
 }
 

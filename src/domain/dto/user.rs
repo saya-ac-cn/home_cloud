@@ -35,6 +35,7 @@ pub struct UserDTO {
     pub create_time: Option<String>,
     /// 修改时间
     pub update_time: Option<String>,
+    /// 会话token
     pub token: Option<String>,
 }
 

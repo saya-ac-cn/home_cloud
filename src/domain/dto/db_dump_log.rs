@@ -2,9 +2,13 @@ use serde::{Deserialize, Serialize};
 /// 通用数据库备份日志数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DbDumpLogDTO {
+    /// 主键id
     pub id:Option<u64>,
+    /// 本地存储位置
     pub url:Option<String>,
+    /// 归档时间
     pub archive_date:Option<String>,
+    /// 执行时间
     pub execute_data: Option<String>,
 }
 
