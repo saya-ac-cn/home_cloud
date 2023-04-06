@@ -12,6 +12,8 @@ pub struct NoteBookDTO {
     pub source:Option<String>,
     /// 对外显示状态
     pub status:Option<u32>,
+    /// 描述
+    pub descript:Option<String>,
     /// 会话token
     pub token: Option<String>,
 }

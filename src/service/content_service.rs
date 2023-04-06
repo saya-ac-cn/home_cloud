@@ -340,7 +340,7 @@ impl ContentService {
             organize: Some(user_info.organize),
             source:Some(user_info.account.clone()),
             descript:arg.descript.clone(),
-            status:Some(2)
+            status:Some(2),
         };
         let write_result = NoteBook::insert(business_rbatis_pool!(),&notebook).await;
         if  write_result.is_err(){

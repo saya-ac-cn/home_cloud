@@ -172,10 +172,10 @@ pub async fn plan_page(req: HttpRequest, arg: web::Query<PlanPageDTO>) -> impl R
 }
 
 /// 提前完成提醒事项
-#[put("/plan/finish/{id}")]
-pub async fn finish_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responder {
-    let id = path.into_inner();
-    let vo = CONTEXT.system_service.advance_finish_plan(&req,&id).await;
+#[put("/plan/finish")]
+pub async fn finish_plan(req: HttpRequest,arg: web::Json<PlanDTO>) -> impl Responder {
+    log::info!("add_plan:{:?}", arg.0);
+    let vo = CONTEXT.system_service.advance_finish_plan(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
 

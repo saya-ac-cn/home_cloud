@@ -229,6 +229,7 @@ impl SystemService {
 
     ///创建账号
     pub async fn user_add(&self, arg: &UserDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.account.is_none() || arg.account.as_ref().unwrap().is_empty() || arg.name.is_none() || arg.name.as_ref().unwrap().is_empty() || arg.email.is_none() || arg.email.as_ref().unwrap().is_empty() || arg.phone.is_none() || arg.phone.as_ref().unwrap().is_empty() || arg.organize_id.is_none();
         if check_flag {
             return Err(Error::from(("账号、姓名、手机号、邮箱以及所属组织不能为空!", util::NOT_PARAMETER_CODE)));
@@ -294,7 +295,7 @@ impl SystemService {
 
     /// 修改用户信息
     pub async fn user_edit(&self, req: &HttpRequest, arg: &UserDTO) -> Result<u64> {
-        //TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         if arg.account.is_none() || arg.account.as_ref().unwrap().is_empty() {
             return Err(Error::from(("账号account不能为空!", util::NOT_PARAMETER_CODE)));
         }
@@ -371,6 +372,7 @@ impl SystemService {
 
     /// 修改用户密码
     pub async fn user_update_password(&self, req: &HttpRequest, arg: &UserDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         if arg.password.is_none() || arg.password.as_ref().unwrap().is_empty() {
             return Err(Error::from(("密码不能为空!", util::NOT_PARAMETER_CODE)));
         }
@@ -646,6 +648,7 @@ impl SystemService {
 
     /// 创建提醒事项
     pub async fn add_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER_CODE)));
@@ -696,6 +699,7 @@ impl SystemService {
 
     /// 修改提醒事项
     pub async fn edit_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.standard_time.is_none() || arg.cycle.is_none() || arg.unit.is_none() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("基准时间、重复执行周期、单位和内容不能为空!",util::NOT_PARAMETER_CODE)));
@@ -800,9 +804,11 @@ impl SystemService {
     }
 
     /// 提前完成计划提醒
-    pub async fn advance_finish_plan(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
+    pub async fn advance_finish_plan(&self, req: &HttpRequest,arg: &PlanDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        let id = arg.id.unwrap();
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let query_plan_wrap = Plan::select_by_id(primary_rbatis_pool!(), id).await;
+        let query_plan_wrap = Plan::select_by_id(primary_rbatis_pool!(), &id).await;
         if query_plan_wrap.is_err() {
             error!("查询提醒事项异常：{}",query_plan_wrap.unwrap_err());
             return Err(Error::from("查询提醒事项失败!"));
@@ -831,9 +837,9 @@ impl SystemService {
                 error!("在归档计划提醒事项时id={}，archive_time={:?}，发生异常:{}",plan_exist.id.unwrap(),plan_exist.standard_time.clone(),write_result.unwrap_err());
             }
             // 移除这个调度任务
-            scheduler.remove(*id);
+            scheduler.remove(id);
             // 计划提醒表(plan)数据删除
-            Plan::delete_by_id_organize(primary_rbatis_pool!(),id,&user_info.organize).await;
+            Plan::delete_by_id_organize(primary_rbatis_pool!(),&id,&user_info.organize).await;
             return Ok(0);
         }
         // 对于循环任务，需要生成下次的执行时间
@@ -914,6 +920,7 @@ impl SystemService {
 
     /// 归档计划提醒的编辑(只能编辑完成与否，以及是否展示)
     pub async fn edit_plan_archive(&self, req: &HttpRequest,arg: &PlanArchiveDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none();
         if check_flag{
             return Err(Error::from(("归档计划id不能为空!",util::NOT_PARAMETER_CODE)));
