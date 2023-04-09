@@ -8,7 +8,7 @@ pub fn is_white_list_api(path: &str) -> bool {
         return true;
     }
     for x in &CONTEXT.config.white_list_api {
-        if x.contains(path) {
+        if path.starts_with(x) {
             return true;
         }
     }
