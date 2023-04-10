@@ -6,7 +6,6 @@ pub mod log_type;
 pub mod plan;
 pub mod plan_archive;
 pub mod db_dump_log;
-pub mod total_log;
 pub mod total_table;
 pub mod total_pre_6_month;
 pub mod abstracts;
@@ -20,7 +19,6 @@ pub mod notebook;
 pub mod notes;
 pub mod payment_means;
 pub mod pictures;
-pub mod total_news;
 pub mod total_pre_6_financial_month;
 
 use crate::util::error::Error;
@@ -29,6 +27,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use crate::util;
 
+use actix_http::{StatusCode};
 
 /// The http interface returns the model structure, providing basic json data structures such as code, msg, and data
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -65,11 +64,37 @@ where
 
 
     pub fn resp_json(&self) -> HttpResponse {
-        return HttpResponse::Ok()
-            .insert_header(("Access-Control-Allow-Origin", "*"))
-            .insert_header(("Cache-Control", "no-cache"))
-            .insert_header(("Content-Type", "text/json;charset=UTF-8"))
-            .body(self.to_string());
+        let code:i32 = self.code.clone().unwrap();
+        match code {
+            util::NOT_EXIST_CODE => {
+                return HttpResponse::build(StatusCode::NOT_FOUND)
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Cache-Control", "no-cache"))
+                    .insert_header(("Content-Type", "text/json;charset=UTF-8"))
+                    .body(self.to_string());
+            },
+            util::TOKEN_ERROR_CODE => {
+                return HttpResponse::build(StatusCode::LOCKED)
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Cache-Control", "no-cache"))
+                    .insert_header(("Content-Type", "text/json;charset=UTF-8"))
+                    .body(self.to_string());
+            },
+            util::NOT_AUTHORIZE_CODE => {
+                return HttpResponse::build(StatusCode::UNAUTHORIZED)
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Cache-Control", "no-cache"))
+                    .insert_header(("Content-Type", "text/json;charset=UTF-8"))
+                    .body(self.to_string());
+            }
+            _ => {
+                return HttpResponse::Ok()
+                    .insert_header(("Access-Control-Allow-Origin", "*"))
+                    .insert_header(("Cache-Control", "no-cache"))
+                    .insert_header(("Content-Type", "text/json;charset=UTF-8"))
+                    .body(self.to_string());
+            }
+        }
     }
 }
 
