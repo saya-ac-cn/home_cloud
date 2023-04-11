@@ -25,6 +25,7 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/warehouse", &CONTEXT.config.data_dir))
             .service(
                 web::scope("/backend/system")
+                    .service(system_controller::token)
                     .service(system_controller::myself)
                     .service(system_controller::user_add)
                     .service(system_controller::user_update)
