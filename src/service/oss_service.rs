@@ -37,31 +37,18 @@ impl OssService {
     /// 文件下载
     pub async fn files_download(&self,id:u64) -> HttpResponse {
         let mut response = HttpResponse::Ok();
-        let query_where = FilesDTO{
-            id:Some(id),
-            uid: None,
-            file_name: None,
-            file_url: None,
-            file_type: None,
-            organize: None,
-            source: None,
-            status: None,
-            create_time: None,
-            update_time: None,
-            token: None
-        };
-        let result_wrap = FilesMapper::select_one(business_rbatis_pool!(),&query_where).await;
+        let result_wrap = Files::select_by_id(business_rbatis_pool!(),&id).await;
         if result_wrap.is_err() {
             error!("在获取文件数据时，发生异常:{}",result_wrap.unwrap_err());
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
         }
-        let files_op = result_wrap.unwrap();
-        if files_op.is_none() {
+        let files_wrap = result_wrap.unwrap().into_iter().next();
+        if files_wrap.is_none() {
             response.status(StatusCode::NOT_FOUND);
             return response.finish()
         }
-        let files = files_op.unwrap();
+        let files = files_wrap.unwrap();
         // 判断文件是否存在，存在才下载
         if files.file_url.is_none() || files.file_url.as_ref().unwrap().is_empty() {
             response.status(StatusCode::NOT_FOUND);
@@ -274,7 +261,6 @@ impl OssService {
 
     /// 修改用户头像
     pub async fn upload_logo(&self,req: &HttpRequest,arg:&Base64PictureDTO) -> Result<String> {
-        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 首先判断要修改的用户是否存在
         let query_user_wrap = User::select_by_account(primary_rbatis_pool!(), &user_info.account).await;
@@ -399,7 +385,6 @@ impl OssService {
     /// 处理过程，将base64字符串进行切割（"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEBLAEsAAD/"），然后将后
     /// 半部分进行base64解码成byte数组保存到文件
     pub async fn upload_base64_picture(&self,req: &HttpRequest,arg:&Base64PictureDTO)-> Result<String>{
-        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         if arg.content.is_none() || arg.content.as_ref().unwrap().is_empty(){
             return Err(Error::from(("请选择图片!",util::NOT_PARAMETER_CODE)));
         }

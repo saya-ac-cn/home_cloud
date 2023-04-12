@@ -7,6 +7,7 @@ use crate::domain::vo::files::FilesVO;
 use crate::domain::dto::files::{FilesDTO, FilesPageDTO};
 
 crud!(Files {});
+impl_select!(Files{select_by_id(id:&u64) => "`where id = #{id}`"});
 impl_select!(Files{select_by_id_and_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_delete!(Files{delete_by_id(id:&u64) => "`where id = #{id}`"});
 pub struct FilesMapper{}

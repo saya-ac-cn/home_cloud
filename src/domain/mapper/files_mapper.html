@@ -2,7 +2,7 @@
 <mapper>
 
     <select id="select_one">
-        ` select `id` ,`uid` ,`file_name` ,`file_url` ,`file_type` ,`organize`,`source` ,`status` ,`create_time`,`update_time` from `files `
+        ` select `id` ,`uid` ,`file_name` ,`file_url` ,`file_type` ,`organize`,`source` ,`status` ,`create_time`,`update_time` from `files` `
         <where>
             <if test="files.organize != 0">
               `  `organize` = #{files.organize} `
