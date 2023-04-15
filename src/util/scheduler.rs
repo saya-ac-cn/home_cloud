@@ -135,7 +135,12 @@ pub async fn do_plan_notice(date:String) {
         let standard_time = standard_time_result.unwrap();
 
         // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&standard_time.clone(),plan.cycle.unwrap(),plan.unit.unwrap());
+        let next_exec_time_op = DateUtils::plan_data_compute(&standard_time.clone(),plan.cycle.unwrap(),plan.unit.unwrap());
+        if next_exec_time_op.is_none() {
+            error!("无效的日期(standard_time={},cycle={},unit={})循环周期",&standard_time.clone(),plan.cycle.unwrap(),plan.unit.unwrap());
+            continue;
+        }
+        let next_exec_time = next_exec_time_op.unwrap();
         plan.next_exec_time = DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S);
         let mut tx = primary_rbatis_pool!().acquire_begin().await.unwrap();
         let edit_plan_result = PlanMapper::update_plan(&mut tx, &plan).await;

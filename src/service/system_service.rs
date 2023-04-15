@@ -109,7 +109,6 @@ impl SystemService {
         }else {
             req.peer_addr().unwrap().ip().to_string()
         };
-
         let city = if ip.eq("127.0.0.1") || ip.eq("localhost") {
             String::from("局域网地址")
         }else {
@@ -663,7 +662,11 @@ impl SystemService {
         let standard_time = standard_time_result.unwrap();
 
         // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&standard_time,arg.cycle.unwrap(),arg.unit.unwrap());
+        let next_exec_time_op = DateUtils::plan_data_compute(&standard_time,arg.cycle.unwrap(),arg.unit.unwrap());
+        if next_exec_time_op.is_none() {
+            return Err(Error::from("无效的日期循环周期"));
+        }
+        let next_exec_time = next_exec_time_op.unwrap();
         // 生成定时cron表达式
         let cron_tab = DateUtils::data_time_to_cron(&standard_time);
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
@@ -723,7 +726,11 @@ impl SystemService {
         let standard_time = standard_time_result.unwrap();
 
         // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&standard_time,arg.cycle.unwrap(),arg.unit.unwrap());
+        let next_exec_time_op = DateUtils::plan_data_compute(&standard_time,arg.cycle.unwrap(),arg.unit.unwrap());
+        if next_exec_time_op.is_none() {
+            return Err(Error::from("无效的日期循环周期"));
+        }
+        let next_exec_time = next_exec_time_op.unwrap();
         // 生成定时cron表达式
         let cron_tab = DateUtils::data_time_to_cron(&standard_time);
         let plan = Plan{
@@ -854,7 +861,12 @@ impl SystemService {
         let standard_time = standard_time_result.unwrap();
 
         // 计算下次执行时间
-        let next_exec_time = DateUtils::plan_data_compute(&standard_time,plan_exist.cycle.unwrap(),plan_exist.unit.unwrap());
+        let next_exec_time_op = DateUtils::plan_data_compute(&standard_time,plan_exist.cycle.unwrap(),plan_exist.unit.unwrap());
+        if next_exec_time_op.is_none() {
+            return Err(Error::from("无效的日期循环周期"));
+        }
+        let next_exec_time = next_exec_time_op.unwrap();
+
         plan_exist.next_exec_time = DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time),&util::FORMAT_Y_M_D_H_M_S);
 
         let mut tx = primary_rbatis_pool!().acquire_begin().await.unwrap();

@@ -11,6 +11,7 @@ use crate::domain::vo::{RespVO};
 use crate::service::CONTEXT;
 
 /// 生成token
+#[get("/token")]
 pub async fn token() -> impl Responder {
     let vo = CONTEXT.system_service.token().await;
     return RespVO::from_result(&vo).resp_json();
