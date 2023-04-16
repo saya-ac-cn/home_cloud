@@ -342,10 +342,10 @@ impl OssService {
                 if image_ext.len() < 2{
                     return Err(Error::from(("无效的图片!",util::NOT_PARAMETER_CODE)));
                 }
-                if !allow_picture.contains(&image_ext[1]){
+                if !allow_picture.contains(&image_ext[image_ext.len()-1]){
                     return Err(Error::from(("请上传GIF、PNG、JPG、JPEG、BMP格式的图片!",util::NOT_PARAMETER_CODE)));
                 }
-                let file_name = format!("{}{}.{}", today.clone(),&Snowflake::default().generate(),&image_ext[1]);
+                let file_name = format!("{}{}.{}", today.clone(),&Snowflake::default().generate(),&image_ext[image_ext.len()-1]);
                 // 调用文件的保存接口
                 let save_result = self.save_file(Path::new(&save_path),&file_name,field).await;
                 if save_result.is_err() {
@@ -469,15 +469,15 @@ impl OssService {
                     let origin_name = content_disposition.get_filename();
                     origin_name_copy = format!("{}",origin_name.clone().unwrap());
                     let lowercase_file_name =  origin_name.clone().unwrap().to_lowercase();
-                    let image_ext:Vec<&str> = lowercase_file_name.split(".").collect();
-                    if image_ext.len() < 2{
+                    let file_ext:Vec<&str> = lowercase_file_name.split(".").collect();
+                    if file_ext.len() < 2{
                         return Err(Error::from(("无效的文件!",util::NOT_PARAMETER_CODE)));
                     }
-                    let file_belong_type_op = CONTEXT.config.file_type_map.get(image_ext[1]);
+                    let file_belong_type_op = CONTEXT.config.file_type_map.get(file_ext[file_ext.len()-1]);
                     if file_belong_type_op.is_some() {
                         file_belong_type = file_belong_type_op.clone();
                     }
-                    let file_name = format!("{}{}.{}", today.clone(),&Snowflake::default().generate(),&image_ext[1]);
+                    let file_name = format!("{}{}.{}", today.clone(),&Snowflake::default().generate(),&file_ext[file_ext.len()-1]);
                     // 调用文件的保存接口
                     let save_result = self.save_file(Path::new(&save_path),&file_name,field).await;
                     if save_result.is_err() {
