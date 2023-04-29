@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 rbs = { version = "4.3" }
-# 线上环境，移除"debug_mode"模式
+# 线上环境，移除"debug_mode"模式features = ["debug_mode"]
 rbatis = { version = "4.3", features = []}
 rbdc-mysql={version="4.3"}
 #rbatis orm dep must use async-std(Because actix-web relies on tokio0.2)
@@ -41,7 +41,7 @@ simple_excel_writer = "0.2.0"
 # 日期时间库
 chrono = { version = "0.4", features = ["serde"] }
 # 定时任务
-cron_tab = "0.1.4"
+delay_timer = "0.11.4"
 # 发送邮件
 lettre="0.10.0-alpha.5"
 #用于货币金额
