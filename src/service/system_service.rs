@@ -754,8 +754,8 @@ impl SystemService {
             error!("在修改id={}的提醒事项时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("提醒事项修改失败"));
         }
-        Scheduler::remove(plan_exist.id.unwrap());
-        Scheduler::add_plan(plan_exist.id.unwrap(), cron_tab.as_str());
+        Scheduler::remove(plan_exist.id.unwrap()).await;
+        Scheduler::add_plan(plan_exist.id.unwrap(), cron_tab.as_str()).await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX023")).await?;
         return Ok(result?.rows_affected);
     }
@@ -769,7 +769,7 @@ impl SystemService {
             error!("删除提醒事项时，发生异常:{}",write_result.unwrap_err());
             return Err(Error::from("删除提醒事项失败!"));
         }
-        Scheduler::remove(*id);
+        Scheduler::remove(*id).await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX024")).await?;
         return Ok(write_result?.rows_affected);
     }
@@ -843,7 +843,7 @@ impl SystemService {
                 error!("在归档计划提醒事项时id={}，archive_time={:?}，发生异常:{}",plan_exist.id.unwrap(),plan_exist.standard_time.clone(),write_result.unwrap_err());
             }
             // 移除这个调度任务
-            Scheduler::remove(id);
+            Scheduler::remove(id).await;
             // 计划提醒表(plan)数据删除
             Plan::delete_by_id_organize(primary_rbatis_pool!(),&id,&user_info.organize).await;
             return Ok(0);
@@ -887,8 +887,8 @@ impl SystemService {
         tx.commit().await;
         // 生成定时cron表达式
         let cron_tab = DateUtils::data_time_to_cron(&standard_time);
-        Scheduler::remove(plan_exist.id.unwrap());
-        Scheduler::add_plan(plan_exist.id.unwrap(), cron_tab.as_str());
+        Scheduler::remove(plan_exist.id.unwrap()).await;
+        Scheduler::add_plan(plan_exist.id.unwrap(), cron_tab.as_str()).await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX023")).await?;
         return Ok(add_plan_archive_result?.rows_affected);
     }
