@@ -78,3 +78,18 @@ pub struct Notes{
     pub update_time:Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Label{
+    pub id:Option<u64>,
+    pub name:Option<String>,
+    pub category:Option<u32>,
+    pub organize:Option<u64>,
+    pub source:Option<String>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LinkLabel{
+    pub id:Option<u64>,
+    pub label_id:Option<u64>,
+    pub content_id:Option<u64>
+}
