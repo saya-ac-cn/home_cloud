@@ -1,0 +1,6 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://raw.githubusercontent.com/rbatis/rbatis/master/rbatis-codegen/mybatis-3-mapper.dtd">
+<mapper>
+    <select id="select_content">
+        select b.`id`,b.`label_id`, b.`content_id` from `label` a left join `link_label` b on a.`id` = b.`label_id` where b.`content_id` = #{content_id} and a.`organize` = #{organize} and a.`category` = #{category}
+    </select>
+</mapper>

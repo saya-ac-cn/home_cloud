@@ -1,0 +1,17 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://raw.githubusercontent.com/rbatis/rbatis/master/rbatis-codegen/mybatis-3-mapper.dtd">
+<mapper>
+    <insert id="insert_label">
+        replace  into `label`(`name`, `category`,`organize`) values
+        <foreach collection="labels" item="item" separator=",">
+            (#{&item.name},#{&item.category},#{&item.organize})
+        </foreach>
+    </insert>
+
+    <select id="select_id">
+        ` select `id` from `label` where `category`=#{category} and `organize`=#{organize} and `name` in  `
+        <foreach collection="names" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+</mapper>
