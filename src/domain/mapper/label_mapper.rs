@@ -3,6 +3,7 @@ use rbatis::executor::Executor;
 use rbatis::rbdc::db::ExecResult;
 use crate::domain::table::Label;
 crud!(Label {});
+impl_select!(Label {select_by_category_organize(category:&str,organize:u64) => "`where category = #{category} and organize= #{organize}`"});
 
 pub struct LabelMapper {}
 

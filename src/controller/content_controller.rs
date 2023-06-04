@@ -220,3 +220,11 @@ pub async fn public_notes_detail(path: web::Path<(u64,u64)>) -> impl Responder {
     let vo = CONTEXT.content_service.public_notes_detail(&organize,&id).await;
     return RespVO::from_result(&vo).resp_json();
 }
+
+/// 获取指定类型的label
+#[get("/label/{id}")]
+pub async fn get_label_list(req: HttpRequest,path: web::Path<String>) -> impl Responder {
+    let category = path.into_inner();
+    let vo = CONTEXT.content_service.get_label_list(&req,&category).await;
+    return RespVO::from_result(&vo).resp_json();
+}

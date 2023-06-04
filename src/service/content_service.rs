@@ -1,13 +1,17 @@
+use std::borrow::Borrow;
+use std::collections::HashMap;
 use actix_web::HttpRequest;
 use chrono::Datelike;
 use log::error;
 use rbs::to_value;
+use rust_decimal::prelude::ToPrimitive;
+use rustflake::Snowflake;
 use crate::domain::mapper::log_mapper::LogMapper;
 use crate::domain::mapper::memo_mapper::MemoMapper;
 use crate::domain::mapper::news_mapper::NewsMapper;
 use crate::domain::mapper::notebook_mapper::NoteBookMapper;
 use crate::domain::mapper::notes_mapper::NotesMapper;
-use crate::domain::table::{Memo, News, NoteBook, Notes};
+use crate::domain::table::{Label, LinkLabel, Memo, News, NoteBook, Notes};
 use crate::domain::dto::memo::{MemoDTO, MemoPageDTO};
 use crate::domain::dto::news::{NewsDTO, NewsPageDTO};
 use crate::domain::dto::notebook::NoteBookDTO;
@@ -17,7 +21,6 @@ use crate::domain::vo::memo::MemoVO;
 use crate::domain::vo::news::NewsVO;
 use crate::domain::vo::notebook::NoteBookVO;
 use crate::domain::vo::notes::NotesVO;
-use crate::domain::vo::total_news::TotalNewsVO;
 use crate::domain::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::util::Page;
 use crate::util::error::{Error,Result};
@@ -26,6 +29,10 @@ use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::editor::Editor;
 use crate::domain::vo::user_context::UserContext;
 use serde_json::{json, Map, Value};
+use crate::domain::mapper::label_mapper::LabelMapper;
+use crate::domain::mapper::link_label_mapper::LinkLabelMapper;
+use crate::util::token_util::TokenUtils;
+
 /// 文本（消息）服务
 pub struct ContentService {}
 
@@ -33,17 +40,41 @@ impl ContentService {
 
     /// 发布消息动态
     pub async fn add_news(&self, req: &HttpRequest,arg: &NewsDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("动态标题和内容不能为空!",util::NOT_PARAMETER_CODE)));
         }
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let mut tx = business_rbatis_pool!().acquire_begin().await.unwrap();
+        // 处理标签
+        let mut names = vec![];
+        if arg.label.is_some(){
+            let labels = arg.label.as_ref().unwrap();
+            if !labels.is_empty() {
+                let mut list = vec![];
+                for item in labels {
+                    let label_name = item.name.clone();
+                    names.push(item.name.as_ref().unwrap());
+                    if item.id.is_none() {
+                        // 准备待添加的数据
+                        list.push(Label{id:None,name:label_name,category:Some(String::from("news")),organize:Some(user_info.organize)})
+                    }
+                }
+                // 执行添加
+                let insert_label_result = LabelMapper::insert_label(&mut tx, &list).await;
+                if insert_label_result.is_err() {
+                    error!("在添加label时，发生异常:{}",insert_label_result.unwrap_err());
+                    tx.rollback().await;
+                    return Err(Error::from("消息动态保存失败"));
+                }
+            }
+        }
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let news = News{
             id:None,
             topic:arg.topic.clone(),
-            label:arg.label.clone(),
             abstracts:Some(abstracts),
             content:arg.content.clone(),
             organize: Some(user_info.organize),
@@ -51,25 +82,82 @@ impl ContentService {
             create_time:DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S),
             update_time:None,
         };
-        let write_result = News::insert(business_rbatis_pool!(),&news).await;
+        let write_result = News::insert(&mut tx,&news).await;
         if  write_result.is_err(){
             error!("保存消息动态时，发生异常:{}",write_result.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("发布消息动态失败!"));
         }
+        // 写入到中间表
+        let news_exec = write_result.unwrap();
+        if !names.is_empty() {
+            let news_id = news_exec.last_insert_id.as_u64();
+            let query_label_wrap = LabelMapper::select_id(&mut tx,"news",user_info.organize,&names).await;
+            if query_label_wrap.is_err() {
+                error!("查询标签异常：{}",query_label_wrap.unwrap_err());
+                tx.rollback().await;
+                return Err(Error::from("发布消息动态失败!"));
+            }
+            let label_id = query_label_wrap.unwrap();
+            if label_id.is_empty() {
+                error!("保存了label后，查询到标签无数据异常");
+                tx.rollback().await;
+                return Err(Error::from("发布消息动态失败!"));
+            }
+            let mut links = vec![];
+            for item in label_id {
+                links.push(LinkLabel{id:None,label_id:item.id,content_id:news_id})
+            }
+            let add_link_result = LinkLabel::insert_batch(&mut tx, &links, links.len() as u64).await;
+            if add_link_result.is_err() {
+                error!("在保存动态label中间数据时，发生异常:{}",add_link_result.unwrap_err());
+                tx.rollback().await;
+                return Err(Error::from("发布消息动态失败"));
+            }
+        }
+        tx.commit().await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX008")).await;
-        return Ok(write_result?.rows_affected);
+        return Ok(news_exec.rows_affected);
     }
 
     /// 修改消息动态
     pub async fn edit_news(&self, req: &HttpRequest,arg: &NewsDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("动态标题和内容不能为空!",util::NOT_PARAMETER_CODE)));
         }
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let query_news_wrap = News::select_by_id_organize(business_rbatis_pool!(),  &arg.id.clone().unwrap(),&user_info.organize).await;
+        let mut tx = business_rbatis_pool!().acquire_begin().await.unwrap();
+        // 处理标签
+        let mut names = vec![];
+        if arg.label.is_some(){
+            let labels = arg.label.as_ref().unwrap();
+            if !labels.is_empty() {
+                let mut list = vec![];
+                for item in labels {
+                    let label_name = item.name.clone();
+                    names.push(item.name.as_ref().unwrap());
+                    if item.id.is_none() {
+                        list.push(Label{id:None,name:label_name,category:Some(String::from("news")),organize:Some(user_info.organize)})
+                    }
+                }
+                // 执行添加
+                if !list.is_empty() {
+                    let insert_label_result = LabelMapper::insert_label(&mut tx, &list).await;
+                    if insert_label_result.is_err() {
+                        error!("在添加label时，发生异常:{}",insert_label_result.unwrap_err());
+                        tx.rollback().await;
+                        return Err(Error::from("动态修改失败"));
+                    }
+                }
+            }
+        }
+
+        let query_news_wrap = News::select_by_id_organize(&mut tx,  &arg.id.clone().unwrap(),&user_info.organize).await;
         if query_news_wrap.is_err() {
             error!("查询动态异常：{}",query_news_wrap.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("查询动态失败!"));
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
@@ -79,7 +167,6 @@ impl ContentService {
         let news = News{
             id:arg.id,
             topic: arg.topic.clone(),
-            label: arg.label.clone(),
             abstracts:Some(abstracts),
             content: arg.content.clone(),
             organize: news_exist.organize,
@@ -87,11 +174,56 @@ impl ContentService {
             create_time: None,
             update_time: None
         };
-        let result = NewsMapper::update_news(business_rbatis_pool!(),&news).await;
+        let result = NewsMapper::update_news(&mut tx,&news).await;
         if result.is_err() {
             error!("在修改id={}的动态时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("动态修改失败"));
         }
+        let news_id = news.id.unwrap();
+        // 查询原有的label
+        let old_links_wrap = LinkLabelMapper::select_content(&mut tx,"news",user_info.organize,news_id).await;
+        if old_links_wrap.is_err() {
+            error!("查询动态标签异常：{}",old_links_wrap.unwrap_err());
+            tx.rollback().await;
+            return Err(Error::from("修改动态失败!"));
+        }
+        let links = old_links_wrap.unwrap();
+
+        if !names.is_empty() {
+            let query_label_wrap = LabelMapper::select_id(&mut tx, "news", user_info.organize, &names).await;
+            if query_label_wrap.is_err() {
+                error!("查询标签异常：{}",query_label_wrap.unwrap_err());
+                tx.rollback().await;
+                return Err(Error::from("修改动态失败!"));
+            }
+            let label_id = query_label_wrap.unwrap();
+            if label_id.is_empty() {
+                error!("保存了label后，查询到标签无数据异常");
+                tx.rollback().await;
+                return Err(Error::from("修改动态失败!"));
+            }
+            let old = links.iter().map(|e| e.label_id.unwrap()).collect::<Vec<u64>>();
+            let new = label_id.iter().map(|e| e.id.unwrap()).collect::<Vec<u64>>();
+            let plan_remove = old.iter().filter(|&u| !new.contains(u)).collect::<Vec<_>>();
+            if !plan_remove.is_empty() {
+                LinkLabelMapper::delete_by_name(&mut tx, news_id, &plan_remove).await;
+            }
+            let plan_add = new.iter().filter(|&u| !old.contains(u)).collect::<Vec<_>>();
+            if !plan_add.is_empty() {
+                let mut add_links = vec![];
+                for item in plan_add {
+                    add_links.push(LinkLabel{id:None,label_id:Some(*item),content_id:Some(news_id)})
+                }
+                let add_link_result = LinkLabel::insert_batch(&mut tx, &add_links, add_links.len() as u64).await;
+                if add_link_result.is_err() {
+                    error!("在保存动态label中间数据时，发生异常:{}",add_link_result.unwrap_err());
+                    tx.rollback().await;
+                    return Err(Error::from("修改动态失败"));
+                }
+            }
+        }
+        tx.commit().await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX009")).await;
         return Ok(result?.rows_affected);
     }
@@ -99,12 +231,21 @@ impl ContentService {
     /// 删除消息动态
     pub async fn delete_news(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let mut tx = business_rbatis_pool!().acquire_begin().await.unwrap();
         // 只能删除自己组织机构下的数据
-        let write_result = News::delete_by_id_organize(business_rbatis_pool!(),id,&user_info.organize).await;
+        let write_result = News::delete_by_id_organize(&mut tx,id,&user_info.organize).await;
         if write_result.is_err(){
             error!("删除消息动态时，发生异常:{}",write_result.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("删除消息动态失败!"));
         }
+        let delete_link_result = LinkLabelMapper::delete_by_content(&mut tx, "news", user_info.organize,*id).await;
+        if delete_link_result.is_err() {
+            error!("在删除动态label中间数据时，发生异常:{}",delete_link_result.unwrap_err());
+            tx.rollback().await;
+            return Err(Error::from("删除消息动态失败"));
+        }
+        tx.commit().await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX010")).await;
         return Ok(write_result?.rows_affected);
     }
@@ -198,6 +339,7 @@ impl ContentService {
 
     /// 保存便笺
     pub async fn add_memo(&self, req: &HttpRequest,arg: &MemoDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.title.is_none() || arg.title.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("便笺标题和内容不能为空!",util::NOT_PARAMETER_CODE)));
@@ -223,6 +365,7 @@ impl ContentService {
 
     /// 修改便笺
     pub async fn edit_memo(&self, req: &HttpRequest,arg: &MemoDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.title.is_none() || arg.title.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("便笺标题和内容不能为空!",util::NOT_PARAMETER_CODE)));
@@ -316,6 +459,7 @@ impl ContentService {
 
     /// 创建笔记簿
     pub async fn add_notebook(&self, req: &HttpRequest,arg: &NoteBookDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.name.is_none() || arg.name.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("笔记簿名称不能为空!",util::NOT_PARAMETER_CODE)));
@@ -353,6 +497,7 @@ impl ContentService {
 
     /// 修改笔记簿
     pub async fn edit_notebook(&self, req: &HttpRequest,arg: &NoteBookDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.name.is_none() || arg.name.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("笔记簿名称不能为空!",util::NOT_PARAMETER_CODE)));
@@ -423,17 +568,41 @@ impl ContentService {
 
     /// 创建笔记
     pub async fn add_notes(&self, req: &HttpRequest,arg: &NotesDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.notebook_id.is_none() || arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("笔记标题和内容不能为空!",util::NOT_PARAMETER_CODE)));
         }
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let mut tx = business_rbatis_pool!().acquire_begin().await.unwrap();
+        // 处理标签
+        let mut names = vec![];
+        if arg.label.is_some(){
+            let labels = arg.label.as_ref().unwrap();
+            if !labels.is_empty() {
+                let mut list = vec![];
+                for item in labels {
+                    let label_name = item.name.clone();
+                    names.push(item.name.as_ref().unwrap());
+                    if item.id.is_none() {
+                        // 准备待添加的数据
+                        list.push(Label{id:None,name:label_name,category:Some(String::from("notes")),organize:Some(user_info.organize)})
+                    }
+                }
+                // 执行添加
+                let insert_label_result = LabelMapper::insert_label(&mut tx, &list).await;
+                if insert_label_result.is_err() {
+                    error!("在添加label时，发生异常:{}",insert_label_result.unwrap_err());
+                    tx.rollback().await;
+                    return Err(Error::from("笔记保存失败"));
+                }
+            }
+        }
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let notes = Notes{
             id:None,
             notebook_id: arg.notebook_id,
-            label:arg.label.clone(),
             topic: arg.topic.clone(),
             abstracts:Some(abstracts),
             content:arg.content.clone(),
@@ -442,25 +611,82 @@ impl ContentService {
             update_time:None
         };
 
-        let write_result = Notes::insert(business_rbatis_pool!(),&notes).await;
+        let write_result = Notes::insert(&mut tx,&notes).await;
         if  write_result.is_err(){
             error!("保存笔记时，发生异常:{}",write_result.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("保存笔记失败!"));
         }
+        // 写入到中间表
+        let notes_exec = write_result.unwrap();
+        if !names.is_empty() {
+            let news_id = notes_exec.last_insert_id.as_u64();
+            let query_label_wrap = LabelMapper::select_id(&mut tx,"notes",user_info.organize,&names).await;
+            if query_label_wrap.is_err() {
+                error!("查询标签异常：{}",query_label_wrap.unwrap_err());
+                tx.rollback().await;
+                return Err(Error::from("保存笔记失败!"));
+            }
+            let label_id = query_label_wrap.unwrap();
+            if label_id.is_empty() {
+                error!("保存了label后，查询到标签无数据异常");
+                tx.rollback().await;
+                return Err(Error::from("保存笔记失败!"));
+            }
+            let mut links = vec![];
+            for item in label_id {
+                links.push(LinkLabel{id:None,label_id:item.id,content_id:news_id})
+            }
+            let add_link_result = LinkLabel::insert_batch(&mut tx, &links, links.len() as u64).await;
+            if add_link_result.is_err() {
+                error!("在保存笔记label中间数据时，发生异常:{}",add_link_result.unwrap_err());
+                tx.rollback().await;
+                return Err(Error::from("保存笔记失败"));
+            }
+        }
+        // 所有的写入都成功，最后正式提交
+        tx.commit().await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX019")).await;
-        return Ok(write_result?.rows_affected);
+        return Ok(notes_exec.rows_affected);
     }
 
     /// 修改笔记
     pub async fn edit_notes(&self, req: &HttpRequest,arg: &NotesDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.notebook_id.is_none() || arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("便笺标题和内容不能为空!",util::NOT_PARAMETER_CODE)));
         }
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let query_notes_wrap = Notes::select_by_column(business_rbatis_pool!(),  "id", &arg.id).await;
+        let mut tx = business_rbatis_pool!().acquire_begin().await.unwrap();
+        // 处理标签
+        let mut names = vec![];
+        if arg.label.is_some(){
+            let labels = arg.label.as_ref().unwrap();
+            if !labels.is_empty() {
+                let mut list = vec![];
+                for item in labels {
+                    let label_name = item.name.clone();
+                    names.push(item.name.as_ref().unwrap());
+                    if item.id.is_none() {
+                        list.push(Label{id:None,name:label_name,category:Some(String::from("notes")),organize:Some(user_info.organize)})
+                    }
+                }
+                // 执行添加
+                if !list.is_empty() {
+                    let insert_label_result = LabelMapper::insert_label(&mut tx, &list).await;
+                    if insert_label_result.is_err() {
+                        error!("在添加label时，发生异常:{}",insert_label_result.unwrap_err());
+                        tx.rollback().await;
+                        return Err(Error::from("动态笔记失败"));
+                    }
+                }
+            }
+        }
+        let query_notes_wrap = Notes::select_by_column(&mut tx,  "id", &arg.id).await;
         if query_notes_wrap.is_err() {
             error!("查询笔记异常：{}",query_notes_wrap.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("查询笔记失败!"));
         }
         let notes_option = query_notes_wrap.unwrap().into_iter().next();
@@ -470,7 +696,6 @@ impl ContentService {
         let notes = Notes{
             id:notes_exist.id,
             notebook_id: arg.notebook_id,
-            label:arg.label.clone(),
             topic: arg.topic.clone(),
             abstracts:Some(abstracts),
             content:arg.content.clone(),
@@ -478,11 +703,56 @@ impl ContentService {
             create_time:None,
             update_time:None
         };
-        let result = NotesMapper::update_notes(business_rbatis_pool!(),&notes,&user_info.organize).await;
+        let result = NotesMapper::update_notes(&mut tx,&notes,&user_info.organize).await;
         if result.is_err() {
             error!("在修改id={}的笔记时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("笔记修改失败"));
         }
+        let notes_id = notes.id.unwrap();
+        // 查询原有的label
+        let old_links_wrap = LinkLabelMapper::select_content(&mut tx, "notes", user_info.organize, notes_id).await;
+        if old_links_wrap.is_err() {
+            error!("查询笔记标签异常：{}",old_links_wrap.unwrap_err());
+            tx.rollback().await;
+            return Err(Error::from("修改笔记失败!"));
+        }
+        let links = old_links_wrap.unwrap();
+
+        if !names.is_empty() {
+            let query_label_wrap = LabelMapper::select_id(&mut tx, "notes", user_info.organize, &names).await;
+            if query_label_wrap.is_err() {
+                error!("查询标签异常：{}",query_label_wrap.unwrap_err());
+                tx.rollback().await;
+                return Err(Error::from("修改笔记失败!"));
+            }
+            let label_id = query_label_wrap.unwrap();
+            if label_id.is_empty() {
+                error!("保存了label后，查询到标签无数据异常");
+                tx.rollback().await;
+                return Err(Error::from("修改笔记失败!"));
+            }
+            let old = links.iter().map(|e| e.label_id.unwrap()).collect::<Vec<u64>>();
+            let new = label_id.iter().map(|e| e.id.unwrap()).collect::<Vec<u64>>();
+            let plan_remove = old.iter().filter(|&u| !new.contains(u)).collect::<Vec<_>>();
+            if !plan_remove.is_empty() {
+                LinkLabelMapper::delete_by_name(&mut tx, notes_id, &plan_remove).await;
+            }
+            let plan_add = new.iter().filter(|&u| !old.contains(u)).collect::<Vec<_>>();
+            if !plan_add.is_empty() {
+                let mut add_links = vec![];
+                for item in plan_add {
+                    add_links.push(LinkLabel{id:None,label_id:Some(*item),content_id:Some(notes_id)})
+                }
+                let add_link_result = LinkLabel::insert_batch(&mut tx, &add_links, add_links.len() as u64).await;
+                if add_link_result.is_err() {
+                    error!("在保存笔记label中间数据时，发生异常:{}",add_link_result.unwrap_err());
+                    tx.rollback().await;
+                    return Err(Error::from("修改笔记失败"));
+                }
+            }
+        }
+        tx.commit().await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX020")).await;
         return Ok(result?.rows_affected);
     }
@@ -490,11 +760,21 @@ impl ContentService {
     /// 删除笔记
     pub async fn delete_notes(&self, req: &HttpRequest,id: &u64) -> Result<u64> {
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let result = NotesMapper::delete_notes(business_rbatis_pool!(),id,&user_info.organize).await;
+        let mut tx = business_rbatis_pool!().acquire_begin().await.unwrap();
+        let result = NotesMapper::delete_notes(&mut tx,id,&user_info.organize).await;
         if result.is_err() {
             error!("在删除id={}的笔记时，发生异常:{}",id,result.unwrap_err());
+            tx.rollback().await;
             return Err(Error::from("笔记删除失败"));
         }
+        // 移除标签
+        let delete_link_result = LinkLabelMapper::delete_by_content(&mut tx, "notes", user_info.organize,*id).await;
+        if delete_link_result.is_err() {
+            error!("在删除笔记label中间数据时，发生异常:{}",delete_link_result.unwrap_err());
+            tx.rollback().await;
+            return Err(Error::from("笔记删除失败"));
+        }
+        tx.commit().await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(),&user_info,String::from("OX021")).await;
         return Ok(result?.rows_affected);
     }
@@ -587,7 +867,7 @@ impl ContentService {
     }
 
     /// 计算近6个月的动态发布情况
-    pub async fn compute_pre6_news(&self, req: &HttpRequest,month:&String) ->Result<TotalNewsVO> {
+    pub async fn compute_pre6_news(&self, req: &HttpRequest,month:&String) ->Result<Value> {
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         let user_month_wrap = chrono::NaiveDate::parse_from_str(month.as_str(),&util::FORMAT_Y_M_D);
         if user_month_wrap.is_err() {
@@ -622,11 +902,29 @@ impl ContentService {
             return Err(Error::from("统计近6个月的动态发布异常"));
         }
         let rows = compute_result_warp.unwrap();
-        let result = TotalNewsVO{
-            avg:Some(avg),
-            count:Some(current_month_news),
-            news6:Some(rows)
-        };
+        let mut result:Map<String,Value> = Map::new();
+        result.insert(String::from("avg"),json!(avg));
+        result.insert(String::from("count"),json!(current_month_news));
+        result.insert(String::from("news6"),json!(rows));
+        return Ok(json!(result));
+    }
+
+    /// 笔记&动态label列表
+    pub async fn get_label_list(&self,req: &HttpRequest,category:&String) -> Result<HashMap<u64,String>> {
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let query_wrap_result = Label::select_by_category_organize(business_rbatis_pool!(),category,user_info.organize).await;
+        if query_wrap_result.is_err() {
+            error!("在查询label列表时，发生异常:{}",query_wrap_result.unwrap_err());
+            return Err(Error::from(("label列表查询失败",util::FAIL_CODE)));
+        }
+        let query_result: Vec<Label> = query_wrap_result.unwrap();
+        if query_result.is_empty() {
+            return Err(Error::from(("label数据不存在",util::NOT_EXIST_CODE)));
+        }
+        let mut result:HashMap<u64,String> = HashMap::new();
+        for item in query_result {
+            result.insert(item.id.unwrap(),item.name.unwrap());
+        }
         return Ok(result);
     }
 

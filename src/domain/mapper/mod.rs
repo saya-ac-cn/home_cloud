@@ -15,3 +15,5 @@ pub mod pictures_mapper;
 pub mod monetary_mapper;
 pub mod abstracts_mapper;
 pub mod payment_means_mapper;
+pub mod label_mapper;
+pub mod link_label_mapper;

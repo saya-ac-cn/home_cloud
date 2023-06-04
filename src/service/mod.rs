@@ -17,12 +17,10 @@ pub use oss_service::*;
 pub use content_service::*;
 pub use financial_service::*;
 pub use redis_service::RedisService;
-
 pub use crate::config::config::ApplicationConfig;
-use crate::util::scheduler::Scheduler;
-use std::sync::Mutex;
 use lazy_static::lazy_static;
-
+use delay_timer::prelude::{DelayTimer, DelayTimerBuilder};
+use tokio::sync::Mutex;
 
 // 第一种初始化方法
 // /// CONTEXT is all of the service struct
@@ -34,7 +32,7 @@ lazy_static! {
     // CONTEXT is all of the service struct
     pub static ref CONTEXT: ServiceContext = ServiceContext::default();
     // SCHEDULER is only SCHEDULER VARIABLE
-    pub static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::default());
+    pub static ref SCHEDULER: Mutex<DelayTimer> = Mutex::new(DelayTimerBuilder::default().build());
 }
 
 
@@ -77,27 +75,27 @@ impl ServiceContext {
         // futures::executor::block_on(async {
         //     self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await
         // });
-        self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await;
-        self.init_datasource(&self.business_rbatis,&self.config.business_database_url,"business_pool").await;
-        self.init_datasource(&self.financial_rbatis,&self.config.financial_database_url,"financial_pool").await;
+        self.init_datasource(&self.primary_rbatis, &self.config.primary_database_url, "primary_pool").await;
+        self.init_datasource(&self.business_rbatis, &self.config.business_database_url, "business_pool").await;
+        self.init_datasource(&self.financial_rbatis, &self.config.financial_database_url, "financial_pool").await;
         log::info!(
             " - Local:   http://{}",
             self.config.server_url.replace("0.0.0.0", "127.0.0.1")
         );
     }
 
-    pub async fn init_datasource(&self,rbatis:&Rbatis,url:&str,name:&str){
+    pub async fn init_datasource(&self, rbatis: &Rbatis, url: &str, name: &str) {
         log::info!("[home_cloud] rbatis {} init ({})...",name,url);
         let driver = rbdc_mysql::driver::MysqlDriver {};
         let driver_name = format!("{:?}", driver);
-        rbatis.init(driver, url).expect(&format!("[home_cloud] rbatis {} init fail!",name));
+        rbatis.init(driver, url).expect(&format!("[home_cloud] rbatis {} init fail!", name));
         rbatis.acquire().await.expect(&format!("rbatis connect database(driver={},url={}) fail", driver_name, url));
         log::info!("[home_cloud] rbatis {} init success! pool state = {:?}",name,rbatis.get_pool().expect("pool not init!").status());
     }
-
 }
 
 impl Default for ServiceContext {
+    /// 初始化操作，由全局的静态方法触发
     fn default() -> Self {
         let config = ApplicationConfig::default();
         ServiceContext {

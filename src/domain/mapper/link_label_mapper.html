@@ -3,4 +3,17 @@
     <select id="select_content">
         select b.`id`,b.`label_id`, b.`content_id` from `label` a left join `link_label` b on a.`id` = b.`label_id` where b.`content_id` = #{content_id} and a.`organize` = #{organize} and a.`category` = #{category}
     </select>
+
+
+    <delete id="delete_by_name">
+        delete from link_label where content_id = #{content_id} and label_id in
+        <foreach collection="labels" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </delete>
+
+    <delete id="delete_by_content">
+        delete `link_label` from `link_label` inner join `label` on label.`id` = link_label.`label_id`  where link_label.content_id = #{content_id} and label.`organize` = #{organize} and label.`category` = #{category}
+    </delete>
+
 </mapper>

@@ -20,7 +20,7 @@ impl From<News> for NewsVO {
         Self {
             id: arg.id,
             topic: arg.topic,
-            label: arg.label,
+            label: None,
             abstracts:arg.abstracts,
             content: arg.content,
             organize: arg.organize,
