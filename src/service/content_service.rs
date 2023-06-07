@@ -333,7 +333,34 @@ impl ContentService {
             return Err(Error::from("动态分页查询异常"));
         }
         let page_rows = page_result.unwrap();
-        result.records = page_rows;
+        if !page_rows.is_empty() {
+            let ids = page_rows.iter().map(|e| e.clone().id.unwrap()).collect::<Vec<u64>>();
+            let links_warp = LinkLabelMapper::select_links_by_content(business_rbatis_pool!(),&ids).await;
+            if links_warp.is_ok() {
+                let links = links_warp.unwrap();
+                if !links.is_empty() {
+                    let mut content_link:HashMap<u64,String> = HashMap::new();
+                    let mut _page_rows = vec![];
+                    for link in links {
+                        content_link.insert(link.key.unwrap(),link.val.unwrap());
+                    }
+                    for item in page_rows {
+                        let mut _news = item.clone();
+                        let _news_id = _news.id.unwrap();
+                        if !content_link.contains_key(&_news_id) {
+                            _page_rows.push(_news);
+                            continue;
+                        }
+                        let label_id = content_link.get(&_news_id).unwrap();
+                        _news.label = Some(label_id.to_string());
+                        _page_rows.push(_news);
+                    }
+                    result.records = Some(_page_rows);
+                    return Ok(result);
+                }
+            }
+        }
+        result.records = Some(page_rows);
         return Ok(result);
     }
 
@@ -862,7 +889,36 @@ impl ContentService {
             return Err(Error::from("便笺分页查询异常"));
         }
         let page_rows = page_result.unwrap();
-        result.records = page_rows;
+
+        if !page_rows.is_empty() {
+            let ids = page_rows.iter().map(|e| e.clone().id.unwrap()).collect::<Vec<u64>>();
+            let links_warp = LinkLabelMapper::select_links_by_content(business_rbatis_pool!(),&ids).await;
+            if links_warp.is_ok() {
+                let links = links_warp.unwrap();
+                if !links.is_empty() {
+                    let mut content_link:HashMap<u64,String> = HashMap::new();
+                    let mut _page_rows = vec![];
+                    for link in links {
+                        content_link.insert(link.key.unwrap(),link.val.unwrap());
+                    }
+                    for item in page_rows {
+                        let mut _news = item.clone();
+                        let _news_id = _news.id.unwrap();
+                        if !content_link.contains_key(&_news_id) {
+                            _page_rows.push(_news);
+                            continue;
+                        }
+                        let label_id = content_link.get(&_news_id).unwrap();
+                        _news.label = Some(label_id.to_string());
+                        _page_rows.push(_news);
+                    }
+                    result.records = Some(_page_rows);
+                    return Ok(result);
+                }
+            }
+        }
+
+        result.records = Some(page_rows);
         return Ok(result);
     }
 

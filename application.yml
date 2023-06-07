@@ -6,15 +6,15 @@ debug: true
 server_name: "home_cloud"
 #server 地址
 #Server address
-server_url: "0.0.0.0:8001"
+server_url: "0.0.0.0:8000"
 #主数据库地址
-primary_database_url: "---------"
+primary_database_url: "mysql://saya:Sayaaccn666@1.15.81.148:3306/primary_1"
 #辅助业务数据库地址
-business_database_url: "-----------"
+business_database_url: "mysql://saya:Sayaaccn666@1.15.81.148:3306/business_1"
 #财政相关数据库地址
-financial_database_url: "----------"
+financial_database_url: "mysql://saya:Sayaaccn666@1.15.81.148:3306/financial_1"
 #redis地址
-redis_url: "--------"
+redis_url: "redis://:redis666@saya.ac.cn:6379/8"
 #日志文件存放目录
 #Log file storage directory
 log_dir: "target/logs/"
@@ -46,22 +46,25 @@ log_chan_len: 100000
 #Interface whitelist (direct access without login)
 white_list_api:
   - "/backend/login"
+  - "/frontend"
+  - "/warehouse/picture"
 #发件人
-from_mail: "-------"
+from_mail: "504804540@qq.com"
 #收件人
 to_mail:
-  - "--------"
-  - "------"
+  - "saya@saya.ac.cn"
+  - "228476495@qq.com"
 #邮件服务器地址
 mail_server: "smtp.qq.com"
 #邮件服务器发送token
-mail_token: "-----"
+mail_token: "abfekqvcpsbrbhie"
 #高德地图ip定位地址
 amap_url: "https://restapi.amap.com/v3/ip"
 #高德地图ip定位密钥
-amap_key: "---------"
+amap_key: "f9e1683d880fca390a916581322e5f0d"
 #数据目录
 data_dir: "/Users/saya/warehouse"
+mysql_dump: "/usr/bin/mysqldump -h 127.0.0.1 -uroot -pSaya.ac.cn.666  --default-character-set=utf8  --routines  --databases primary business financial"
 #文件类型
 file_type_map:
   mmap: "complex"

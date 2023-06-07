@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 rbs = { version = "4.3" }
 # 线上环境，移除"debug_mode"模式features = ["debug_mode"]
-rbatis = { version = "4.3", features = []}
+rbatis = { version = "4.3", features = ["debug_mode"]}
 rbdc-mysql={version="4.3"}
 #rbatis orm dep must use async-std(Because actix-web relies on tokio0.2)
 tokio = { version = "1", features = ["full"] }
