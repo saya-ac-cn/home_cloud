@@ -259,7 +259,12 @@ impl ContentService {
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
         let news_exist = news_option.ok_or_else(|| Error::from((format!("id={} 的动态不存在!", id),util::NOT_EXIST_CODE)))?;
-        return Ok(NewsVO::from(news_exist))
+        let label_wrap = LinkLabelMapper::select_link_by_content(business_rbatis_pool!(),id).await;
+        let mut result = NewsVO::from(news_exist);
+        if label_wrap.is_ok() {
+            result.label = Some(label_wrap.unwrap())
+        }
+        return Ok(result)
     }
 
     /// 获取消息动态详情[公众]

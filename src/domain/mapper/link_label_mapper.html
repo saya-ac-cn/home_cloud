@@ -16,4 +16,16 @@
         delete `link_label` from `link_label` inner join `label` on label.`id` = link_label.`label_id`  where link_label.content_id = #{content_id} and label.`organize` = #{organize} and label.`category` = #{category}
     </delete>
 
+    <select id="select_link_by_content">
+        select group_concat(a.`label_id`) as `val` from `link_label` a where a.content_id = #{content} group by a.content_id
+    </select>
+
+    <select id="select_links_by_content">
+        ` select `content_id` as `key`,group_concat(`label_id`) as `val` from `link_label` where `content_id` in `
+        <foreach collection="content" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+        ` group by `content_id` `
+    </select>
+
 </mapper>
