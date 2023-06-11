@@ -22,10 +22,10 @@ impl LinkLabelMapper{
 
     /// 查询指定文章的label编号
     #[html_sql("./src/domain/mapper/link_label_mapper.html")]
-    pub async fn select_link_by_content(rb: &mut dyn Executor,content:&u64) -> Result<String,Error> { impled!() }
+    pub async fn select_link_by_content(rb: &mut dyn Executor,category:&str,content:&u64) -> Result<String,Error> { impled!() }
 
     /// 查询指定集合文章的label编号
     #[html_sql("./src/domain/mapper/link_label_mapper.html")]
-    pub async fn select_links_by_content(rb: &mut dyn Executor,content:&Vec<u64>) -> Result<Vec<KeyValueVO>,Error> { impled!() }
+    pub async fn select_links_by_content(rb: &mut dyn Executor,category:&str,content:&Vec<u64>) -> Result<Vec<KeyValueVO>,Error> { impled!() }
 
 }

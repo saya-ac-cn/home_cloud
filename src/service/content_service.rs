@@ -259,7 +259,7 @@ impl ContentService {
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
         let news_exist = news_option.ok_or_else(|| Error::from((format!("id={} 的动态不存在!", id),util::NOT_EXIST_CODE)))?;
-        let label_wrap = LinkLabelMapper::select_link_by_content(business_rbatis_pool!(),id).await;
+        let label_wrap = LinkLabelMapper::select_link_by_content(business_rbatis_pool!(),"news",id).await;
         let mut result = NewsVO::from(news_exist);
         if label_wrap.is_ok() {
             result.label = Some(label_wrap.unwrap())
@@ -340,7 +340,7 @@ impl ContentService {
         let page_rows = page_result.unwrap();
         if !page_rows.is_empty() {
             let ids = page_rows.iter().map(|e| e.clone().id.unwrap()).collect::<Vec<u64>>();
-            let links_warp = LinkLabelMapper::select_links_by_content(business_rbatis_pool!(),&ids).await;
+            let links_warp = LinkLabelMapper::select_links_by_content(business_rbatis_pool!(),"news",&ids).await;
             if links_warp.is_ok() {
                 let links = links_warp.unwrap();
                 if !links.is_empty() {
@@ -820,7 +820,13 @@ impl ContentService {
         }
         let notes_option = query_notes_wrap.unwrap().into_iter().next();
         let notes_exist = notes_option.ok_or_else(|| Error::from((format!("id={} 的动态不存在!", id),util::NOT_EXIST_CODE)))?;
-        return Ok(NotesVO::from(notes_exist))
+
+        let label_wrap = LinkLabelMapper::select_link_by_content(business_rbatis_pool!(),"notes",id).await;
+        let mut result = NotesVO::from(notes_exist);
+        if label_wrap.is_ok() {
+            result.label = Some(label_wrap.unwrap())
+        }
+        return Ok(result);
     }
 
     /// 获取笔记详情[公众]
@@ -897,7 +903,7 @@ impl ContentService {
 
         if !page_rows.is_empty() {
             let ids = page_rows.iter().map(|e| e.clone().id.unwrap()).collect::<Vec<u64>>();
-            let links_warp = LinkLabelMapper::select_links_by_content(business_rbatis_pool!(),&ids).await;
+            let links_warp = LinkLabelMapper::select_links_by_content(business_rbatis_pool!(),"notes",&ids).await;
             if links_warp.is_ok() {
                 let links = links_warp.unwrap();
                 if !links.is_empty() {

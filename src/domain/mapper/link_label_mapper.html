@@ -17,15 +17,16 @@
     </delete>
 
     <select id="select_link_by_content">
-        select group_concat(a.`label_id`) as `val` from `link_label` a where a.content_id = #{content} group by a.content_id
+        select group_concat(c.`label_id`) as `val` from (select a.`content_id`,a.`label_id` from `link_label` a left join `label` b on a.`label_id` = b.`id` where b.`category` = #{category} and a.`content_id` = #{content}) c group by c.content_id
     </select>
 
     <select id="select_links_by_content">
-        ` select `content_id` as `key`,group_concat(`label_id`) as `val` from `link_label` where `content_id` in `
+        ` select c.`content_id` as `key`,group_concat(c.`label_id`) as `val` from ( `
+        ` select a.`content_id`,a.`label_id` from `link_label` a left join `label` b on a.`label_id` = b.`id` where b.`category` = #{category} and a.`content_id` in `
         <foreach collection="content" item="item" open="(" close=")" separator=",">
             #{item}
         </foreach>
-        ` group by `content_id` `
+        ` ) c group by c.`content_id` `
     </select>
 
 </mapper>
