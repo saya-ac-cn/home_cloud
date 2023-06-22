@@ -4,6 +4,8 @@ use home_cloud::controller::{content_controller, financial_controller, oss_contr
 use home_cloud::middleware::auth_actix::Auth;
 use home_cloud::util::scheduler::Scheduler;
 use actix_files as fs;
+
+
 /// use tokio,because Rbatis specifies the runtime-tokio
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -13,7 +15,7 @@ async fn main() -> std::io::Result<()> {
     CONTEXT.init_pool().await;
     // scheduler
     //actix_web::rt::spawn(Scheduler::start()).await;
-    Scheduler::start().await;
+    Scheduler::init_system_scheduler().await;
     // router
     HttpServer::new(|| {
         App::new()
@@ -72,6 +74,7 @@ async fn main() -> std::io::Result<()> {
                     .service(content_controller::get_notes)
                     .service(content_controller::page_notes)
                     .service(content_controller::compute_pre6_news)
+                    .service(content_controller::get_label_list)
             )
             .service(
                 web::scope("/backend/financial")

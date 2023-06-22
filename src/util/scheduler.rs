@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use log::{error, info};
 use crate::service::{CONTEXT, SCHEDULER};
-use chrono::{Duration, FixedOffset, Local, TimeZone};
+use chrono::{Duration};
 use crate::domain::mapper::plan_mapper::PlanMapper;
 use crate::domain::table::{DbDumpLog, Plan, PlanArchive, User};
 use crate::domain::dto::plan::PlanPageDTO;
@@ -13,7 +13,7 @@ use std::ops::Sub;
 use crate::domain::mapper::plan_archive_mapper::PlanArchiveMapper;
 use crate::domain::vo::plan_archive::PlanArchiveVO;
 use crate::util::mail_util::MailUtils;
-use delay_timer::prelude::{DelayTimer, DelayTimerBuilder, Task, TaskBuilder, TaskError};
+use delay_timer::prelude::{Task, TaskBuilder, TaskError};
 
 /// 调度任务 https://github.com/BinChengZhao/delay-timer
 pub struct Scheduler {}
@@ -178,7 +178,7 @@ pub async fn do_plan_notice() {
             if  write_result.is_err(){
                 error!("在归档计划提醒事项时id={}，archive_time={}，发生异常:{}",plan.id.unwrap(),date,write_result.unwrap_err());
             }
-            Scheduler::remove(plan.id.unwrap());
+            Scheduler::remove(plan.id.unwrap()).await;
             continue;
         }
 
@@ -230,7 +230,7 @@ pub async fn do_plan_notice() {
         }
         // 生成定时cron表达式
         let cron_tab = DateUtils::data_time_to_cron(&standard_time.clone());
-        Scheduler::edit_plan(plan.id.unwrap(),cron_tab.as_str());
+        Scheduler::edit_plan(plan.id.unwrap(),cron_tab.as_str()).await;
         let user_op = plan_pool.get(plan.user.clone().unwrap().as_str());
         let user = user_op.unwrap();
         let mut contets:Vec<String> =  Vec::new();
@@ -253,7 +253,7 @@ fn build_plan_notice_async_task(task_id:u64,cron:&str) -> Result<Task, TaskError
 impl Scheduler {
     /// 初始化系统级别的调度任务（发生在系统每次启动时）
     pub async fn init_system_scheduler() {
-        let mut scheduler = SCHEDULER.lock().await;
+        let scheduler = SCHEDULER.lock().await;
         // 添加一个备份数据库的定时任务
         scheduler.add_task(build_mysqldump_async_task().unwrap());
         // 添加一个未完成计划的定时任务
@@ -278,7 +278,7 @@ impl Scheduler {
     }
 
     pub async fn add_plan(task_id: u64, cron: &str) {
-        let mut scheduler = SCHEDULER.lock().await;
+        let scheduler = SCHEDULER.lock().await;
         let result:Result<(), TaskError> = scheduler.add_task(build_plan_notice_async_task(task_id,cron).unwrap());
         if result.is_ok(){
             info!(" - task_id:{} add success",task_id);
@@ -288,7 +288,7 @@ impl Scheduler {
     }
 
     pub async fn edit_plan(task_id:u64,cron: &str){
-        let mut scheduler = SCHEDULER.lock().await;
+        let scheduler = SCHEDULER.lock().await;
         let result:Result<(), TaskError> = scheduler.remove_task(task_id);
         if result.is_ok(){
             info!(" - task_id:{}  already remove",task_id);
@@ -304,7 +304,7 @@ impl Scheduler {
     }
 
     pub async fn remove(task_id:u64){
-        let mut scheduler = SCHEDULER.lock().await;
+        let scheduler = SCHEDULER.lock().await;
         let result:Result<(), TaskError> = scheduler.remove_task(task_id);
         if result.is_ok(){
             info!(" - task_id:{}  already remove",task_id);
