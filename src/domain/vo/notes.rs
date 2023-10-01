@@ -21,7 +21,7 @@ impl From<Notes> for NotesVO {
             id: arg.id,
             notebook_id: arg.notebook_id,
             topic: arg.topic,
-            label: None,
+            label: arg.label,
             abstracts: arg.abstracts,
             content: arg.content,
             source: arg.source,

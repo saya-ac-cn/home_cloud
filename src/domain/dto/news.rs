@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use crate::domain::dto::label::LabelDTO;
-
 /// 通用消息动态数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NewsDTO {
@@ -9,7 +7,7 @@ pub struct NewsDTO {
     /// 主题
     pub topic:Option<String>,
     /// 标签
-    pub label:Option<Vec<LabelDTO>>,
+    pub label:Option<String>,
     /// 简述
     pub abstracts:Option<String>,
     /// 正文

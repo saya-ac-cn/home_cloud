@@ -15,4 +15,3 @@ pub mod journal;
 pub mod plan;
 pub mod plan_archive;
 pub mod db_dump_log;
-pub mod label;

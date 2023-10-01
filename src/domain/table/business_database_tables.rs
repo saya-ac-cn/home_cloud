@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct News{
     pub id:Option<u64>,
     pub topic:Option<String>,
+    pub label:Option<String>,
     pub abstracts:Option<String>,
     pub content:Option<String>,
     pub organize:Option<u64>,
@@ -68,6 +69,7 @@ pub struct NoteBook{
 pub struct Notes{
     pub id:Option<u64>,
     pub notebook_id:Option<u64>,
+    pub label:Option<String>,
     pub topic:Option<String>,
     pub abstracts:Option<String>,
     pub content:Option<String>,
@@ -80,8 +82,9 @@ pub struct Notes{
 pub struct Label{
     pub id:Option<u64>,
     pub name:Option<String>,
-    pub category:Option<String>,
+    pub category:Option<u32>,
     pub organize:Option<u64>,
+    pub source:Option<String>
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

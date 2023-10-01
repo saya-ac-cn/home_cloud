@@ -22,7 +22,7 @@ impl NotesMapper {
 
     /// 分页笔记动态
     #[html_sql("./src/domain/mapper/notes_mapper.html")]
-    pub async fn select_page(rb: &mut dyn Executor,notes:&NotesPageDTO,extend:&ExtendPageDTO) -> Result<Vec<NotesVO>,Error> { impled!() }
+    pub async fn select_page(rb: &mut dyn Executor,notes:&NotesPageDTO,extend:&ExtendPageDTO) -> Result<Option<Vec<NotesVO>>,Error> { impled!() }
 
     /// 查询笔记总数
     #[html_sql("./src/domain/mapper/notes_mapper.html")]
