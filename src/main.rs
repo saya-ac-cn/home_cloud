@@ -1,26 +1,25 @@
-use home_cloud::controller::{content_controller, financial_controller, oss_controller, system_controller};
-use home_cloud::service::{CONTEXT};
+use home_cloud::service::CONTEXT;
 use actix_web::{web, App, HttpServer};
-use actix_files as fs;
-use log::info;
+use home_cloud::controller::{content_controller, financial_controller, oss_controller, system_controller};
+use home_cloud::middleware::auth_actix::Auth;
 use home_cloud::util::scheduler::Scheduler;
+use actix_files as fs;
 
-#[actix_web::main]
+
+/// use tokio,because Rbatis specifies the runtime-tokio
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
-    // 初始化数据库连接池
-    CONTEXT.init_pool();
-    // 初始化调度器
-    actix_web::rt::spawn(Scheduler::start());
-    //日志追加器
+    // log
     home_cloud::config::log::init_log();
-    info!(
-        " - Local:   http://{}",
-        CONTEXT.config.server_url.replace("0.0.0.0", "127.0.0.1")
-    );
-    //路由
+    // database
+    CONTEXT.init_pool().await;
+    // scheduler
+    //actix_web::rt::spawn(Scheduler::start()).await;
+    Scheduler::init_system_scheduler().await;
+    // router
     HttpServer::new(|| {
         App::new()
-            .wrap(home_cloud::middleware::auth::Auth)
+            .wrap(Auth {})
             // 登录登出接口单独处理（因为都不在已有的分组中）
             .route("/backend/login", web::post().to(system_controller::login),)
             .route("/backend/logout", web::post().to(system_controller::logout),)
@@ -28,7 +27,7 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/warehouse", &CONTEXT.config.data_dir))
             .service(
                 web::scope("/backend/system")
-                    .service(system_controller::token_refresh)
+                    .service(system_controller::token)
                     .service(system_controller::myself)
                     .service(system_controller::user_add)
                     .service(system_controller::user_update)
@@ -125,3 +124,5 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
+
+

@@ -1,10 +1,10 @@
 use actix_web::{web, post, get, put, delete, Responder, HttpRequest};
-use crate::entity::dto::journal::JournalTotalDTO;
-use crate::entity::dto::memo::{MemoDTO, MemoPageDTO};
-use crate::entity::dto::news::{NewsDTO, NewsPageDTO};
-use crate::entity::dto::notebook::NoteBookDTO;
-use crate::entity::dto::notes::{NotesDTO, NotesPageDTO};
-use crate::entity::vo::{RespVO, ResultTools};
+use crate::domain::dto::journal::JournalTotalDTO;
+use crate::domain::dto::memo::{MemoDTO, MemoPageDTO};
+use crate::domain::dto::news::{NewsDTO, NewsPageDTO};
+use crate::domain::dto::notebook::NoteBookDTO;
+use crate::domain::dto::notes::{NotesDTO, NotesPageDTO};
+use crate::domain::vo::{RespVO};
 use crate::service::CONTEXT;
 
 /// 添加动态

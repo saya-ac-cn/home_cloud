@@ -1,9 +1,8 @@
 use actix_web::{web, post, get, put, delete, Responder, HttpRequest};
-use crate::entity::dto::general_journal::GeneralJournalDTO;
-use crate::entity::dto::journal::{JournalDTO, JournalPageDTO, JournalTotalDTO};
-use crate::entity::vo::{RespVO, ResultTools};
+use crate::domain::dto::general_journal::GeneralJournalDTO;
+use crate::domain::dto::journal::{JournalDTO, JournalPageDTO, JournalTotalDTO};
+use crate::domain::vo::RespVO;
 use crate::service::CONTEXT;
-use crate::util;
 
 /// 申报流水
 #[post("/journal")]
@@ -127,13 +126,7 @@ pub async fn excel_journal_collect(req: HttpRequest,arg: web::Query<JournalPageD
 pub async fn compute_account_growth_rate(req: HttpRequest,arg: web::Query<JournalTotalDTO>) -> impl Responder {
     log::info!("compute_account_growth_rate:{:?}", arg.clone().into_inner());
     let vo = CONTEXT.financial_service.compute_account_growth_rate(&req,&arg.archive_date.clone()).await;
-    let result = RespVO{
-        code: Some(util::CODE_SUCCESS),
-        msg: Some(String::from("操作成功")),
-        data: Some(vo.unwrap()),
-    };
-    let json = serde_json::json!(&result).to_string();
-    return ResultTools::from_map(json);
+    return RespVO::from_result(&vo).resp_json();
 }
 
 /// 计算指定月份的收入比重
@@ -141,13 +134,7 @@ pub async fn compute_account_growth_rate(req: HttpRequest,arg: web::Query<Journa
 pub async fn compute_income_percentage(req: HttpRequest,arg: web::Query<JournalTotalDTO>) -> impl Responder {
     log::info!("compute_income_percentage:{:?}", arg.clone().into_inner());
     let vo = CONTEXT.financial_service.compute_income_percentage (&req,&arg.archive_date.clone()).await;
-    let result = RespVO{
-        code: Some(util::CODE_SUCCESS),
-        msg: Some(String::from("操作成功")),
-        data: Some(vo.unwrap()),
-    };
-    let json = serde_json::json!(&result).to_string();
-    return ResultTools::from_map(json);
+    return RespVO::from_result(&vo).resp_json();
 }
 
 

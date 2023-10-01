@@ -1,14 +1,21 @@
 use actix_web::{web, get, post, put, delete, HttpRequest, Responder};
-use crate::entity::dto::db_dump_log::DbDumpLogPageDTO;
-use crate::entity::dto::journal::JournalTotalDTO;
-use crate::entity::dto::log::LogPageDTO;
-use crate::entity::dto::picture_base64::Base64PictureDTO;
-use crate::entity::dto::plan::{PlanDTO, PlanPageDTO};
-use crate::entity::dto::plan_archive::{PlanArchiveDTO, PlanArchivePageDTO};
-use crate::entity::dto::sign_in::SignInDTO;
-use crate::entity::dto::user::{UserDTO, UserPageDTO};
-use crate::entity::vo::{RespVO};
+use crate::domain::dto::db_dump_log::DbDumpLogPageDTO;
+use crate::domain::dto::journal::JournalTotalDTO;
+use crate::domain::dto::log::LogPageDTO;
+use crate::domain::dto::picture_base64::Base64PictureDTO;
+use crate::domain::dto::plan::{PlanDTO, PlanPageDTO};
+use crate::domain::dto::plan_archive::{PlanArchiveDTO, PlanArchivePageDTO};
+use crate::domain::dto::sign_in::SignInDTO;
+use crate::domain::dto::user::{UserDTO, UserPageDTO};
+use crate::domain::vo::{RespVO};
 use crate::service::CONTEXT;
+
+/// 生成token
+#[get("/token")]
+pub async fn token() -> impl Responder {
+    let vo = CONTEXT.system_service.token().await;
+    return RespVO::from_result(&vo).resp_json();
+}
 
 /// 用户登录
 pub async fn login(req: HttpRequest,arg: web::Json<SignInDTO>) -> impl Responder {
@@ -17,17 +24,10 @@ pub async fn login(req: HttpRequest,arg: web::Json<SignInDTO>) -> impl Responder
     return RespVO::from_result(&vo).resp_json();
 }
 
-/// 刷新token
-#[post("/token/refresh")]
-pub async fn token_refresh(req: HttpRequest) -> impl Responder {
-    let vo = CONTEXT.system_service.token_refresh(&req).await;
-    return RespVO::from_result(&vo).resp_json();
-}
-
 /// 用户注销
 pub async fn logout(req: HttpRequest) -> impl Responder {
     let vo = CONTEXT.system_service.logout(&req).await;
-    return RespVO::from(&()).resp_json();
+    return RespVO::from_result(&vo).resp_json();
 }
 
 /// 获取当前用户信息
@@ -173,10 +173,10 @@ pub async fn plan_page(req: HttpRequest, arg: web::Query<PlanPageDTO>) -> impl R
 }
 
 /// 提前完成提醒事项
-#[put("/plan/finish/{id}")]
-pub async fn finish_plan(req: HttpRequest,path: web::Path<u64>) -> impl Responder {
-    let id = path.into_inner();
-    let vo = CONTEXT.system_service.advance_finish_plan(&req,&id).await;
+#[put("/plan/finish")]
+pub async fn finish_plan(req: HttpRequest,arg: web::Json<PlanDTO>) -> impl Responder {
+    log::info!("add_plan:{:?}", arg.0);
+    let vo = CONTEXT.system_service.advance_finish_plan(&req,&arg.0).await;
     return RespVO::from_result(&vo).resp_json();
 }
 
@@ -206,9 +206,9 @@ pub async fn delete_archive_plan(req: HttpRequest,path: web::Path<u64>) -> impl 
 
 /// 获取数据库备份日志分页列表
 #[get("/db/log/page")]
-pub async fn db_dump_log_page(req: HttpRequest, arg: web::Query<DbDumpLogPageDTO>) -> impl Responder {
+pub async fn db_dump_log_page(arg: web::Query<DbDumpLogPageDTO>) -> impl Responder {
     log::info!("db_dump_log_page:{:?}", arg.clone().into_inner());
-    let vo = CONTEXT.system_service.db_dump_log_page(&req,&arg.into_inner()).await;
+    let vo = CONTEXT.system_service.db_dump_log_page(&arg.into_inner()).await;
     return RespVO::from_result(&vo).resp_json();
 }
 

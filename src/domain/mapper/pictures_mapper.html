@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+    <select id="select_page">
+        ` select `id`,`category`, `file_name`, `descript`, `file_url`, `web_url`,`organize`,`source`,`create_time`,`update_time` from `pictures` `
+        <where>
+            <if test="pictures.organize != 0">
+              `  `organize` = #{pictures.organize} `
+            </if>
+            <if test="pictures.source != ''">
+              `  and `source` = #{pictures.source} `
+            </if>
+            <if test="pictures.id != 0">
+              `  and `id` = #{pictures.id} `
+            </if>
+            <if test="pictures.category != 0">
+              `  and `category` = #{pictures.category} `
+            </if>
+            <if test="pictures.file_name != ''">
+              `  and `file_name` like concat(#{pictures.file_name},'%')`
+            </if>
+            <if test="pictures.descript != ''">
+              `  and `descript` like concat(#{pictures.descript},'%') `
+            </if>
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59') `
+            </if>
+        </where>
+        ` order by `id` desc limit #{extend.page_no},#{extend.page_size} `
+    </select>
+
+    <select id="select_count">
+        ` select count(1) from `pictures` `
+        <where>
+            <if test="pictures.organize != 0">
+              `  `organize` = #{pictures.organize} `
+            </if>
+            <if test="pictures.source != ''">
+              `  and `source` = #{pictures.source} `
+            </if>
+            <if test="pictures.id != 0">
+              `  and `id` = #{pictures.id} `
+            </if>
+            <if test="pictures.category != 0">
+              `  and `category` = #{pictures.category} `
+            </if>
+            <if test="pictures.file_name != ''">
+              `  and `file_name` like concat(#{pictures.file_name},'%') `
+            </if>
+            <if test="pictures.descript != ''">
+              `  and `descript` like concat(#{pictures.descript},'%') `
+            </if>
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59') `
+            </if>
+        </where>
+    </select>
+
+</mapper>

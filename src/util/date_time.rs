@@ -1,5 +1,5 @@
 use std::ops::Add;
-use chrono::{Datelike, Duration, NaiveDate, Timelike};
+use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, Timelike};
 
 pub trait DateTimeUtil{
     fn naive_date_time_to_str(&self,format:&str) -> Option<String>;
@@ -59,7 +59,9 @@ impl DateUtils {
     }
 
     // 月份加减
-    pub fn month_compute(original_date:&NaiveDate,val:i32) -> NaiveDate{
+    pub fn month_compute(original_date:&NaiveDate,val:i32) -> Option<NaiveDate>{
+        // 由于本方法在加减时，是整月的加减，即：直接修改月份，所以对于号数为29，30，31的日期加减后，会发生溢出，所以需要重点检查
+        println!("original_date={:?}",original_date);
         let year = original_date.year();
         let mut month=original_date.month();
         if val < 0 {
@@ -69,27 +71,27 @@ impl DateUtils {
                 // 年份要变
                 let _year:i32 = year - (month.abs() / 12) as i32 - 1;
                 let _month = month % 12 + 12;
-                original_date.clone().with_year(_year).unwrap().with_month(_month as u32).unwrap()
+                original_date.clone().with_year(_year).unwrap().with_month(_month as u32)
             }else {
                 // 年份不变
-                original_date.clone().with_month(month as u32).unwrap()
+                original_date.clone().with_month(month as u32)
             }
         }else {
             // 是加
-            month = month+ (val.abs() as u32);
+            month = month + (val.abs() as u32);
             if month <= 12  {
                 // 年份不变
-                original_date.clone().with_month(month).unwrap()
+                original_date.clone().with_month(month)
             }else{
                 let _year = year + (month / 12) as i32;
                 let _month = if month % 12 == 0 { 12 }else { month % 12 };
-                original_date.clone().with_year(_year).unwrap().with_month(_month).unwrap()
+                original_date.clone().with_year(_year).unwrap().with_month(_month)
             }
         }
     }
 
     /// 对计划的日期进行加运算
-    pub fn plan_data_compute(original :&chrono::NaiveDateTime,cycle :u32,unit :u32) -> chrono::NaiveDateTime{
+    pub fn plan_data_compute(original :&NaiveDateTime,cycle :u32,unit :u32) -> Option<NaiveDateTime>{
         // cycle= 1：一次性，2：天，3：周，4：月，5：年
         let param = unit as i64;
         let convert_one_result = if 2==cycle {
@@ -98,7 +100,11 @@ impl DateUtils {
             original.add(Duration::weeks(param))
         } else if 4 == cycle {
             let original_date = original.date();
-            let convert_date = DateUtils::month_compute(&original_date,unit as i32);
+            let convert_date_op = DateUtils::month_compute(&original_date,unit as i32);
+            if convert_date_op.is_none() {
+                return None;
+            }
+            let convert_date = convert_date_op.unwrap();
             original.clone().with_year(convert_date.year()).unwrap().with_month(convert_date.month()).unwrap()
         } else if 5 == cycle {
             let new_year = original.year() + (unit as i32);
@@ -106,7 +112,7 @@ impl DateUtils {
         } else {
             original.clone()
         };
-        return convert_one_result;
+        return Some(convert_one_result);
     }
 
     /// 根据日期时间生成cron表达式，其中秒一律按0处理，年份按照*，每年执行一次，因为cron_table框架不支持一次性的定时调度，特殊处理成每年执行一次，然后删除
@@ -123,7 +129,8 @@ impl DateUtils {
         // 世界时间
         let utc = chrono::Utc::now();
         // 东8区
-        let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        //let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        let east8:chrono::FixedOffset = chrono::FixedOffset::east_opt(8 * 3600).unwrap();
         utc.with_timezone(&east8)
     }
 
@@ -132,7 +139,7 @@ impl DateUtils {
         // 世界时间
         let utc = chrono::Utc::now();
         // 东8区
-        let east8:chrono::FixedOffset = chrono::FixedOffset::east(8 * 3600);
+        let east8:chrono::FixedOffset = chrono::FixedOffset::east_opt(8 * 3600).unwrap();
         utc.with_timezone(&east8)
     }
 }
