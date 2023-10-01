@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use crate::domain::dto::label::LabelDTO;
+
 /// 通用笔记数据传输层
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NotesDTO {
@@ -7,7 +9,7 @@ pub struct NotesDTO {
     /// 归属笔记簿
     pub notebook_id:Option<u64>,
     /// 标签
-    pub label:Option<String>,
+    pub label:Option<Vec<LabelDTO>>,
     /// 主题
     pub topic:Option<String>,
     /// 简述

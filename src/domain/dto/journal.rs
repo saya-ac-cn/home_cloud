@@ -17,7 +17,9 @@ pub struct JournalDTO {
     /// 归档时间
     pub archive_date:Option<String>,
     /// 流水详情
-    pub details:Option<Vec<GeneralJournalDTO>>
+    pub details:Option<Vec<GeneralJournalDTO>>,
+    /// 会话token
+    pub token: Option<String>,
 }
 
 /// 流水数据分页数据传输层

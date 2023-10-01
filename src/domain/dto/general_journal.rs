@@ -13,4 +13,6 @@ pub struct GeneralJournalDTO {
     pub amount:Option<Decimal>,
     /// 备注
     pub remarks:Option<String>,
+    /// 会话token
+    pub token: Option<String>,
 }

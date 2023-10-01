@@ -7,10 +7,7 @@ use actix_web::{
     Error,
 };
 use futures_util::future::LocalBoxFuture;
-use std::{
-    future::{ready, Ready},
-    rc::Rc,
-};
+use std::{future::{Ready,ready}, rc::Rc,};
 use crate::util;
 
 /// actix_web request中间件

@@ -154,14 +154,11 @@ impl MailUtils {
 </html>"#;
 
 
-        // 拼凑提醒内容
-        let mut title = String::new();
+        // 拼凑提醒内容 默认 执行超期未完成的提醒
+        let mut title = "以下是您截止昨天还未完成的计划安排，请根据您的情况，合理安排：";
         if flag {
             // 执行正常的提醒
-            title = String::from("以下是您今天的计划安排，请根据您的情况，合理安排：");
-        } else {
-            // 执行超期未完成的提醒
-            title = String::from("以下是您截止昨天还未完成的计划安排，请根据您的情况，合理安排：");
+            title = "以下是您今天的计划安排，请根据您的情况，合理安排：";
         }
 
         // 拼凑提醒内容
@@ -175,7 +172,7 @@ impl MailUtils {
         let html = html_template.replace("${send_date}",now.unwrap().as_str())
             .replace("${plan_user}",user.name.clone().unwrap().as_str())
             .replace("${plan_content}", content.as_str())
-            .replace("${plan_title}", title.as_str());
+            .replace("${plan_title}", title);
         // 准备收发件人
         let email_from = format!("亲亲里 <{}>",&CONTEXT.config.from_mail);
         let to_user = user.name.clone().unwrap();

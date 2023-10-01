@@ -20,6 +20,7 @@ pub mod notes;
 pub mod payment_means;
 pub mod pictures;
 pub mod total_pre_6_financial_month;
+pub mod key_value;
 
 use crate::util::error::Error;
 use actix_web::HttpResponse;

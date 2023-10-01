@@ -9,6 +9,8 @@ use crate::domain::vo::plan::PlanVO;
 crud!(Plan {});
 impl_delete!(Plan {delete_by_id_organize(id:&u64,organize:&u64) => "`where id = #{id} and organize= #{organize}`"});
 impl_select!(Plan{select_by_id(id:&u64) => "`where id = #{id}`"});
+impl_select!(Plan{select_current_after() => "`where standard_time >= now()`"});
+
 
 pub struct PlanMapper{}
 

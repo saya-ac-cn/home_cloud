@@ -41,6 +41,8 @@ pub struct ApplicationConfig {
     pub amap_key: String,
     /// 项目产生的数据目录
     pub data_dir: String,
+    /// 数据库空闲目录
+    pub mysql_dump: String,
     /// 文件类型映射字典
     pub file_type_map: HashMap<String, String>,
 }

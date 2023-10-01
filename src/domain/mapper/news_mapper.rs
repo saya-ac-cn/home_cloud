@@ -22,7 +22,7 @@ impl NewsMapper {
 
     /// 分页查询动态
     #[html_sql("./src/domain/mapper/news_mapper.html")]
-    pub async fn select_page(rb: &mut dyn Executor,news:&NewsPageDTO,extend:&ExtendPageDTO) -> Result<Option<Vec<NewsVO>>,Error> { impled!() }
+    pub async fn select_page(rb: &mut dyn Executor,news:&NewsPageDTO,extend:&ExtendPageDTO) -> Result<Vec<NewsVO>,Error> { impled!() }
 
     /// 查询动态总数
     #[html_sql("./src/domain/mapper/news_mapper.html")]

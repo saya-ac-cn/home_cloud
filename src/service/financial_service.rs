@@ -27,6 +27,7 @@ use crate::domain::vo::user_context::UserContext;
 use excel::*;
 use serde_json::{json, Map, Value};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
+use crate::util::token_util::TokenUtils;
 
 /// 财政服务
 pub struct FinancialService {}
@@ -35,6 +36,7 @@ impl FinancialService {
 
     /// 添加流水（主+子）
     pub async fn add_journal(&self, req: &HttpRequest,arg: &JournalDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.monetary_id.is_none() || arg.means_id.is_none() || arg.abstract_id.is_none() || arg.details.is_none() || arg.archive_date.is_none();
         if check_flag{
             return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER_CODE)));
@@ -113,6 +115,7 @@ impl FinancialService {
 
     /// 修改流水（父记录）
     pub async fn edit_journal(&self, req: &HttpRequest,arg: &JournalDTO) -> Result<u64> {
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.monetary_id.is_none() || arg.means_id.is_none() || arg.abstract_id.is_none() || arg.archive_date.is_none();
         if check_flag{
             return Err(Error::from(("支付方式、摘要、交易货币、交易日期和流水明细不能为空!",util::NOT_PARAMETER_CODE)));
@@ -193,6 +196,7 @@ impl FinancialService {
 
     /// 添加流水明细
     pub async fn add_general_journal(&self, req: &HttpRequest,arg: &GeneralJournalDTO) -> Result<u64>{
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.journal_id.is_none() || arg.flag.is_none() || arg.flag.as_ref().unwrap().is_empty() ||arg.amount.is_none() || arg.remarks.is_none() || arg.remarks.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER_CODE)));
@@ -280,6 +284,7 @@ impl FinancialService {
 
     /// 修改流水明细
     pub async fn edit_general_journal(&self, req: &HttpRequest,arg: &GeneralJournalDTO) -> Result<u64>{
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none() || arg.journal_id.is_none() || arg.flag.is_none() || arg.flag.as_ref().unwrap().is_empty() || arg.amount.is_none() || arg.remarks.is_none() || arg.remarks.as_ref().unwrap().is_empty();
         if check_flag{
             return Err(Error::from(("流水号、收支类型、金额和备注不能为空!",util::NOT_PARAMETER_CODE)));
@@ -949,7 +954,8 @@ impl FinancialService {
         if user_month_wrap.is_err() {
             return Err(Error::from(("统计月份不能为空!",util::NOT_PARAMETER_CODE)));
         }
-        let user_month = user_month_wrap.unwrap();
+        // 强制刷到1日
+        let user_month = user_month_wrap.unwrap().with_day(1).unwrap();
         // 判断是否为当前月
         let current_month = DateUtils::now().date_naive();
         // 总天数，计算日均用
@@ -961,9 +967,9 @@ impl FinancialService {
             DateUtils::get_current_month_days(user_month.year(),user_month.month())
         };
         // 得到上一个月的时间
-        let last_month = DateUtils::month_compute(&user_month,-1);
+        let last_month = DateUtils::month_compute(&user_month,-1).unwrap();
         // 得到去年同期这个月的时间
-        let last_year = DateUtils::month_compute(&user_month,-12);
+        let last_year = DateUtils::month_compute(&user_month,-12).unwrap();
         let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
         // 本月（用户请求的月份）的统计
         let _current_month_wrap = JournalMapper::total_balance(financial_rbatis_pool!(), &user_info.organize,&user_month).await;

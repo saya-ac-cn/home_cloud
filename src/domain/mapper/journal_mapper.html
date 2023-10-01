@@ -37,12 +37,7 @@
     </update>
 
     <select id="select_page">
-        ` select
-            a.*,b.`name` as payment_means_name,c.tag as abstracts_name,concat(d.abbreviate,'(',d.`name`,')') as monetary_name
-        from
-            `journal` a left join `payment_means` b on a.`means_id` = b.`id`
-            left join `abstracts` c on a.`abstract_id` = c.`id`
-            left join `monetary` d on a.`monetary_id` = d.`id` `
+        ` select a.*,b.`name` as payment_means_name,c.tag as abstracts_name,concat(d.abbreviate,'(',d.`name`,')') as monetary_name from `journal` a left join `payment_means` b on a.`means_id` = b.`id` left join `abstracts` c on a.`abstract_id` = c.`id` left join `monetary` d on a.`monetary_id` = d.`id` `
         <where>
             <if test="journal.organize != 0">
                ` a.`organize` = #{journal.organize} `
@@ -98,14 +93,7 @@
 
     <!--按天汇总-->
     <select id="select_day_page">
-        ` select
-            b.`archive_date`,
-            sum(b.`income`) as income,
-            sum(b.`outlay`) as outlay,
-            sum(b.`total`) as total
-        from
-        (
-            select a.`archive_date`,a.`income`,a.`outlay`,a.`total` from `journal` a `
+        ` select b.`archive_date`, sum(b.`income`) as income, sum(b.`outlay`) as outlay, sum(b.`total`) as total from ( select a.`archive_date`,a.`income`,a.`outlay`,a.`total` from `journal` a `
             <where>
                 <if test="journal.organize != 0">
                    ` a.`organize` = #{journal.organize} `
@@ -123,15 +111,7 @@
     </select>
 
     <select id="select_day_count">
-        ` select
-            count(*)
-        from
-        (
-            select
-                count(b.archive_date)
-            from
-                (
-                    select a.`archive_date` from `journal` a `
+        ` select count(*) from ( select count(b.archive_date) from ( select a.`archive_date` from `journal` a `
                     <where>
                         <if test="journal.organize != 0">
                            ` a.`organize` = #{journal.organize} `
@@ -159,19 +139,10 @@
     </select>
 
     <select id="bill_rank">
-        select
-            b.`total`,a.`tag` as abstracts_name
-        from `abstracts` a
-        inner join  (
-            select
-                c.`abstract_id` ,
-                sum(c.`income`) as income ,
-                sum(c.`outlay`) as outlay ,
-                sum(c.`total`) as total
-            from `journal` c
-            where c.`organize` = #{organize} and c.`archive_date` like concat(date_format(#{archive_date},'%Y-%m') ,'%')
-            group by c.`abstract_id`
-        ) b on a.`id` = b.`abstract_id`
-        order by b.`total` desc
+        ` select b.`total`,a.`tag` as abstracts_name from `abstracts` a `
+        ` inner join  ( select c.`abstract_id` , sum(c.`income`) as income , sum(c.`outlay`) as outlay , sum(c.`total`) as total from `journal` c `
+        ` where c.`organize` = #{organize} and c.`archive_date` like concat(date_format(#{archive_date},'%Y-%m') ,'%') `
+        `    group by c.`abstract_id`  `
+        ` ) b on a.`id` = b.`abstract_id` order by b.`total` desc `
     </select>
 </mapper>
