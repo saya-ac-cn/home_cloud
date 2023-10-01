@@ -257,3 +257,38 @@ export const updateMemo = params => ajax(`${backendAPI}/api/message/memo/edit`, 
 // 删除便笺
 export const deleteMemo = params => ajax(`${backendAPI}/api/message/memo/delete`, params, 'DELETE');
 // {{host}}:{{port}}/backend/content/memo/6
+
+
+// 公众部分
+// 获取动态列表
+export const queryNews = params => ajax(`${frontendAPI}/news`, params, 'GET');
+// {{host}}:{{port}}/frontend/page/news/组织id
+
+// 获取笔记列表
+export const queryNote = params => ajax(`${frontendAPI}/notes`, params, 'GET');
+// {{host}}:{{port}}/frontend/page/notes/组织id
+
+// 获取文件列表
+export const queryFile = params => ajax(`${frontendAPI}/file`, params, 'GET');
+// {{host}}:{{port}}/frontend/page/files/组织id
+
+// 下载文件
+export const downloadFiles = `${frontendAPI}/files/download/`;
+//  {{host}}:{{port}}/frontend/files/download/文件id
+
+// 获取笔记簿
+export const queryNotebook = params => ajax(`${frontendAPI}/notebook`, params, 'GET');
+// {{host}}:{{port}}/frontend/notebook/组织id
+
+// 获取动态详情
+export const queryNewsInfo = params => ajax(`${frontendAPI}/news/info`, params, 'GET');
+// {{host}}:{{port}}/frontend/news/组织id/动态id
+
+// 获取笔记详情
+export const queryNotesInfo = params => ajax(`${frontendAPI}/notes/info`, params, 'GET');
+// {{host}}:{{port}}/frontend/notes/组织id/动态id
+
+
+// 获取行程安排
+export const queryPlan = params => ajax(`${frontendAPI}/plan`, params, 'GET');
+// {{host}}:{{port}}/frontend/plan/组织id?archive_date=2022-11
