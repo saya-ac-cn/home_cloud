@@ -1,10 +1,11 @@
-use home_cloud::service::CONTEXT;
-use actix_web::{web, App, HttpServer};
-use home_cloud::controller::{content_controller, financial_controller, oss_controller, system_controller};
-use home_cloud::middleware::auth_actix::Auth;
-use home_cloud::util::scheduler::Scheduler;
 use actix_files as fs;
-
+use actix_web::{web, App, HttpServer};
+use home_cloud::controller::{
+    content_controller, financial_controller, oss_controller, system_controller,
+};
+use home_cloud::middleware::auth_actix::Auth;
+use home_cloud::service::CONTEXT;
+use home_cloud::util::scheduler::Scheduler;
 
 /// use tokio,because Rbatis specifies the runtime-tokio
 #[tokio::main]
@@ -21,8 +22,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Auth {})
             // 登录登出接口单独处理（因为都不在已有的分组中）
-            .route("/backend/login", web::post().to(system_controller::login),)
-            .route("/backend/logout", web::post().to(system_controller::logout),)
+            .route("/backend/login", web::post().to(system_controller::login))
+            .route("/backend/logout", web::post().to(system_controller::logout))
             // 映射静态资源目录
             .service(fs::Files::new("/warehouse", &CONTEXT.config.data_dir))
             .service(
@@ -50,7 +51,7 @@ async fn main() -> std::io::Result<()> {
                     .service(system_controller::plan_archive_page)
                     .service(system_controller::edit_archive_plan)
                     .service(system_controller::delete_archive_plan)
-                    .service(system_controller::db_dump_log_page)
+                    .service(system_controller::db_dump_log_page),
             )
             .service(
                 web::scope("/backend/content")
@@ -73,7 +74,7 @@ async fn main() -> std::io::Result<()> {
                     .service(content_controller::delete_notes)
                     .service(content_controller::get_notes)
                     .service(content_controller::page_notes)
-                    .service(content_controller::compute_pre6_news)
+                    .service(content_controller::compute_pre6_news),
             )
             .service(
                 web::scope("/backend/financial")
@@ -95,7 +96,7 @@ async fn main() -> std::io::Result<()> {
                     .service(financial_controller::compute_account_growth_rate)
                     .service(financial_controller::compute_income_percentage)
                     .service(financial_controller::order_month_journal)
-                    .service(financial_controller::compute_pre6_journal)
+                    .service(financial_controller::compute_pre6_journal),
             )
             .service(
                 web::scope("/backend/oss")
@@ -107,22 +108,21 @@ async fn main() -> std::io::Result<()> {
                     .service(oss_controller::page_files)
                     .service(oss_controller::files_download)
                     .service(oss_controller::files_edit)
-                    .service(oss_controller::files_delete)
+                    .service(oss_controller::files_delete),
             )
-            .service(web::scope("/frontend")
-                .service(content_controller::public_page_news)
-                .service(content_controller::public_page_notes)
-                .service(oss_controller::public_page_files)
-                .service(oss_controller::files_download)
-                .service(content_controller::public_notebook_list)
-                .service(content_controller::public_news_detail)
-                .service(content_controller::public_notes_detail)
-                .service(system_controller::plan_grid)
+            .service(
+                web::scope("/frontend")
+                    .service(content_controller::public_page_news)
+                    .service(content_controller::public_page_notes)
+                    .service(oss_controller::public_page_files)
+                    .service(oss_controller::files_download)
+                    .service(content_controller::public_notebook_list)
+                    .service(content_controller::public_news_detail)
+                    .service(content_controller::public_notes_detail)
+                    .service(system_controller::plan_grid),
             )
     })
     .bind(&CONTEXT.config.server_url)?
     .run()
     .await
 }
-
-

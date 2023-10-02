@@ -1,5 +1,6 @@
-use crate::domain::vo::RespVO;
+use crate::entity::vo::RespVO;
 use crate::middleware::auth::{check_auth, checked_token, is_white_list_api};
+use crate::util;
 use actix_http::body::BoxBody;
 use actix_web::error::ErrorUnauthorized;
 use actix_web::{
@@ -7,8 +8,10 @@ use actix_web::{
     Error,
 };
 use futures_util::future::LocalBoxFuture;
-use std::{future::{Ready,ready}, rc::Rc,};
-use crate::util;
+use std::{
+    future::{ready, Ready},
+    rc::Rc,
+};
 
 /// actix_web request中间件
 

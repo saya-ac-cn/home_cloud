@@ -3,10 +3,10 @@ use std::error::Error as StdError;
 use std::fmt::{self, Debug, Display};
 use std::io;
 
+use crate::util;
 use serde::de::Visitor;
 use serde::ser::{Serialize, Serializer};
 use serde::{Deserialize, Deserializer};
-use crate::util;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -15,7 +15,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[non_exhaustive]
 pub enum Error {
     /// Default Error
-    E(String,i32),
+    E(String, i32),
 }
 
 impl Display for Error {
@@ -23,7 +23,7 @@ impl Display for Error {
     // noinspection RsMatchCheck
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::E(error,code) => write!(f, "{}:{}", code,error),
+            Error::E(error, code) => write!(f, "{}:{}", code, error),
         }
     }
 }
@@ -41,15 +41,12 @@ impl From<io::Error> for Error {
 impl From<i32> for Error {
     fn from(arg: i32) -> Self {
         match arg {
-            util::NOT_AUTHORIZE_CODE => {
-                Error::E(String::from("not authorize error"),util::NOT_AUTHORIZE_CODE)
-            }
-            util::TOKEN_ERROR_CODE => {
-                Error::E(String::from("token error"),util::TOKEN_ERROR_CODE)
-            }
-            _ => {
-                Error::E(String::from("other error"),arg)
-            }
+            util::NOT_AUTHORIZE_CODE => Error::E(
+                String::from("not authorize error"),
+                util::NOT_AUTHORIZE_CODE,
+            ),
+            util::TOKEN_ERROR_CODE => Error::E(String::from("token error"), util::TOKEN_ERROR_CODE),
+            _ => Error::E(String::from("other error"), arg),
         }
     }
 }
@@ -57,26 +54,26 @@ impl From<i32> for Error {
 /// 用户没有指定状态码时，默认util::FAIL
 impl From<&str> for Error {
     fn from(arg: &str) -> Self {
-        return Error::E(arg.to_string(),util::FAIL_CODE);
+        return Error::E(arg.to_string(), util::FAIL_CODE);
     }
 }
 
 /// 用户没有指定状态码时，默认util::FAIL
 impl From<std::string::String> for Error {
     fn from(arg: String) -> Self {
-        return Error::E(arg,util::FAIL_CODE);
+        return Error::E(arg, util::FAIL_CODE);
     }
 }
 
-impl From<(&str,i32)> for Error {
-    fn from(arg: (&str,i32)) -> Self {
+impl From<(&str, i32)> for Error {
+    fn from(arg: (&str, i32)) -> Self {
         return Error::E(arg.0.parse().unwrap(), arg.1);
     }
 }
 
-impl From<(std::string::String,i32)> for Error {
-    fn from(arg: (std::string::String,i32)) -> Self {
-        return Error::E(arg.0,arg.1);
+impl From<(std::string::String, i32)> for Error {
+    fn from(arg: (std::string::String, i32)) -> Self {
+        return Error::E(arg.0, arg.1);
     }
 }
 
@@ -89,21 +86,21 @@ impl From<Error> for std::io::Error {
 /// 为防止敏感信息泄露，std框架产生的异常需要对外脱敏，在这里赋予特殊的状态码
 impl From<&dyn std::error::Error> for Error {
     fn from(arg: &dyn std::error::Error) -> Self {
-        return Error::E(arg.to_string(),util::UNKNOWN_ERROR_CODE);
+        return Error::E(arg.to_string(), util::UNKNOWN_ERROR_CODE);
     }
 }
 
 /// 为防止敏感信息泄露，rbatis框架产生的异常需要对外脱敏，在这里赋予特殊的状态码
 impl From<rbatis::error::Error> for Error {
     fn from(arg: rbatis::error::Error) -> Self {
-        Error::E(arg.to_string(),util::UNKNOWN_ERROR_CODE)
+        Error::E(arg.to_string(), util::UNKNOWN_ERROR_CODE)
     }
 }
 
 /// 为防止敏感信息泄露，actix_web框架产生的异常需要对外脱敏，在这里赋予特殊的状态码
 impl From<actix_web::error::Error> for Error {
     fn from(arg: actix_web::error::Error) -> Self {
-        Error::E(arg.to_string(),util::UNKNOWN_ERROR_CODE)
+        Error::E(arg.to_string(), util::UNKNOWN_ERROR_CODE)
     }
 }
 
@@ -111,9 +108,7 @@ impl From<actix_web::error::Error> for Error {
 impl Clone for Error {
     fn clone(&self) -> Self {
         match self {
-            Error::E(message,code) => {
-                Error::E(message.to_string(), *code)
-            },
+            Error::E(message, code) => Error::E(message.to_string(), *code),
             // _ => {
             //     Error::from(self.to_string())
             // }
@@ -122,9 +117,9 @@ impl Clone for Error {
 
     fn clone_from(&mut self, source: &Self) {
         match source {
-            Error::E(message,code) => {
+            Error::E(message, code) => {
                 *self = Error::E(message.to_string(), *code);
-            },
+            }
             //_ => {
             //    *self = Error::from(self.to_string());
             //}

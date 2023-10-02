@@ -27,11 +27,10 @@ impl RedisService {
         return Ok(conn.unwrap());
     }
 
-
     pub async fn exists(&self, k: &str) -> Result<bool> {
         let k = k.to_string();
         let mut conn = self.get_conn().await?;
-        let result:RedisResult<Option<bool>> = conn.exists(&k).await;
+        let result: RedisResult<Option<bool>> = conn.exists(&k).await;
         return match result {
             Ok(v) => Ok(v.unwrap()),
             Err(e) => Err(Error::from(format!(
@@ -108,7 +107,11 @@ impl RedisService {
     pub async fn set_ex(&self, k: &str, ex: Option<Duration>) -> Result<i64> {
         let k = k.to_string();
         let mut conn = self.get_conn().await?;
-        return match redis::cmd("EXPIRE").arg(&[&k, &ex.unwrap().as_secs().to_string()]).query_async(&mut conn).await {
+        return match redis::cmd("EXPIRE")
+            .arg(&[&k, &ex.unwrap().as_secs().to_string()])
+            .query_async(&mut conn)
+            .await
+        {
             Ok(v) => Ok(v),
             Err(e) => Err(Error::from(format!(
                 "RedisService expire fail:{}",
@@ -123,19 +126,22 @@ impl RedisService {
         let mut result = Vec::new();
         let mut conn = self.get_conn().await?;
         // scan 0 match login:shmily* count 10
-        let cmd_result:RedisResult<(i64, Vec<String>)> = redis::cmd("SCAN").arg(&["0", "MATCH", &k, "COUNT","20"]).query_async::<Connection,(i64, Vec<String>)>(&mut conn).await;
+        let cmd_result: RedisResult<(i64, Vec<String>)> = redis::cmd("SCAN")
+            .arg(&["0", "MATCH", &k, "COUNT", "20"])
+            .query_async::<Connection, (i64, Vec<String>)>(&mut conn)
+            .await;
         return match cmd_result {
             Ok((next_cursor, keys)) => {
                 if 0 == next_cursor && !keys.is_empty() && keys.len() > 0 {
                     result.extend(keys);
                 }
                 Ok(result)
-            },
+            }
             Err(e) => Err(Error::from(format!(
                 "RedisService scan fail:{}",
                 e.to_string()
             ))),
-        }
+        };
     }
 
     /// 删除指定的key
@@ -152,7 +158,7 @@ impl RedisService {
     }
 
     /// 批量删除指定的key
-    pub async fn batch_delete(&self, keys:&Vec<String>) -> Result<i64> {
+    pub async fn batch_delete(&self, keys: &Vec<String>) -> Result<i64> {
         if keys.is_empty() {
             return Ok(-1);
         }
@@ -165,5 +171,4 @@ impl RedisService {
             ))),
         };
     }
-
 }

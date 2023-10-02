@@ -1,4 +1,4 @@
-use crate::domain::vo::user_context::UserContext;
+use crate::entity::vo::user_context::UserContext;
 use crate::service::CONTEXT;
 pub struct Auth;
 
@@ -16,7 +16,10 @@ pub fn is_white_list_api(path: &str) -> bool {
 }
 
 ///Check whether the token is valid and has not expired
-pub async fn checked_token(token: &str, _path: &str) -> Result<UserContext, crate::util::error::Error> {
+pub async fn checked_token(
+    token: &str,
+    _path: &str,
+) -> Result<UserContext, crate::util::error::Error> {
     //check token alive
     let check = UserContext::verify(token).await;
     match check {

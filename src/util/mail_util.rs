@@ -1,20 +1,18 @@
-use std::ops::Add;
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::{Message, SmtpTransport, Transport};
-use std::string::String;
-use lettre::message::{header, MultiPart, SinglePart};
-use crate::domain::table::User;
+use crate::entity::table::User;
 use crate::service::CONTEXT;
 use crate::util;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
+use lettre::message::{header, MultiPart, SinglePart};
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::{Message, SmtpTransport, Transport};
+use std::ops::Add;
+use std::string::String;
 
-pub struct MailUtils{}
+pub struct MailUtils {}
 
 impl MailUtils {
-
     /// 发送数据库备份通知邮件
-    pub fn send_dump_massage(archive_date:&str,start_date:&str,end_date:&str) {
-
+    pub fn send_dump_massage(archive_date: &str, start_date: &str, end_date: &str) {
         let html_template = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,39 +65,50 @@ impl MailUtils {
     </div>
 </body>
 </html>"#;
-        let now = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S);
-        let html = html_template.replace("${send_date}",now.unwrap().as_str())
-            .replace("${archive_date}",archive_date)
-            .replace("${start_date}",start_date)
-            .replace("${end_date}",end_date);
+        let now = DateTimeUtil::naive_date_time_to_str(
+            &Some(DateUtils::now()),
+            &util::FORMAT_Y_M_D_H_M_S,
+        );
+        let html = html_template
+            .replace("${send_date}", now.unwrap().as_str())
+            .replace("${archive_date}", archive_date)
+            .replace("${start_date}", start_date)
+            .replace("${end_date}", end_date);
 
         let mut email_builder = Message::builder();
 
-        let email_from = format!("亲亲里 <{}>",&CONTEXT.config.from_mail);
+        let email_from = format!("亲亲里 <{}>", &CONTEXT.config.from_mail);
         // 发件人
         email_builder = email_builder.from(email_from.parse().unwrap());
         // 收件人
         for item in &CONTEXT.config.to_mail {
-            email_builder = email_builder.to(format!("管理员 <{}>",item).parse().unwrap());
+            email_builder = email_builder.to(format!("管理员 <{}>", item).parse().unwrap());
         }
         // 主题
         email_builder = email_builder.subject("【亲亲里】应用通知");
         // 邮件内容
-        let email_message = email_builder.multipart(
-            MultiPart::alternative() // This is composed of two parts.
-                .singlepart(
-                    SinglePart::builder()
-                        .header(header::ContentType::TEXT_HTML)
-                        .body(String::from(html)),
-                ),
-        )
-        .unwrap();
+        let email_message = email_builder
+            .multipart(
+                MultiPart::alternative() // This is composed of two parts.
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(header::ContentType::TEXT_HTML)
+                            .body(String::from(html)),
+                    ),
+            )
+            .unwrap();
 
         // 邮件服务器账号：
-        let creds = Credentials::new(String::from(&CONTEXT.config.from_mail), String::from(&CONTEXT.config.mail_token));
+        let creds = Credentials::new(
+            String::from(&CONTEXT.config.from_mail),
+            String::from(&CONTEXT.config.mail_token),
+        );
 
         // Open a remote connection to gmail
-        let mailer = SmtpTransport::relay(&CONTEXT.config.mail_server).unwrap().credentials(creds).build();
+        let mailer = SmtpTransport::relay(&CONTEXT.config.mail_server)
+            .unwrap()
+            .credentials(creds)
+            .build();
 
         // Send the email
         match mailer.send(&email_message) {
@@ -109,8 +118,7 @@ impl MailUtils {
     }
 
     /// 发送计划提醒邮件
-    pub fn send_plan_massage(flag:bool,user:&User,plan_contents:Vec<String>) {
-
+    pub fn send_plan_massage(flag: bool, user: &User, plan_contents: Vec<String>) {
         let html_template = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,7 +161,6 @@ impl MailUtils {
 </body>
 </html>"#;
 
-
         // 拼凑提醒内容 默认 执行超期未完成的提醒
         let mut title = "以下是您截止昨天还未完成的计划安排，请根据您的情况，合理安排：";
         if flag {
@@ -163,45 +170,61 @@ impl MailUtils {
 
         // 拼凑提醒内容
         let mut content = String::new();
-        let mut index:i32 = 1;
+        let mut index: i32 = 1;
         for item in plan_contents {
-            content = content.add(format!("<div style=\"height: 30px;text-indent:30px\">{}、{}</div>",index,item).as_str());
+            content = content.add(
+                format!(
+                    "<div style=\"height: 30px;text-indent:30px\">{}、{}</div>",
+                    index, item
+                )
+                .as_str(),
+            );
             index = index + 1;
         }
-        let now = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()),&util::FORMAT_Y_M_D_H_M_S);
-        let html = html_template.replace("${send_date}",now.unwrap().as_str())
-            .replace("${plan_user}",user.name.clone().unwrap().as_str())
+        let now = DateTimeUtil::naive_date_time_to_str(
+            &Some(DateUtils::now()),
+            &util::FORMAT_Y_M_D_H_M_S,
+        );
+        let html = html_template
+            .replace("${send_date}", now.unwrap().as_str())
+            .replace("${plan_user}", user.name.clone().unwrap().as_str())
             .replace("${plan_content}", content.as_str())
             .replace("${plan_title}", title);
         // 准备收发件人
-        let email_from = format!("亲亲里 <{}>",&CONTEXT.config.from_mail);
+        let email_from = format!("亲亲里 <{}>", &CONTEXT.config.from_mail);
         let to_user = user.name.clone().unwrap();
         let to_add = user.email.clone().unwrap();
-        let to_mail = format!("{} <{}>",to_user,to_add);
+        let to_mail = format!("{} <{}>", to_user, to_add);
 
         let email_builder = Message::builder()
-        // 发件人
-        .from(email_from.clone().parse().unwrap())
-        // 收件人
-        .to(to_mail.parse().unwrap())
-        // 主题
-        .subject("【亲亲里】提醒事项");
+            // 发件人
+            .from(email_from.clone().parse().unwrap())
+            // 收件人
+            .to(to_mail.parse().unwrap())
+            // 主题
+            .subject("【亲亲里】提醒事项");
         // 邮件内容
-        let email_message = email_builder.multipart(
-            MultiPart::alternative()
-                .singlepart(
+        let email_message = email_builder
+            .multipart(
+                MultiPart::alternative().singlepart(
                     SinglePart::builder()
                         .header(header::ContentType::TEXT_HTML)
                         .body(String::from(html)),
                 ),
-        )
+            )
             .unwrap();
 
         // 邮件服务器账号：
-        let creds = Credentials::new(String::from(&CONTEXT.config.from_mail), String::from(&CONTEXT.config.mail_token));
+        let creds = Credentials::new(
+            String::from(&CONTEXT.config.from_mail),
+            String::from(&CONTEXT.config.mail_token),
+        );
 
         // Open a remote connection to gmail
-        let mailer = SmtpTransport::relay(&CONTEXT.config.mail_server).unwrap().credentials(creds).build();
+        let mailer = SmtpTransport::relay(&CONTEXT.config.mail_server)
+            .unwrap()
+            .credentials(creds)
+            .build();
 
         // Send the email
         match mailer.send(&email_message) {
@@ -209,7 +232,6 @@ impl MailUtils {
             Err(e) => log::error!("Could not send email: {:?}", e),
         }
     }
-
 
     pub fn send_example() {
         let email = Message::builder()
@@ -228,7 +250,10 @@ impl MailUtils {
         let creds = Credentials::new("504804540@qq.com".to_string(), "--------------".to_string());
 
         // Open a remote connection to gmail
-        let mailer = SmtpTransport::relay("smtp.qq.com").unwrap().credentials(creds).build();
+        let mailer = SmtpTransport::relay("smtp.qq.com")
+            .unwrap()
+            .credentials(creds)
+            .build();
 
         // Send the email
         match mailer.send(&email) {

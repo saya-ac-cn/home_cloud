@@ -1,31 +1,30 @@
-/// 服务层
-///
-/// 系统用户服务
-mod system_service;
-/// 文件资源服务
-mod oss_service;
 /// 文本（消息）服务
 mod content_service;
 /// 财政金融服务
 mod financial_service;
+/// 文件资源服务
+mod oss_service;
 /// 缓存服务
 mod redis_service;
+/// 服务层
+///
+/// 系统用户服务
+mod system_service;
 
-use rbatis::rbatis::Rbatis;
-pub use system_service::*;
-pub use oss_service::*;
-pub use content_service::*;
-pub use financial_service::*;
-pub use redis_service::RedisService;
 pub use crate::config::config::ApplicationConfig;
-use lazy_static::lazy_static;
+pub use content_service::*;
 use delay_timer::prelude::{DelayTimer, DelayTimerBuilder};
+pub use financial_service::*;
+use lazy_static::lazy_static;
+pub use oss_service::*;
+use rbatis::rbatis::Rbatis;
+pub use redis_service::RedisService;
+pub use system_service::*;
 use tokio::sync::Mutex;
 
 // 第一种初始化方法
 // /// CONTEXT is all of the service struct
 // pub static CONTEXT: Lazy<ServiceContext> = Lazy::new(|| ServiceContext::default());
-
 
 // 在lazy_static! { //your code} 中的代码并不会在编译时初始化静态量，它会在首次调用时，执行代码，来初始化。也就是所谓的延迟计算。
 lazy_static! {
@@ -34,7 +33,6 @@ lazy_static! {
     // SCHEDULER is only SCHEDULER VARIABLE
     pub static ref SCHEDULER: Mutex<DelayTimer> = Mutex::new(DelayTimerBuilder::default().build());
 }
-
 
 #[macro_export]
 macro_rules! primary_rbatis_pool {
@@ -75,9 +73,24 @@ impl ServiceContext {
         // futures::executor::block_on(async {
         //     self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await
         // });
-        self.init_datasource(&self.primary_rbatis, &self.config.primary_database_url, "primary_pool").await;
-        self.init_datasource(&self.business_rbatis, &self.config.business_database_url, "business_pool").await;
-        self.init_datasource(&self.financial_rbatis, &self.config.financial_database_url, "financial_pool").await;
+        self.init_datasource(
+            &self.primary_rbatis,
+            &self.config.primary_database_url,
+            "primary_pool",
+        )
+        .await;
+        self.init_datasource(
+            &self.business_rbatis,
+            &self.config.business_database_url,
+            "business_pool",
+        )
+        .await;
+        self.init_datasource(
+            &self.financial_rbatis,
+            &self.config.financial_database_url,
+            "financial_pool",
+        )
+        .await;
         log::info!(
             " - Local:   http://{}",
             self.config.server_url.replace("0.0.0.0", "127.0.0.1")
@@ -85,12 +98,21 @@ impl ServiceContext {
     }
 
     pub async fn init_datasource(&self, rbatis: &Rbatis, url: &str, name: &str) {
-        log::info!("[home_cloud] rbatis {} init ({})...",name,url);
+        log::info!("[home_cloud] rbatis {} init ({})...", name, url);
         let driver = rbdc_mysql::driver::MysqlDriver {};
         let driver_name = format!("{:?}", driver);
-        rbatis.init(driver, url).expect(&format!("[home_cloud] rbatis {} init fail!", name));
-        rbatis.acquire().await.expect(&format!("rbatis connect database(driver={},url={}) fail", driver_name, url));
-        log::info!("[home_cloud] rbatis {} init success! pool state = {:?}",name,rbatis.get_pool().expect("pool not init!").status());
+        rbatis
+            .init(driver, url)
+            .expect(&format!("[home_cloud] rbatis {} init fail!", name));
+        rbatis.acquire().await.expect(&format!(
+            "rbatis connect database(driver={},url={}) fail",
+            driver_name, url
+        ));
+        log::info!(
+            "[home_cloud] rbatis {} init success! pool state = {:?}",
+            name,
+            rbatis.get_pool().expect("pool not init!").status()
+        );
     }
 }
 
@@ -99,9 +121,9 @@ impl Default for ServiceContext {
     fn default() -> Self {
         let config = ApplicationConfig::default();
         ServiceContext {
-            primary_rbatis: crate::domain::init_rbatis(&config),
-            business_rbatis: crate::domain::init_rbatis(&config),
-            financial_rbatis: crate::domain::init_rbatis(&config),
+            primary_rbatis: crate::entity::init_rbatis(&config),
+            business_rbatis: crate::entity::init_rbatis(&config),
+            financial_rbatis: crate::entity::init_rbatis(&config),
             system_service: SystemService {},
             oss_service: OssService {},
             content_service: ContentService {},
