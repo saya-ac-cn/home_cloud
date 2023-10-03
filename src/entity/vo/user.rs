@@ -35,9 +35,7 @@ pub struct UserVO {
     /// 创建时间
     pub create_time: Option<String>,
     /// 修改时间
-    pub update_time: Option<String>,
-    /// 壁纸url
-    pub background_url: Option<String>,
+    pub update_time: Option<String>
 }
 //impl_field_name_method!(UserVO{account,name});
 
@@ -67,7 +65,6 @@ impl From<User> for UserVO {
             background: arg.background,
             organize_id: arg.organize_id,
             state: arg.state,
-            background_url: None,
             create_time: arg.create_time,
             update_time: arg.update_time,
         }

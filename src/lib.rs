@@ -2,8 +2,7 @@
 #![allow(dead_code)] //允许未使用的代码
 #![allow(unused_must_use)]
 
-#[macro_use]
-extern crate lazy_static;
+
 #[macro_use]
 extern crate rbatis;
 

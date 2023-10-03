@@ -1,6 +1,6 @@
 ### home_cloud
 
-基于rust语言构建的一个CMS
+基于rust语言构建的一个企业级基本框架
 
 #### 规范约定：
 * 1、蛇形命名法（Snake Case）

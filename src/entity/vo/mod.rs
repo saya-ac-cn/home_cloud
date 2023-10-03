@@ -1,24 +1,7 @@
-pub mod abstracts;
-pub mod db_dump_log;
-pub mod files;
-pub mod general_journal;
-pub mod journal;
 pub mod key_value;
 pub mod log;
 pub mod log_type;
-pub mod memo;
-pub mod monetary;
-pub mod news;
-pub mod notebook;
-pub mod notes;
-pub mod payment_means;
-pub mod pictures;
-pub mod plan;
-pub mod plan_archive;
 pub mod sign_in;
-pub mod total_pre_6_financial_month;
-pub mod total_pre_6_month;
-pub mod total_table;
 pub mod user;
 pub mod user_context;
 

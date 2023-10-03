@@ -1,26 +1,13 @@
-/// 文本（消息）服务
-mod content_service;
-/// 财政金融服务
-mod financial_service;
-/// 文件资源服务
-mod oss_service;
 /// 缓存服务
 mod redis_service;
-/// 服务层
-///
-/// 系统用户服务
+/// 系统服务
 mod system_service;
 
 pub use crate::config::config::ApplicationConfig;
-pub use content_service::*;
-use delay_timer::prelude::{DelayTimer, DelayTimerBuilder};
-pub use financial_service::*;
 use lazy_static::lazy_static;
-pub use oss_service::*;
-use rbatis::rbatis::Rbatis;
+use rbatis::rbatis::RBatis;
 pub use redis_service::RedisService;
 pub use system_service::*;
-use tokio::sync::Mutex;
 
 // 第一种初始化方法
 // /// CONTEXT is all of the service struct
@@ -30,74 +17,37 @@ use tokio::sync::Mutex;
 lazy_static! {
     // CONTEXT is all of the service struct
     pub static ref CONTEXT: ServiceContext = ServiceContext::default();
-    // SCHEDULER is only SCHEDULER VARIABLE
-    pub static ref SCHEDULER: Mutex<DelayTimer> = Mutex::new(DelayTimerBuilder::default().build());
 }
 
+// 表示下面的宏定义对其他包也是可见的
 #[macro_export]
+// 定义一个primary_rbatis_pool的宏
 macro_rules! primary_rbatis_pool {
     () => {
         &mut $crate::service::CONTEXT.primary_rbatis.clone()
     };
 }
 
-#[macro_export]
-macro_rules! business_rbatis_pool {
-    () => {
-        &mut $crate::service::CONTEXT.business_rbatis.clone()
-    };
-}
-
-#[macro_export]
-macro_rules! financial_rbatis_pool {
-    () => {
-        &mut $crate::service::CONTEXT.financial_rbatis.clone()
-    };
-}
 
 pub struct ServiceContext {
     pub config: ApplicationConfig,
-    pub primary_rbatis: Rbatis,
-    pub business_rbatis: Rbatis,
-    pub financial_rbatis: Rbatis,
+    pub primary_rbatis: RBatis,
     pub system_service: SystemService,
-    pub oss_service: OssService,
-    pub content_service: ContentService,
-    pub financial_service: FinancialService,
     pub redis_service: RedisService,
 }
 
 impl ServiceContext {
-    /// init database pool
+    /// 初始化数据库连接池
     pub async fn init_pool(&self) {
-        // futures::executor::block_on(async {
-        //     self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await
-        // });
-        self.init_datasource(
-            &self.primary_rbatis,
-            &self.config.primary_database_url,
-            "primary_pool",
-        )
-        .await;
-        self.init_datasource(
-            &self.business_rbatis,
-            &self.config.business_database_url,
-            "business_pool",
-        )
-        .await;
-        self.init_datasource(
-            &self.financial_rbatis,
-            &self.config.financial_database_url,
-            "financial_pool",
-        )
-        .await;
+        // 初始化主数据库连接信息
+        self.init_datasource(&self.primary_rbatis, &self.config.primary_database_url, "primary_pool").await;
         log::info!(
             " - Local:   http://{}",
             self.config.server_url.replace("0.0.0.0", "127.0.0.1")
         );
     }
 
-    pub async fn init_datasource(&self, rbatis: &Rbatis, url: &str, name: &str) {
+    pub async fn init_datasource(&self, rbatis: &RBatis, url: &str, name: &str) {
         log::info!("[home_cloud] rbatis {} init ({})...", name, url);
         let driver = rbdc_mysql::driver::MysqlDriver {};
         let driver_name = format!("{:?}", driver);
@@ -122,12 +72,7 @@ impl Default for ServiceContext {
         let config = ApplicationConfig::default();
         ServiceContext {
             primary_rbatis: crate::entity::init_rbatis(&config),
-            business_rbatis: crate::entity::init_rbatis(&config),
-            financial_rbatis: crate::entity::init_rbatis(&config),
             system_service: SystemService {},
-            oss_service: OssService {},
-            content_service: ContentService {},
-            financial_service: FinancialService {},
             redis_service: RedisService::new(&config.redis_url),
             config,
         }

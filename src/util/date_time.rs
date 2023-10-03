@@ -13,20 +13,6 @@ impl DateTimeUtil for Option<chrono::naive::NaiveDate> {
         }
     }
 }
-
-// 不建议使用rbatis自带的时间
-// impl DateTimeUtil for Option<rbatis::DateNative>{
-//     fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
-//         match self {
-//             None => None,
-//             Some(naive_date_time) => {
-//                 let date = self.unwrap();
-//                 Some(date.format(format).to_string())
-//             },
-//         }
-//     }
-// }
-
 impl DateTimeUtil for Option<chrono::NaiveDateTime> {
     fn naive_date_time_to_str(&self, format: &str) -> Option<String> {
         match self {

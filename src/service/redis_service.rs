@@ -4,6 +4,7 @@ use crate::util::error::{Error, Result};
 use log::error;
 use redis::aio::Connection;
 use redis::{AsyncCommands, RedisResult};
+
 ///Redis Cache service
 pub struct RedisService {
     pub client: redis::Client,
