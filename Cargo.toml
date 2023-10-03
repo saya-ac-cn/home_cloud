@@ -6,10 +6,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-rbs = { version = "4.3" }
+rbs = { version = "4.4" }
 # 线上环境，移除"debug_mode"模式features = ["debug_mode"]
-rbatis = { version = "4.3", features = ["debug_mode"]}
-rbdc-mysql={version="4.3"}
+rbatis = { version = "4.4", features = ["debug_mode"]}
+rbdc-mysql={version="4.4"}
 #rbatis orm dep must use async-std(Because actix-web relies on tokio0.2)
 tokio = { version = "1", features = ["full"] }
 #serde and json
@@ -19,7 +19,7 @@ serde_yaml = "0.9"
 #log
 log = "0.4"
 #fast_log enable features = ["lz4", "zip", "gzip"], and edit src/config/log.rs fn choose_packer(),edit application.yml add log_pack_compress: "zip"
-fast_log = { version = "1.5", features = [] }
+fast_log = { version = "1.6", features = ["mmap"]}
 futures= { version = "0.3.21", default-features = false, features = ["std"] }
 #web server
 actix-web = { version = "4", default-features = false, features = ["macros"] }

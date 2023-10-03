@@ -24,6 +24,7 @@ pub struct ApplicationConfig {
     pub log_rolling_type: String,
     /// 日志等级
     pub log_level: String,
+    pub log_type: String,
     pub log_chan_len: Option<usize>,
     /// 白名单接口
     pub white_list_api: Vec<String>,

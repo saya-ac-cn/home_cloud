@@ -17,7 +17,7 @@ use delay_timer::prelude::{DelayTimer, DelayTimerBuilder};
 pub use financial_service::*;
 use lazy_static::lazy_static;
 pub use oss_service::*;
-use rbatis::rbatis::Rbatis;
+use rbatis::rbatis::RBatis;
 pub use redis_service::RedisService;
 pub use system_service::*;
 use tokio::sync::Mutex;
@@ -57,9 +57,9 @@ macro_rules! financial_rbatis_pool {
 
 pub struct ServiceContext {
     pub config: ApplicationConfig,
-    pub primary_rbatis: Rbatis,
-    pub business_rbatis: Rbatis,
-    pub financial_rbatis: Rbatis,
+    pub primary_rbatis: RBatis,
+    pub business_rbatis: RBatis,
+    pub financial_rbatis: RBatis,
     pub system_service: SystemService,
     pub oss_service: OssService,
     pub content_service: ContentService,
@@ -97,7 +97,7 @@ impl ServiceContext {
         );
     }
 
-    pub async fn init_datasource(&self, rbatis: &Rbatis, url: &str, name: &str) {
+    pub async fn init_datasource(&self, rbatis: &RBatis, url: &str, name: &str) {
         log::info!("[home_cloud] rbatis {} init ({})...", name, url);
         let driver = rbdc_mysql::driver::MysqlDriver {};
         let driver_name = format!("{:?}", driver);
