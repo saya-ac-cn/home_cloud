@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "https://github.com/rbatis/rbatis_sql/raw/main/mybatis-3-mapper.dtd">
+<mapper>
+
+    <select id="select_one">
+        ` select `id` ,`uid` ,`file_name` ,`file_url` ,`file_type` ,`organize`,`source` ,`status` ,`create_time`,`update_time` from `files` `
+        <where>
+            <if test="files.organize != 0">
+              `  `organize` = #{files.organize} `
+            </if>
+            <if test="files.source != ''">
+              `  and `source` = #{files.source} `
+            </if>
+            <if test="files.id != 0">
+              `  and `id` = #{files.id} `
+            </if>
+            <if test="files.uid != ''">
+              `  and `uid` = #{files.uid} `
+            </if>
+            <if test="files.status != 0">
+              `  and `status` = #{files.status} `
+            </if>
+            <if test="files.file_name != ''">
+              `  and `file_name` like concat(#{files.file_name},'%') `
+            </if>
+        </where>
+        ` order by `id` desc limit 1 `
+    </select>
+
+    <update id="update_files">
+        ` update `files` `
+        <set>
+            <if test="files.status != 0">
+               ` `status` = #{files.status}, `
+            </if>
+            <if test="files.source != ''">
+               ` `source` = #{files.source}, `
+            </if>
+            ` `update_time` = now() `
+        </set>
+        ` where `id` = #{files.id} and `organize` = #{files.organize} `
+    </update>
+
+    <select id="select_page">
+        ` select `id` ,`uid` ,`file_name` ,`file_url` ,`file_type` ,`organize`,`source` ,`status` ,`create_time`,`update_time` from `files` `
+        <where>
+            <if test="files.organize != 0">
+              `  `organize` = #{files.organize} `
+            </if>
+            <if test="files.source != ''">
+              `  and `source` = #{files.source} `
+            </if>
+            <if test="files.id != 0">
+              `  and `id` = #{files.id} `
+            </if>
+            <if test="files.uid != ''">
+              `  and `uid` = #{files.uid} `
+            </if>
+            <if test="files.status != 0">
+              `  and `status` = #{files.status} `
+            </if>
+            <if test="files.file_name != ''">
+              `  and `file_name` like concat(#{files.file_name},'%') `
+            </if>
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+              `  and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59') `
+            </if>
+        </where>
+            ` order by `id` desc limit #{extend.page_no},#{extend.page_size} `
+    </select>
+
+    <select id="select_count">
+        ` select count(1) from `files` `
+        <where>
+            <if test="files.organize != 0">
+               ` `organize` = #{files.organize} `
+            </if>
+            <if test="files.source != ''">
+               ` and `source` = #{files.source} `
+            </if>
+            <if test="files.id != 0">
+               ` and `id` = #{files.id} `
+            </if>
+            <if test="files.uid != ''">
+               ` and `uid` = #{files.uid} `
+            </if>
+            <if test="files.status != 0">
+               ` and `status` = #{files.status} `
+            </if>
+            <if test="files.file_name != ''">
+               ` and `file_name` like concat(#{files.file_name},'%') `
+            </if>
+            <if test="extend.begin_time != '' && extend.end_time != ''">
+               ` and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59') `
+            </if>
+        </where>
+    </select>
+
+
+</mapper>
