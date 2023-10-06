@@ -5,11 +5,11 @@ use log::error;
 use redis::aio::Connection;
 use redis::{AsyncCommands, RedisResult};
 ///Redis Cache service
-pub struct RedisService {
+pub struct RedisClient {
     pub client: redis::Client,
 }
 
-impl RedisService {
+impl RedisClient {
     pub fn new(url: &str) -> Self {
         println!("[home_cloud] conncect redis ({})...", url);
         let client = redis::Client::open(url).unwrap();

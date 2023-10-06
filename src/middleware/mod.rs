@@ -1,2 +1,2 @@
-pub mod auth;
-pub mod auth_actix;
+mod auth;
+pub mod actix_interceptor;

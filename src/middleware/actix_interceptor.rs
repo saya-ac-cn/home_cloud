@@ -13,11 +13,11 @@ use std::{
     rc::Rc,
 };
 
-/// actix_web request中间件
+/// actix_web 过滤器
 
-pub struct Auth;
+pub struct ActixInterceptor;
 
-impl<S: 'static> Transform<S, ServiceRequest> for Auth
+impl<S: 'static> Transform<S, ServiceRequest> for ActixInterceptor
 where
     S: Service<ServiceRequest, Response = ServiceResponse<BoxBody>, Error = Error>,
     S::Future: 'static,

@@ -1,4 +1,4 @@
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 use crate::util;
 use chrono::Local;
 use log::error;
@@ -13,7 +13,7 @@ impl TokenUtils {
     pub async fn create_token() -> String {
         let token = Snowflake::default().generate().to_string();
         CONTEXT
-            .redis_service
+            .redis_client
             .set_string_ex(
                 &format!("{:}:{:}", &util::REQUEST_TOKEN_PREFIX, &token),
                 &Local::now().to_string(),
@@ -35,7 +35,7 @@ impl TokenUtils {
         }
         // 尝试去删除，删除返回1表示之前有，且本次删除成功
         return match CONTEXT
-            .redis_service
+            .redis_client
             .delete(&format!("{:}:{:}", &util::REQUEST_TOKEN_PREFIX, &token))
             .await
         {

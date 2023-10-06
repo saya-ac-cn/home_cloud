@@ -1,6 +1,8 @@
 use crate::entity::vo::user_context::UserContext;
-use crate::service::CONTEXT;
-pub struct Auth;
+use crate::config::CONTEXT;
+
+/// 权限校验模块
+
 
 ///Whether the interface is in the whitelist
 pub fn is_white_list_api(path: &str) -> bool {

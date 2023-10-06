@@ -4,7 +4,7 @@ use crate::entity::dto::news::{NewsDTO, NewsPageDTO};
 use crate::entity::dto::notebook::NoteBookDTO;
 use crate::entity::dto::notes::{NotesDTO, NotesPageDTO};
 use crate::entity::vo::RespVO;
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 use actix_web::{delete, get, post, put, web, HttpRequest, Responder};
 
 /// 添加动态

@@ -15,7 +15,7 @@ use crate::entity::vo::plan::PlanVO;
 use crate::entity::vo::plan_archive::PlanArchiveVO;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::error::Error;
 use crate::util::error::Result;
@@ -208,7 +208,7 @@ impl SystemService {
         sign_vo.access_token = token.clone();
         // 写入到redis
         CONTEXT
-            .redis_service
+            .redis_client
             .set_string_ex(
                 &format!("{:}:{:}", &util::USER_CACHE_PREFIX, token),
                 serialized_user.as_str(),
@@ -221,14 +221,14 @@ impl SystemService {
     /// 检查用户是否已经登录过，登录过需要下线处理
     pub async fn check_duplicate_login(&self, account: &str) -> Result<bool> {
         let check = CONTEXT
-            .redis_service
+            .redis_client
             .scan(&format!("{:}:{:}", &util::USER_CACHE_PREFIX, account))
             .await;
         if check.is_err() {
             return Err(check.unwrap_err());
         }
         let keys: Vec<String> = check.unwrap();
-        CONTEXT.redis_service.batch_delete(&keys).await;
+        CONTEXT.redis_client.batch_delete(&keys).await;
         Ok(true)
     }
 

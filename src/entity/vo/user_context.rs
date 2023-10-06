@@ -1,4 +1,4 @@
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 use crate::util;
 use crate::util::error::Error;
 use actix_http::header::HeaderValue;
@@ -30,7 +30,7 @@ impl UserContext {
     /// secret: your secret string
     pub async fn extract_token(token: &str) -> Result<UserContext, Error> {
         let user_cache = CONTEXT
-            .redis_service
+            .redis_client
             .get_string(&format!("{:}:{:}", &util::USER_CACHE_PREFIX, token))
             .await?;
         let user_data: UserContext = serde_json::from_str(user_cache.as_str()).unwrap();
@@ -88,7 +88,7 @@ impl UserContext {
     /// secret: your secret string
     pub async fn verify(token: &str) -> Result<UserContext, Error> {
         let key = format!("{:}:{:}", &util::USER_CACHE_PREFIX, token);
-        return match CONTEXT.redis_service.get_string(&key).await {
+        return match CONTEXT.redis_client.get_string(&key).await {
             Ok(val) => {
                 match val.is_empty() {
                     false => {
@@ -96,7 +96,7 @@ impl UserContext {
                         let user_data: UserContext = serde_json::from_str(val.as_str()).unwrap();
                         // 完成一次续期
                         CONTEXT
-                            .redis_service
+                            .redis_client
                             .set_ex(&key, Some(Duration::from_secs(user_data.leeway)))
                             .await;
                         Ok(user_data)

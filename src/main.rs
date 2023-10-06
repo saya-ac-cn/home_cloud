@@ -3,8 +3,8 @@ use actix_web::{web, App, HttpServer};
 use home_cloud::controller::{
     content_controller, financial_controller, oss_controller, system_controller,
 };
-use home_cloud::middleware::auth_actix::Auth;
-use home_cloud::service::CONTEXT;
+use home_cloud::middleware::actix_interceptor::ActixInterceptor;
+use home_cloud::config::CONTEXT;
 use home_cloud::util::scheduler::Scheduler;
 
 /// use tokio,because Rbatis specifies the runtime-tokio
@@ -20,7 +20,7 @@ async fn main() -> std::io::Result<()> {
     // router
     HttpServer::new(|| {
         App::new()
-            .wrap(Auth {})
+            .wrap(ActixInterceptor {})
             // 登录登出接口单独处理（因为都不在已有的分组中）
             .route("/backend/login", web::post().to(system_controller::login))
             .route("/backend/logout", web::post().to(system_controller::logout))
