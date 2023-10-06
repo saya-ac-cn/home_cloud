@@ -9,10 +9,6 @@ server_name: "home_cloud"
 server_url: "0.0.0.0:8000"
 #主数据库地址
 primary_database_url: "-"
-#辅助业务数据库地址
-business_database_url: "-"
-#财政相关数据库地址
-financial_database_url: "-"
 #redis地址
 redis_url: "-"
 #日志文件存放目录
@@ -50,66 +46,5 @@ white_list_api:
   - "/backend/login"
   - "/frontend"
   - "/warehouse/picture"
-#发件人
-from_mail: "504804540@qq.com"
-#收件人
-to_mail:
-  - "saya@saya.ac.cn"
-  - "228476495@qq.com"
-#邮件服务器地址
-mail_server: "smtp.qq.com"
-#邮件服务器发送token
-mail_token: "-"
-#高德地图ip定位地址
-amap_url: "https://restapi.amap.com/v3/ip"
-#高德地图ip定位密钥
-amap_key: "-"
 #数据目录
 data_dir: "/Users/saya/warehouse"
-mysql_dump: "/usr/bin/mysqldump -h 127.0.0.1 -uroot -pSaya.ac.cn.666  --default-character-set=utf8  --routines  --databases primary business financial"
-#文件类型
-file_type_map:
-  mmap: "complex"
-  xmind: "complex"
-  html: "complex"
-  htm: "complex"
-  txt: "text"
-  md: "text"
-  xml: "text"
-  sql: "text"
-  conf: "text"
-  doc: "word"
-  docx: "word"
-  xls: "excel"
-  xlsx: "excel"
-  csv: "csv"
-  ppt: "ppt"
-  pptx: "pdf"
-  pdf: "pdf"
-  wmv: "video"
-  mpg: "video"
-  ts: "video"
-  mkv: "video"
-  rmvb: "video"
-  avi: "video"
-  mp4: "video"
-  ape: "audio"
-  flac: "audio"
-  wv: "audio"
-  mp3: "audio"
-  wma: "audio"
-  aac: "audio"
-  ogg: "audio"
-  exe: "app"
-  com: "app"
-  msi: "app"
-  dll: "app"
-  jar: "app"
-  jpg: "picture"
-  bmp: "picture"
-  gif: "picture"
-  png: "picture"
-  zip: "compress"
-  rar: "compress"
-  gz: "compress"
-  7z: "compress"

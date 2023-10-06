@@ -1,6 +1,6 @@
-### home_cloud
+### home_cloud <experiment>
 
-基于rust语言构建的一个CMS
+基于rust语言构建的一个基本脚手架
 
 #### 规范约定：
 * 1、蛇形命名法（Snake Case）

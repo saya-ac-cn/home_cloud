@@ -1,4 +1,4 @@
-use crate::entity::dto::page::ExtendPageDTO;
+use crate::domain::dto::page::ExtendPageDTO;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

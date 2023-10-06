@@ -1,9 +1,9 @@
-use crate::entity::dto::page::ExtendPageDTO;
-use crate::entity::dto::user::UserPageDTO;
-use crate::entity::table::User;
-use crate::entity::vo::user::UserOwnOrganizeVO;
 use rbatis::executor::Executor;
+use rbatis::{crud, html_sql, impl_delete, impl_select, impl_select_page, impled};
 use rbatis::rbdc::db::ExecResult;
+use crate::domain::dto::page::ExtendPageDTO;
+use crate::domain::dto::user::UserPageDTO;
+use crate::domain::entity::User;
 
 crud!(User {});
 impl_select!(User{select_by_account(account:&str) => "`where account = #{account}`"});
@@ -46,12 +46,4 @@ impl UserMapper {
         impled!()
     }
 
-    /// 查询自己所在组织的用户列表
-    #[html_sql("./src/dao/user_mapper.html")]
-    pub async fn select_own_organize_user(
-        rb: &mut dyn Executor,
-        account: &String,
-    ) -> Result<Option<Vec<UserOwnOrganizeVO>>, rbatis::Error> {
-        impled!()
-    }
 }

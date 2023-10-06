@@ -1,11 +1,19 @@
-use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, Timelike};
+use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, Timelike, DateTime, FixedOffset};
 use std::ops::Add;
 
 pub trait DateTimeUtil {
     fn naive_date_time_to_str(&self, format: &str) -> Option<String>;
 }
 
-impl DateTimeUtil for Option<chrono::naive::NaiveDate> {
+impl DateTimeUtil for Option<NaiveDate> {
+    fn naive_date_time_to_str(&self, format: &str) -> Option<String> {
+        match self {
+            None => None,
+            Some(naive_date_time) => Some(naive_date_time.format(format).to_string()),
+        }
+    }
+}
+impl DateTimeUtil for Option<NaiveDateTime> {
     fn naive_date_time_to_str(&self, format: &str) -> Option<String> {
         match self {
             None => None,
@@ -14,29 +22,7 @@ impl DateTimeUtil for Option<chrono::naive::NaiveDate> {
     }
 }
 
-// 不建议使用rbatis自带的时间
-// impl DateTimeUtil for Option<rbatis::DateNative>{
-//     fn naive_date_time_to_str(&self,format:&str) -> Option<String>{
-//         match self {
-//             None => None,
-//             Some(naive_date_time) => {
-//                 let date = self.unwrap();
-//                 Some(date.format(format).to_string())
-//             },
-//         }
-//     }
-// }
-
-impl DateTimeUtil for Option<chrono::NaiveDateTime> {
-    fn naive_date_time_to_str(&self, format: &str) -> Option<String> {
-        match self {
-            None => None,
-            Some(naive_date_time) => Some(naive_date_time.format(format).to_string()),
-        }
-    }
-}
-
-impl DateTimeUtil for Option<chrono::DateTime<chrono::FixedOffset>> {
+impl DateTimeUtil for Option<DateTime<FixedOffset>> {
     fn naive_date_time_to_str(&self, format: &str) -> Option<String> {
         match self {
             None => None,
@@ -133,7 +119,7 @@ impl DateUtils {
     }
 
     /// 根据日期时间生成cron表达式，其中秒一律按0处理，年份按照*，每年执行一次，因为cron_table框架不支持一次性的定时调度，特殊处理成每年执行一次，然后删除
-    pub fn data_time_to_cron(data_time: &chrono::NaiveDateTime) -> String {
+    pub fn data_time_to_cron(data_time: &NaiveDateTime) -> String {
         let month = data_time.month();
         let day = data_time.day();
         let hour = data_time.hour();
@@ -142,7 +128,7 @@ impl DateUtils {
     }
 
     /// 根据时区返回当前时间
-    pub fn now() -> chrono::DateTime<chrono::FixedOffset> {
+    pub fn now() -> DateTime<FixedOffset> {
         // 世界时间
         let utc = chrono::Utc::now();
         // 东8区
@@ -152,7 +138,7 @@ impl DateUtils {
     }
 
     /// 根据时区返回当前时间
-    pub fn now_string() -> chrono::DateTime<chrono::FixedOffset> {
+    pub fn now_string() -> DateTime<FixedOffset> {
         // 世界时间
         let utc = chrono::Utc::now();
         // 东8区

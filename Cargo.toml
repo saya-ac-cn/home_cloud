@@ -28,28 +28,16 @@ actix-multipart = "0.4"
 actix-files = "0.6.0"
 #snowflake
 rustflake = "0.1"
-#http client,use rust-tls replace to native tls
-reqwest = { version = "0.11.11",default-features = false, features = ["json","cookies","rustls-tls"] }
 #static
 lazy_static = "1.4.0"
 futures-util = "0.3.21"
 md5 = "0.7"
 #redis
 redis = { version = "0.22.3", features = ["tokio-comp"] }
-# Excel工具
-simple_excel_writer = "0.2.0"
-# 日期时间库
-chrono = { version = "0.4", features = ["serde"] }
-# 定时任务
-delay_timer = "0.11.4"
-# 发送邮件
-lettre="0.10.0-alpha.5"
+
 #用于货币金额
 rust_decimal = "1.25.0"
+# 日期时间库
+chrono = { version = "0.4", features = ["serde"] }
 # 正则相关
 regex = "1.7.0"
-itertools="0.10.5"
-# markdown 转html
-markdown = "0.3"
-#base64（图片要用）
-base64 = "0.13.0"

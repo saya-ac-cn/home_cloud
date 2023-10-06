@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-/// Config
+/// 配置文件 映射后的结构配置
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ApplicationConfig {
     pub debug: bool,
@@ -8,10 +6,6 @@ pub struct ApplicationConfig {
     pub server_url: String,
     /// 主数据库地址
     pub primary_database_url: String,
-    /// 辅助业务数据库地址
-    pub business_database_url: String,
-    /// 财政相关数据库地址
-    pub financial_database_url: String,
     /// redis地址
     pub redis_url: String,
     /// 日志目录 "target/logs/"
@@ -28,27 +22,12 @@ pub struct ApplicationConfig {
     pub log_chan_len: Option<usize>,
     /// 白名单接口
     pub white_list_api: Vec<String>,
-    /// 发件人
-    pub from_mail: String,
-    /// 收件人
-    pub to_mail: Vec<String>,
-    /// 邮件服务器地址
-    pub mail_server: String,
-    /// 邮件服务器发送token
-    pub mail_token: String,
-    /// 高德地图ip定位地址
-    pub amap_url: String,
-    /// 高德地图ip定位密钥
-    pub amap_key: String,
     /// 项目产生的数据目录
-    pub data_dir: String,
-    /// 数据库空闲目录
-    pub mysql_dump: String,
-    /// 文件类型映射字典
-    pub file_type_map: HashMap<String, String>,
+    pub data_dir: String
 }
 
 impl Default for ApplicationConfig {
+    /// 加载yml配置，这里还不能用log::info!进行日志打印，因为还没有初始化
     fn default() -> Self {
         let yml_data = include_str!("../../application.yml");
         //load config
