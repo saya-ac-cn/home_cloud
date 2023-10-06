@@ -1,6 +1,10 @@
 /// 配置模块
 
-pub mod config;
+mod config;
+mod initializer;
 pub mod logger;
-pub mod user_context;
 pub mod redis_client;
+pub mod user_context;
+
+pub use config::ApplicationConfig;
+pub use initializer::*;

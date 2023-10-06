@@ -9,7 +9,7 @@ use crate::primary_rbatis_pool;
 use crate::util::result::Result;
 use crate::util::error::Error;
 use crate::util::page::Page;
-use crate::util::constant::{NOT_PARAMETER_CODE,NOT_EXIST_CODE,NOT_AUTHORIZE_CODE,FORMAT_Y_M_D_H_M_S};
+use crate::util::constant::{NOT_PARAMETER_CODE,NOT_EXIST_CODE,FORMAT_Y_M_D_H_M_S};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::password_encoder_util::PasswordEncoder;
 

@@ -1,4 +1,4 @@
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 use crate::util::error::Error;
 use actix_http::header::HeaderValue;
 use actix_web::HttpRequest;

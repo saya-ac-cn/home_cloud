@@ -1,5 +1,5 @@
 use crate::config::user_context::UserContext;
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 
 /// 权限校验模块
 

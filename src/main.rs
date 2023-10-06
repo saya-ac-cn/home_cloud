@@ -1,6 +1,6 @@
 use actix_web::{App, HttpServer, web};
 use home_cloud::controller::user_controller;
-use home_cloud::service::CONTEXT;
+use home_cloud::config::CONTEXT;
 use home_cloud::middleware::actix_interceptor::ActixInterceptor;
 
 #[tokio::main]

@@ -1,6 +1,6 @@
 use actix_web::{get, web, Responder, post, put, HttpRequest, delete};
 use crate::domain::dto::user::{UserDTO, UserPageDTO};
-use crate::service::CONTEXT;
+use crate::config::CONTEXT;
 use crate::domain::vo::RespVO;
 
 /// 获取用户分页列表

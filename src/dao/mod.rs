@@ -3,7 +3,7 @@
 pub mod user_mapper;
 
 use rbatis::RBatis;
-use crate::config::config::ApplicationConfig;
+use crate::config::ApplicationConfig;
 
 pub fn init_rbatis(config: &ApplicationConfig) -> RBatis {
     let rbatis = RBatis::new();
