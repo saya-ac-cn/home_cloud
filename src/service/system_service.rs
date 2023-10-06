@@ -34,7 +34,7 @@ use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::entity::vo::total_table::TotalTable;
-use crate::entity::vo::user_context::UserContext;
+use crate::config::user_context::UserContext;
 use crate::util::ip_util::IpUtils;
 use crate::util::scheduler::Scheduler;
 use crate::util::token_util::TokenUtils;

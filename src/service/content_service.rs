@@ -14,7 +14,7 @@ use crate::entity::vo::news::NewsVO;
 use crate::entity::vo::notebook::NoteBookVO;
 use crate::entity::vo::notes::NotesVO;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
-use crate::entity::vo::user_context::UserContext;
+use crate::config::user_context::UserContext;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::editor::Editor;
 use crate::util::error::{Error, Result};

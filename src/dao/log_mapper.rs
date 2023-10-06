@@ -9,7 +9,7 @@ use rbatis::executor::Executor;
 use rbatis::rbdc::db::ExecResult;
 use rbatis::Error;
 
-use crate::entity::vo::user_context::UserContext;
+use crate::config::user_context::UserContext;
 use crate::util;
 crud!(Log {});
 

@@ -11,7 +11,7 @@ use home_cloud::util::scheduler::Scheduler;
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     // log
-    home_cloud::config::log::init_log();
+    home_cloud::config::logger::init_log();
     // database
     CONTEXT.init_pool().await;
     // scheduler

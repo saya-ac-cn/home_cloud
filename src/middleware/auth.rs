@@ -1,4 +1,4 @@
-use crate::entity::vo::user_context::UserContext;
+use crate::config::user_context::UserContext;
 use crate::config::CONTEXT;
 
 /// 权限校验模块

@@ -20,8 +20,6 @@ pub mod total_pre_6_financial_month;
 pub mod total_pre_6_month;
 pub mod total_table;
 pub mod user;
-pub mod user_context;
-
 use crate::util;
 use crate::util::error::Error;
 use actix_web::HttpResponse;
