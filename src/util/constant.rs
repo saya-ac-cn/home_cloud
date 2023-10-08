@@ -23,6 +23,10 @@ pub const PUBLIC_VIEW_ROOT_PATH: &str = "warehouse";
 pub const DATABASE_PATH: &str = "database";
 /// 文档目录
 pub const DOCUMENT_PATH: &str = "document/file";
+/// 动态目录
+pub const NEWS_PATH: &str = "document/news";
+/// 笔记目录
+pub const NOTE_PATH: &str = "document/note";
 /// logo目录
 pub const LOGO_PATH: &str = "picture/logo";
 /// 插图目录

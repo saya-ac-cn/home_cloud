@@ -8,6 +8,7 @@ pub struct NewsVO {
     pub topic: Option<String>,
     pub label: Option<String>,
     pub abstracts: Option<String>,
+    pub path: Option<String>,
     pub content: Option<String>,
     pub organize: Option<u64>,
     pub source: Option<String>,
@@ -15,14 +16,15 @@ pub struct NewsVO {
     pub update_time: Option<String>,
 }
 
-impl From<News> for NewsVO {
-    fn from(arg: News) -> Self {
+impl NewsVO {
+    pub fn from(arg: News,content: String) -> Self {
         Self {
             id: arg.id,
             topic: arg.topic,
             label: arg.label,
             abstracts: arg.abstracts,
-            content: arg.content,
+            path: None,
+            content: Some(content),
             organize: arg.organize,
             source: arg.source,
             create_time: arg.create_time,

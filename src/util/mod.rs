@@ -9,6 +9,7 @@ pub mod password_encoder_util;
 pub mod scheduler;
 pub mod string;
 pub mod token_util;
+pub mod file_utils;
 
 pub use constant::*;
 pub use page::*;

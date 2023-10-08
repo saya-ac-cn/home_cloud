@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::entity::dto::memo::{MemoDTO, MemoPageDTO};
 use crate::entity::dto::news::{NewsDTO, NewsPageDTO};
 use crate::entity::dto::notebook::NoteBookDTO;
@@ -26,6 +27,10 @@ use chrono::Datelike;
 use log::error;
 use rbs::to_value;
 use serde_json::{json, Map, Value};
+use crate::config::CONTEXT;
+use rustflake::Snowflake;
+use util::file_utils::{save_content,read_content,remove_file_if_exists};
+use crate::util::file_utils::edit_content;
 
 /// 文本（消息）服务
 pub struct ContentService {}
@@ -33,22 +38,21 @@ pub struct ContentService {}
 impl ContentService {
     /// 发布消息动态
     pub async fn add_news(&self, req: &HttpRequest, arg: &NewsDTO) -> Result<u64> {
-        TokenUtils::check_token(arg.token.clone())
-            .await
-            .ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
-        let check_flag = arg.topic.is_none()
-            || arg.topic.as_ref().unwrap().is_empty()
-            || arg.content.is_none()
-            || arg.content.as_ref().unwrap().is_empty();
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        let check_flag = arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag {
-            return Err(Error::from((
-                "动态标题和内容不能为空!",
-                util::NOT_PARAMETER_CODE,
-            )));
+            return Err(Error::from(("动态标题和内容不能为空!", util::NOT_PARAMETER_CODE, )));
         }
-        let user_info = UserContext::extract_user_by_request(req)
-            .await
-            .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let today_op = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()), util::FORMAT_YMD);
+        let save_path = format!("{}/{}/{}/{}", &CONTEXT.config.data_dir, util::NEWS_PATH, &user_info.account.clone(), today_op.unwrap());
+        // 写入到文件
+        let save_result = save_content(Path::new(&save_path),&format!("{}.txt",&Snowflake::default().generate()),arg.content.clone().unwrap()).await;
+        if save_result.is_err() {
+            error!("保存消息动态时，发生异常:{}", save_result.unwrap_err());
+            return Err(Error::from("发布消息动态失败!"));
+        }
+
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let news = News {
@@ -56,7 +60,7 @@ impl ContentService {
             topic: arg.topic.clone(),
             label: arg.label.clone(),
             abstracts: Some(abstracts),
-            content: arg.content.clone(),
+            path: Some(save_result.unwrap()),
             organize: Some(user_info.organize),
             source: Some(user_info.account.clone()),
             create_time: DateTimeUtil::naive_date_time_to_str(
@@ -65,52 +69,37 @@ impl ContentService {
             ),
             update_time: None,
         };
+
         let write_result = News::insert(business_rbatis_pool!(), &news).await;
         if write_result.is_err() {
             error!("保存消息动态时，发生异常:{}", write_result.unwrap_err());
             return Err(Error::from("发布消息动态失败!"));
         }
-        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX008"))
-            .await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX008")).await;
         return Ok(write_result?.rows_affected);
     }
 
     /// 修改消息动态
     pub async fn edit_news(&self, req: &HttpRequest, arg: &NewsDTO) -> Result<u64> {
-        TokenUtils::check_token(arg.token.clone())
-            .await
-            .ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
-        let check_flag = arg.id.is_none()
-            || arg.topic.is_none()
-            || arg.topic.as_ref().unwrap().is_empty()
-            || arg.content.is_none()
-            || arg.content.as_ref().unwrap().is_empty();
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        let check_flag = arg.id.is_none() || arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag {
-            return Err(Error::from((
-                "动态标题和内容不能为空!",
-                util::NOT_PARAMETER_CODE,
-            )));
+            return Err(Error::from(("动态标题和内容不能为空!", util::NOT_PARAMETER_CODE, )));
         }
-        let user_info = UserContext::extract_user_by_request(req)
-            .await
-            .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let query_news_wrap = News::select_by_id_organize(
-            business_rbatis_pool!(),
-            &arg.id.clone().unwrap(),
-            &user_info.organize,
-        )
-        .await;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let query_news_wrap = News::select_by_id_organize(business_rbatis_pool!(), &arg.id.clone().unwrap(), &user_info.organize, ).await;
         if query_news_wrap.is_err() {
             error!("查询动态异常：{}", query_news_wrap.unwrap_err());
             return Err(Error::from("查询动态失败!"));
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
-        let news_exist = news_option.ok_or_else(|| {
-            Error::from((
-                format!("id={} 的动态不存在!", &arg.id.clone().unwrap()),
-                util::NOT_EXIST_CODE,
-            ))
-        })?;
+        let news_exist = news_option.ok_or_else(|| { Error::from((format!("id={} 的动态不存在!", &arg.id.clone().unwrap()), util::NOT_EXIST_CODE, )) })?;
+        // 写入到文件
+        let save_result = edit_content(Path::new(&news_exist.path.clone().unwrap()),arg.content.clone().unwrap()).await;
+        if save_result.is_err() {
+            error!("修改消息动态时，发生异常:{}", save_result.unwrap_err());
+            return Err(Error::from("修改消息动态失败!"));
+        }
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let news = News {
@@ -118,7 +107,7 @@ impl ContentService {
             topic: arg.topic.clone(),
             label: arg.label.clone(),
             abstracts: Some(abstracts),
-            content: arg.content.clone(),
+            path: news_exist.path,
             organize: news_exist.organize,
             source: Some(user_info.account.clone()),
             create_time: None,
@@ -140,19 +129,27 @@ impl ContentService {
 
     /// 删除消息动态
     pub async fn delete_news(&self, req: &HttpRequest, id: &u64) -> Result<u64> {
-        let user_info = UserContext::extract_user_by_request(req)
-            .await
-            .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        // 只能删除自己组织机构下的数据
-        let write_result =
-            News::delete_by_id_organize(business_rbatis_pool!(), id, &user_info.organize).await;
-        if write_result.is_err() {
-            error!("删除消息动态时，发生异常:{}", write_result.unwrap_err());
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let query_news_wrap = News::select_by_id_organize(business_rbatis_pool!(), id, &user_info.organize).await;
+        if query_news_wrap.is_err() {
+            error!("查询动态异常：{}", query_news_wrap.unwrap_err());
+            return Err(Error::from("查询动态失败!"));
+        }
+        let news_option = query_news_wrap.unwrap().into_iter().next();
+        let news = news_option.ok_or_else(|| { Error::from((format!("id={} 的动态不存在!", id), util::NOT_EXIST_CODE)) })?;
+        let remove_result = remove_file_if_exists(Path::new(&news.path.unwrap())).await;
+        if remove_result.is_err() {
+            error!("删除消息动态时，发生异常:{}", remove_result.unwrap_err());
             return Err(Error::from("删除消息动态失败!"));
         }
-        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX010"))
-            .await;
-        return Ok(write_result?.rows_affected);
+        // 只能删除自己组织机构下的数据
+        let del_result =  News::delete_by_id_organize(business_rbatis_pool!(), id, &user_info.organize).await;
+        if del_result.is_err() {
+            error!("删除消息动态时，发生异常:{}", del_result.unwrap_err());
+            return Err(Error::from("删除消息动态失败!"));
+        }
+        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX010")).await;
+        return Ok(del_result?.rows_affected);
     }
 
     /// 获取消息动态
@@ -164,9 +161,14 @@ impl ContentService {
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
         let news_exist = news_option.ok_or_else(|| {
-            Error::from((format!("id={} 的动态不存在!", id), util::NOT_EXIST_CODE))
+            Error::from((format!("id={} 的动态数据不存在!", id), util::NOT_EXIST_CODE))
         })?;
-        return Ok(NewsVO::from(news_exist));
+
+        let content_result = read_content(Path::new(&news_exist.path.clone().unwrap())).await;
+        if content_result.is_err() {
+            Error::from((format!("id={} 的动态文件不存在!", id), util::NOT_EXIST_CODE));
+        }
+        return Ok(NewsVO::from(news_exist,content_result.unwrap()));
     }
 
     /// 获取消息动态详情[公众]
@@ -203,10 +205,15 @@ impl ContentService {
             _item.insert(String::from("id"), json!(news.id));
             _item.insert(String::from("topic"), json!(news.topic));
             _item.insert(String::from("label"), json!(news.label));
-            _item.insert(String::from("content"), json!(news.content));
             _item.insert(String::from("source"), json!(news.source));
             _item.insert(String::from("create_time"), json!(news.create_time));
             if news_id == *id {
+                let read_result = read_content(Path::new(&news.path.unwrap())).await;
+                if read_result.is_err() {
+                    _item.insert(String::from("content"), json!(""));
+                }else {
+                    _item.insert(String::from("content"), json!(read_result.unwrap()));
+                }
                 result.insert(String::from("now"), json!(_item));
             } else if news_id < *id {
                 result.insert(String::from("pre"), json!(_item));

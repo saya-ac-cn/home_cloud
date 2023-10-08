@@ -6,7 +6,7 @@ pub struct News {
     pub topic: Option<String>,
     pub label: Option<String>,
     pub abstracts: Option<String>,
-    pub content: Option<String>,
+    pub path: Option<String>,
     pub organize: Option<u64>,
     pub source: Option<String>,
     pub create_time: Option<String>,

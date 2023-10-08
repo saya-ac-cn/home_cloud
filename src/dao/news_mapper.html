@@ -13,8 +13,8 @@
             <if test="news.abstracts != ''">
                 `  `abstracts` = #{news.abstracts}, `
             </if>
-            <if test="news.content != ''">
-              `  `content` = #{news.content}, `
+            <if test="news.path != ''">
+              `  `path` = #{news.path}, `
             </if>
             <if test="news.source != ''">
               `  `source` = #{news.source}, `
@@ -43,9 +43,6 @@
             <if test="news.label != ''">
                 ` and `label` like concat(#{news.label},'%') `
             </if>
-            <if test="news.content != ''">
-                ` and `content` like concat(#{news.content},'%') `
-            </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
                 ` and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59') `
             </if>
@@ -70,9 +67,6 @@
             </if>
             <if test="news.label != ''">
                 ` and `label` like concat(#{news.label},'%') `
-            </if>
-            <if test="news.content != ''">
-                ` and `content` like concat(#{news.content},'%') `
             </if>
             <if test="extend.begin_time != '' && extend.end_time != ''">
                 ` and `create_time` between date_format(#{extend.begin_time},'%Y-%m-%d 00:00:00')  and date_format(#{extend.end_time },'%Y-%m-%d 23:59:59') `

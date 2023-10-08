@@ -15,16 +15,17 @@ use crate::util::error::{Error, Result};
 use crate::util::string::IsEmptyString;
 use crate::util::token_util::TokenUtils;
 use crate::util::Page;
+use util::file_utils::{save_file,save_base64};
 use crate::{business_rbatis_pool, primary_rbatis_pool, util};
 use actix_http::StatusCode;
-use actix_multipart::{Field, Multipart};
+use actix_multipart::{Multipart};
 use actix_web::web::BufMut;
-use actix_web::{web, HttpRequest, HttpResponse};
-use futures::{StreamExt, TryStreamExt};
+use actix_web::{HttpRequest, HttpResponse};
+use futures::{StreamExt};
 use log::error;
 use rustflake::Snowflake;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Read};
 use std::ops::Add;
 use std::path::Path;
 
@@ -367,8 +368,7 @@ impl OssService {
             &user_info.account.clone(),
             today.clone()
         );
-        let save_result = self
-            .save_base64(Path::new(&save_path), image_arr[1], &file_name)
+        let save_result = save_base64(Path::new(&save_path), image_arr[1], &file_name)
             .await;
         if save_result.is_err() {
             error!(
@@ -469,9 +469,7 @@ impl OssService {
                     &image_ext[image_ext.len() - 1]
                 );
                 // 调用文件的保存接口
-                let save_result = self
-                    .save_file(Path::new(&save_path), &file_name, field)
-                    .await;
+                let save_result = save_file(Path::new(&save_path), &file_name, field).await;
                 if save_result.is_err() {
                     error!(
                         "在保存{}用户的图片时，发生异常:{}",
@@ -553,8 +551,7 @@ impl OssService {
             &user_info.account.clone(),
             today.clone()
         );
-        let save_result = self
-            .save_base64(Path::new(&save_path), image_arr[1], &file_name)
+        let save_result = save_base64(Path::new(&save_path), image_arr[1], &file_name)
             .await;
         if save_result.is_err() {
             error!(
@@ -666,8 +663,7 @@ impl OssService {
                         &file_ext[file_ext.len() - 1]
                     );
                     // 调用文件的保存接口
-                    let save_result = self
-                        .save_file(Path::new(&save_path), &file_name, field)
+                    let save_result = save_file(Path::new(&save_path), &file_name, field)
                         .await;
                     if save_result.is_err() {
                         error!(
@@ -725,74 +721,4 @@ impl OssService {
         return Ok(files.file_url.unwrap());
     }
 
-    /// 保存base64的图片
-    pub async fn save_base64(
-        &self,
-        save_path: &Path,
-        content: &str,
-        file_name: &String,
-    ) -> Result<String> {
-        let path_check_result = self.mkdir_if_not_exists(save_path).await;
-        if path_check_result.is_err() {
-            return Err(path_check_result.unwrap_err());
-        }
-        let file_path = format!("{}/{}", save_path.to_str().unwrap(), file_name);
-        let result = Ok(file_path.clone());
-        let mut f = web::block(|| std::fs::File::create(file_path))
-            .await
-            .unwrap()
-            .unwrap();
-        let bytes = base64::decode(content).unwrap();
-        // f = web::block(move || f.write_all(bytes.as_slice()).map(|_| f)).await.unwrap().unwrap();
-        web::block(move || f.write_all(bytes.as_slice()).map(|_| f))
-            .await
-            .unwrap()
-            .unwrap();
-        return result;
-    }
-
-    /// 保存文件
-    pub async fn save_file(
-        &self,
-        save_path: &Path,
-        file_name: &String,
-        mut field: Field,
-    ) -> Result<String> {
-        let path_check_result = self.mkdir_if_not_exists(save_path).await;
-        if path_check_result.is_err() {
-            return Err(path_check_result.unwrap_err());
-        }
-        let file_path = format!("{}/{}", save_path.to_str().unwrap(), file_name);
-        let result = Ok(file_path.clone());
-        let mut f = web::block(|| std::fs::File::create(file_path))
-            .await
-            .unwrap()
-            .unwrap();
-        while let Some(chunk) = field.try_next().await.unwrap() {
-            // filesystem operations are blocking, we have to use threadpool
-            f = web::block(move || f.write_all(&chunk).map(|_| f))
-                .await
-                .unwrap()
-                .unwrap();
-        }
-        return result;
-    }
-
-    /// 创建目录（不存在的情况下）
-    pub async fn mkdir_if_not_exists(&self, save_path: &Path) -> Result<bool> {
-        if !save_path.exists() {
-            let create_result = std::fs::create_dir_all(save_path);
-            if create_result.is_err() {
-                error!(
-                    "create folder fail,cause by:{:?}",
-                    create_result.unwrap_err()
-                );
-                return Err(Error::from((
-                    "create folder fail",
-                    util::FILE_IO_ERROR_CODE,
-                )));
-            }
-        }
-        Ok(true)
-    }
 }
