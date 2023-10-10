@@ -37,6 +37,7 @@ async fn main() -> std::io::Result<()> {
                     .service(system_controller::user_page)
                     .service(system_controller::own_organize_user)
                     .service(system_controller::user_upload_logo)
+                    .service(system_controller::check_password)
                     .service(system_controller::user_update_password)
                     .service(system_controller::log_page)
                     .service(system_controller::log_excel)

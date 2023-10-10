@@ -69,7 +69,7 @@ pub struct Notes {
     pub label: Option<String>,
     pub topic: Option<String>,
     pub abstracts: Option<String>,
-    pub content: Option<String>,
+    pub path: Option<String>,
     pub source: Option<String>,
     pub create_time: Option<String>,
     pub update_time: Option<String>,

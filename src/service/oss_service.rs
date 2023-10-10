@@ -391,8 +391,7 @@ impl OssService {
             &util::FORMAT_Y_M_D_H_M_S,
         );
 
-        let write_result =
-            User::update_by_column(primary_rbatis_pool!(), &user_exist, "account").await;
+        let write_result = User::update_by_column(primary_rbatis_pool!(), &user_exist, "account").await;
         if write_result.is_err() {
             error!("在修改用户头像时，发生异常:{}", write_result.unwrap_err());
             return Err(Error::from("修改用户头像失败!"));

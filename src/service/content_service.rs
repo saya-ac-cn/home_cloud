@@ -52,7 +52,8 @@ impl ContentService {
             error!("保存消息动态时，发生异常:{}", save_result.unwrap_err());
             return Err(Error::from("发布消息动态失败!"));
         }
-
+        // 去除基础路径变成相对路径
+        let news_path = save_result.unwrap().replace(&CONTEXT.config.data_dir, &String::from(""));
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let news = News {
@@ -60,7 +61,7 @@ impl ContentService {
             topic: arg.topic.clone(),
             label: arg.label.clone(),
             abstracts: Some(abstracts),
-            path: Some(save_result.unwrap()),
+            path: Some(news_path),
             organize: Some(user_info.organize),
             source: Some(user_info.account.clone()),
             create_time: DateTimeUtil::naive_date_time_to_str(
@@ -94,8 +95,9 @@ impl ContentService {
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
         let news_exist = news_option.ok_or_else(|| { Error::from((format!("id={} 的动态不存在!", &arg.id.clone().unwrap()), util::NOT_EXIST_CODE, )) })?;
+        let news_path = format!("{}/{}", &CONTEXT.config.data_dir, news_exist.path.clone().unwrap());
         // 写入到文件
-        let save_result = edit_content(Path::new(&news_exist.path.clone().unwrap()),arg.content.clone().unwrap()).await;
+        let save_result = edit_content(Path::new(&news_path),arg.content.clone().unwrap()).await;
         if save_result.is_err() {
             error!("修改消息动态时，发生异常:{}", save_result.unwrap_err());
             return Err(Error::from("修改消息动态失败!"));
@@ -137,7 +139,8 @@ impl ContentService {
         }
         let news_option = query_news_wrap.unwrap().into_iter().next();
         let news = news_option.ok_or_else(|| { Error::from((format!("id={} 的动态不存在!", id), util::NOT_EXIST_CODE)) })?;
-        let remove_result = remove_file_if_exists(Path::new(&news.path.unwrap())).await;
+        let news_path = format!("{}/{}", &CONTEXT.config.data_dir, news.path.unwrap());
+        let remove_result = remove_file_if_exists(Path::new(&news_path)).await;
         if remove_result.is_err() {
             error!("删除消息动态时，发生异常:{}", remove_result.unwrap_err());
             return Err(Error::from("删除消息动态失败!"));
@@ -163,8 +166,8 @@ impl ContentService {
         let news_exist = news_option.ok_or_else(|| {
             Error::from((format!("id={} 的动态数据不存在!", id), util::NOT_EXIST_CODE))
         })?;
-
-        let content_result = read_content(Path::new(&news_exist.path.clone().unwrap())).await;
+        let news_path = format!("{}/{}", &CONTEXT.config.data_dir, news_exist.path.clone().unwrap());
+        let content_result = read_content(Path::new(&news_path)).await;
         if content_result.is_err() {
             Error::from((format!("id={} 的动态文件不存在!", id), util::NOT_EXIST_CODE));
         }
@@ -208,7 +211,8 @@ impl ContentService {
             _item.insert(String::from("source"), json!(news.source));
             _item.insert(String::from("create_time"), json!(news.create_time));
             if news_id == *id {
-                let read_result = read_content(Path::new(&news.path.unwrap())).await;
+                let news_path = format!("{}/{}", &CONTEXT.config.data_dir, news.path.unwrap());
+                let read_result = read_content(Path::new(&news_path)).await;
                 if read_result.is_err() {
                     _item.insert(String::from("content"), json!(""));
                 }else {
@@ -604,23 +608,23 @@ impl ContentService {
 
     /// 创建笔记
     pub async fn add_notes(&self, req: &HttpRequest, arg: &NotesDTO) -> Result<u64> {
-        TokenUtils::check_token(arg.token.clone())
-            .await
-            .ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
-        let check_flag = arg.notebook_id.is_none()
-            || arg.topic.is_none()
-            || arg.topic.as_ref().unwrap().is_empty()
-            || arg.content.is_none()
-            || arg.content.as_ref().unwrap().is_empty();
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        let check_flag = arg.notebook_id.is_none() || arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag {
-            return Err(Error::from((
-                "笔记标题和内容不能为空!",
-                util::NOT_PARAMETER_CODE,
-            )));
+            return Err(Error::from(("笔记标题和内容不能为空!", util::NOT_PARAMETER_CODE)));
         }
-        let user_info = UserContext::extract_user_by_request(req)
-            .await
-            .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+
+        let today_op = DateTimeUtil::naive_date_time_to_str(&Some(DateUtils::now()), util::FORMAT_YMD);
+        let save_path = format!("{}/{}/{}/{}", &CONTEXT.config.data_dir, util::NOTE_PATH, &user_info.account.clone(), today_op.unwrap());
+        // 写入到文件
+        let save_result = save_content(Path::new(&save_path),&format!("{}.txt",&Snowflake::default().generate()),arg.content.clone().unwrap()).await;
+        if save_result.is_err() {
+            error!("保存笔记时，发生异常:{}", save_result.unwrap_err());
+            return Err(Error::from("保存笔记失败!"));
+        }
+        // 去除基础路径变成相对路径
+        let notes_path = save_result.unwrap().replace(&CONTEXT.config.data_dir, &String::from(""));
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let notes = Notes {
@@ -629,7 +633,7 @@ impl ContentService {
             label: arg.label.clone(),
             topic: arg.topic.clone(),
             abstracts: Some(abstracts),
-            content: arg.content.clone(),
+            path: Some(notes_path),
             source: Some(user_info.account.clone()),
             create_time: DateTimeUtil::naive_date_time_to_str(
                 &Some(DateUtils::now()),
@@ -650,37 +654,27 @@ impl ContentService {
 
     /// 修改笔记
     pub async fn edit_notes(&self, req: &HttpRequest, arg: &NotesDTO) -> Result<u64> {
-        TokenUtils::check_token(arg.token.clone())
-            .await
-            .ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
-        let check_flag = arg.id.is_none()
-            || arg.notebook_id.is_none()
-            || arg.topic.is_none()
-            || arg.topic.as_ref().unwrap().is_empty()
-            || arg.content.is_none()
-            || arg.content.as_ref().unwrap().is_empty();
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        let check_flag = arg.id.is_none() || arg.notebook_id.is_none() || arg.topic.is_none() || arg.topic.as_ref().unwrap().is_empty() || arg.content.is_none() || arg.content.as_ref().unwrap().is_empty();
         if check_flag {
-            return Err(Error::from((
-                "便笺标题和内容不能为空!",
-                util::NOT_PARAMETER_CODE,
-            )));
+            return Err(Error::from(("便笺标题和内容不能为空!", util::NOT_PARAMETER_CODE)));
         }
-        let user_info = UserContext::extract_user_by_request(req)
-            .await
-            .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let query_notes_wrap =
-            Notes::select_by_column(business_rbatis_pool!(), "id", &arg.id).await;
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let query_notes_wrap = Notes::select_by_column(business_rbatis_pool!(), "id", &arg.id).await;
         if query_notes_wrap.is_err() {
             error!("查询笔记异常：{}", query_notes_wrap.unwrap_err());
             return Err(Error::from("查询笔记失败!"));
         }
         let notes_option = query_notes_wrap.unwrap().into_iter().next();
-        let notes_exist = notes_option.ok_or_else(|| {
-            Error::from((
-                format!("id={} 的笔记不存在!", arg.id.unwrap()),
-                util::NOT_EXIST_CODE,
-            ))
-        })?;
+        let notes_exist = notes_option.ok_or_else(|| { Error::from((format!("id={} 的笔记不存在!", arg.id.unwrap()), util::NOT_EXIST_CODE)) })?;
+        let notes_path = format!("{}/{}", &CONTEXT.config.data_dir, notes_exist.path.clone().unwrap());
+        // 写入到文件
+        let save_result = edit_content(Path::new(&notes_path),arg.content.clone().unwrap()).await;
+        if save_result.is_err() {
+            error!("修改消息动态时，发生异常:{}", save_result.unwrap_err());
+            return Err(Error::from("修改消息动态失败!"));
+        }
+
         // 生成一次简述
         let abstracts = Editor::get_content(arg.content.clone().unwrap().as_str());
         let notes = Notes {
@@ -689,19 +683,14 @@ impl ContentService {
             label: arg.label.clone(),
             topic: arg.topic.clone(),
             abstracts: Some(abstracts),
-            content: arg.content.clone(),
+            path: notes_exist.path,
             source: Some(user_info.account.clone()),
             create_time: None,
             update_time: None,
         };
-        let result =
-            NotesMapper::update_notes(business_rbatis_pool!(), &notes, &user_info.organize).await;
+        let result = NotesMapper::update_notes(business_rbatis_pool!(), &notes, &user_info.organize).await;
         if result.is_err() {
-            error!(
-                "在修改id={}的笔记时，发生异常:{}",
-                arg.id.as_ref().unwrap(),
-                result.unwrap_err()
-            );
+            error!("在修改id={}的笔记时，发生异常:{}",arg.id.as_ref().unwrap(),result.unwrap_err());
             return Err(Error::from("笔记修改失败"));
         }
         LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX020"))
@@ -711,17 +700,26 @@ impl ContentService {
 
     /// 删除笔记
     pub async fn delete_notes(&self, req: &HttpRequest, id: &u64) -> Result<u64> {
-        let user_info = UserContext::extract_user_by_request(req)
-            .await
-            .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
-        let result =
-            NotesMapper::delete_notes(business_rbatis_pool!(), id, &user_info.organize).await;
+        let user_info = UserContext::extract_user_by_request(req).await .ok_or_else(|| Error::from(util::NOT_AUTHORIZE_CODE))?;
+        let query_notes_wrap = Notes::select_by_column(business_rbatis_pool!(), "id", id).await;
+        if query_notes_wrap.is_err() {
+            error!("查询笔记异常：{}", query_notes_wrap.unwrap_err());
+            return Err(Error::from("查询笔记失败!"));
+        }
+        let notes_option = query_notes_wrap.unwrap().into_iter().next();
+        let notes = notes_option.ok_or_else(|| { Error::from((format!("id={} 的笔记不存在!", id), util::NOT_EXIST_CODE)) })?;
+        let notes_path = format!("{}/{}", &CONTEXT.config.data_dir, notes.path.unwrap());
+        let remove_result = remove_file_if_exists(Path::new(&notes_path)).await;
+        if remove_result.is_err() {
+            error!("删除笔记时，发生异常:{}", remove_result.unwrap_err());
+            return Err(Error::from("删除笔记失败!"));
+        }
+        let result = NotesMapper::delete_notes(business_rbatis_pool!(), id, &user_info.organize).await;
         if result.is_err() {
             error!("在删除id={}的笔记时，发生异常:{}", id, result.unwrap_err());
             return Err(Error::from("笔记删除失败"));
         }
-        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX021"))
-            .await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX021")).await;
         return Ok(result?.rows_affected);
     }
 
@@ -734,53 +732,53 @@ impl ContentService {
         }
         let notes_option = query_notes_wrap.unwrap().into_iter().next();
         let notes_exist = notes_option.ok_or_else(|| {
-            Error::from((format!("id={} 的动态不存在!", id), util::NOT_EXIST_CODE))
+            Error::from((format!("id={} 的笔记不存在!", id), util::NOT_EXIST_CODE))
         })?;
-        return Ok(NotesVO::from(notes_exist));
+        let notes_path = format!("{}/{}", &CONTEXT.config.data_dir, notes_exist.path.clone().unwrap());
+        let content_result = read_content(Path::new(&notes_path)).await;
+        if content_result.is_err() {
+            Error::from((format!("id={} 的笔记文件不存在!", id), util::NOT_EXIST_CODE));
+        }
+        return Ok(NotesVO::from(notes_exist,content_result.unwrap()));
     }
 
     /// 获取笔记详情[公众]
     pub async fn public_notes_detail(&self, organize: &u64, id: &u64) -> Result<Value> {
         let query_sql = format!("call notes_pre_and_next({}, {})", organize, id);
-        let compute_result_warp = business_rbatis_pool!()
-            .query_decode::<Vec<NotesVO>>(query_sql.as_str(), vec![])
-            .await;
+        let compute_result_warp = business_rbatis_pool!().query_decode::<Vec<NotesVO>>(query_sql.as_str(), vec![]).await;
         if compute_result_warp.is_err() {
-            error!(
-                "在查询id={}附近的笔记时，发生异常:{}",
-                id,
-                compute_result_warp.unwrap_err()
-            );
+            error!("在查询id={}附近的笔记时，发生异常:{}",id,compute_result_warp.unwrap_err());
             return Err(Error::from("查询笔记异常"));
         }
         let rows = compute_result_warp.unwrap();
         if rows.is_empty() {
-            return Err(Error::from((
-                "未查询到符合条件的数据",
-                util::NOT_EXIST_CODE,
-            )));
+            return Err(Error::from(("未查询到符合条件的数据", util::NOT_EXIST_CODE)));
         }
         if rows.len() == 1 && rows[0].id.unwrap() != *id {
-            return Err(Error::from((
-                "未查询到符合条件的数据",
-                util::NOT_EXIST_CODE,
-            )));
+            return Err(Error::from(("未查询到符合条件的数据", util::NOT_EXIST_CODE)));
         }
         let mut result: Map<String, Value> = Map::new();
-        for news in rows {
-            let notes_id = news.id.unwrap();
+        for notes in rows {
+            let notes_id = notes.id.unwrap();
             let mut _item: Map<String, Value> = Map::new();
-            _item.insert(String::from("id"), json!(news.id));
-            _item.insert(String::from("topic"), json!(news.topic));
-            _item.insert(String::from("content"), json!(news.content));
-            _item.insert(String::from("label"), json!(news.label));
-            _item.insert(String::from("source"), json!(news.source));
-            _item.insert(String::from("create_time"), json!(news.create_time));
+            _item.insert(String::from("id"), json!(notes.id));
+            _item.insert(String::from("topic"), json!(notes.topic));
+            _item.insert(String::from("content"), json!(notes.content));
+            _item.insert(String::from("label"), json!(notes.label));
+            _item.insert(String::from("source"), json!(notes.source));
+            _item.insert(String::from("create_time"), json!(notes.create_time));
             if notes_id < *id {
                 result.insert(String::from("pre"), json!(_item));
             } else if notes_id > *id {
                 result.insert(String::from("next"), json!(_item));
             } else {
+                let notes_path = format!("{}/{}", &CONTEXT.config.data_dir, notes.path.unwrap());
+                let read_result = read_content(Path::new(&notes_path)).await;
+                if read_result.is_err() {
+                    _item.insert(String::from("content"), json!(""));
+                }else {
+                    _item.insert(String::from("content"), json!(read_result.unwrap()));
+                }
                 result.insert(String::from("now"), json!(_item));
             }
         }

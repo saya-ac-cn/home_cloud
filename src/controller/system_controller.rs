@@ -24,6 +24,15 @@ pub async fn login(req: HttpRequest, arg: web::Json<SignInDTO>) -> impl Responde
     return RespVO::from_result(&vo).resp_json();
 }
 
+/// 用于在修改密码时，校验原来的密码是否正确
+#[post("/check_password")]
+pub async fn check_password(req: HttpRequest, arg: web::Json<SignInDTO>) -> impl Responder {
+    log::info!("check_password:{:?}", arg.0);
+    let vo = CONTEXT.system_service.check_password(&req, &arg.0).await;
+    return RespVO::from_result(&vo).resp_json();
+}
+
+
 /// 用户注销
 pub async fn logout(req: HttpRequest) -> impl Responder {
     let vo = CONTEXT.system_service.logout(&req).await;

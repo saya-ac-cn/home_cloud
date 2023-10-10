@@ -9,21 +9,23 @@ pub struct NotesVO {
     pub label: Option<String>,
     pub topic: Option<String>,
     pub abstracts: Option<String>,
+    pub path: Option<String>,
     pub content: Option<String>,
     pub source: Option<String>,
     pub create_time: Option<String>,
     pub update_time: Option<String>,
 }
 
-impl From<Notes> for NotesVO {
-    fn from(arg: Notes) -> Self {
+impl NotesVO {
+    pub fn from(arg: Notes,content: String) -> Self {
         Self {
             id: arg.id,
             notebook_id: arg.notebook_id,
             topic: arg.topic,
             label: arg.label,
             abstracts: arg.abstracts,
-            content: arg.content,
+            path: None,
+            content: Some(content),
             source: arg.source,
             create_time: arg.create_time,
             update_time: arg.update_time,

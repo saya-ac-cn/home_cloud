@@ -59,7 +59,7 @@ impl From<&str> for Error {
 }
 
 /// 用户没有指定状态码时，默认util::FAIL
-impl From<std::string::String> for Error {
+impl From<String> for Error {
     fn from(arg: String) -> Self {
         return Error::E(arg, util::FAIL_CODE);
     }
@@ -71,13 +71,13 @@ impl From<(&str, i32)> for Error {
     }
 }
 
-impl From<(std::string::String, i32)> for Error {
-    fn from(arg: (std::string::String, i32)) -> Self {
+impl From<(String, i32)> for Error {
+    fn from(arg: (String, i32)) -> Self {
         return Error::E(arg.0, arg.1);
     }
 }
 
-impl From<Error> for std::io::Error {
+impl From<Error> for io::Error {
     fn from(arg: Error) -> Self {
         arg.into()
     }
