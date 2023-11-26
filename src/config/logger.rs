@@ -33,7 +33,7 @@ pub fn init_log() {
     cfg = cfg.chan_len(CONTEXT.config.log_chan_len);
     let _ = fast_log::init(cfg);
     if CONTEXT.config.debug == false {
-        println!("[abs_admin] release_mode is up! [file_log] open,[console_log] disabled!");
+        println!("[home_cloud] release_mode is up! [file_log] open,[console_log] disabled!");
     }
 }
 
