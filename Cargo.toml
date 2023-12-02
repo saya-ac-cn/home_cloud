@@ -53,3 +53,5 @@ itertools="0.10.5"
 markdown = "0.3"
 #base64（图片要用）
 base64 = "0.13.0"
+#外部加载配置
+config = "0.10.1"

@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fs::File;
+use config::Config;
 
 /// Config
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -49,10 +51,19 @@ pub struct ApplicationConfig {
 
 impl Default for ApplicationConfig {
     fn default() -> Self {
-        let yml_data = include_str!("../../application.yml");
+        // 创建一个 Config 实例
+        let mut config = Config::default();
+
+        // 从文件加载配置（假设配置文件为 config.yml）
+        config.merge(File::with_name("config.yml")).unwrap();
+
+        // 将配置反序列化为 AppConfig 结构体
+        let result: ApplicationConfig = config.try_into().unwrap();
+
+
+        //let yml_data = include_str!("../../application.yml");
         //load config
-        let result: ApplicationConfig =
-            serde_yaml::from_str(yml_data).expect("load config file fail");
+        // let result: ApplicationConfig = serde_yaml::from_str(yml_data).expect("load config file fail");
         if result.debug {
             println!("[home_cloud] load config:{:?}", result);
             println!("[home_cloud] ///////////////////// Start On Debug Mode ////////////////////////////");
