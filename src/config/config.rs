@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use config::{Config, File};
 
 /// Config
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -50,10 +51,9 @@ pub struct ApplicationConfig {
 
 impl Default for ApplicationConfig {
     fn default() -> Self {
-        let yml_data = include_str!("../../application.yml");
-        //load config
-        let result: ApplicationConfig =
-            serde_yaml::from_str(yml_data).expect("load config file fail");
+        let mut config = Config::default();
+        config.merge(File::with_name("application.yml")).unwrap();
+        let result: ApplicationConfig = config.try_into().unwrap();
         if result.debug {
             println!("[home_cloud] load config:{:?}", result);
             println!("[home_cloud] ///////////////////// Start On Debug Mode ////////////////////////////");

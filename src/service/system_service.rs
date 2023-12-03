@@ -102,6 +102,11 @@ impl SystemService {
         return Ok(sign_in_vo);
     }
 
+    /// 登录
+    pub async fn check_password(&self, req: &HttpRequest, arg: &SignInDTO) -> Result<SignInVO> {
+        return Err(Error::from("方法未实现!"));
+    }
+
     ///  生成用户token并返回
     pub async fn generate_token(
         &self,

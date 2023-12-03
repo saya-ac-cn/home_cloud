@@ -30,6 +30,42 @@
     PS：Rust也不建议以“-rs”或“_rs”为后缀来命名包名，如果以此来命名，会强制性的将此后缀去掉。
 
 
+#### 打包相关：
+
+在 Rust 中，使用 Cargo 工具来编译和打包项目。
+
+编译项目：
+```shell
+cargo build
+```
+默认情况下，Cargo 会在 target/debug/ 目录下生成可执行文件。
+
+编译并运行项目：
+```shell
+cargo run
+```
+这将自动编译并运行你的项目。
+
+发布（Release）构建：
+```shell
+cargo build --release
+```
+Release 构建会进行更多的优化，生成的可执行文件在 target/release/ 目录下。
+
+清理构建文件：
+```shell
+cargo clean
+```
+这会删除 target/ 目录下的构建文件。
+
+
+生成文档：
+```shell
+cargo doc
+```
+这将生成项目的文档，并保存在 target/doc/ 目录下。
+
+
 #### 遇到的疑难问题
 
 * 下载文件乱码
