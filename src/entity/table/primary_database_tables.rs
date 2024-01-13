@@ -29,7 +29,7 @@ pub struct User {
     pub background: Option<u64>,
     /// 所属组织
     pub organize_id: Option<u64>,
-    /// 是否锁定(1正常，2锁定)
+    /// 是否锁定(1正常，2锁定冻结)
     pub state: Option<u32>,
     /// 创建时间
     pub create_time: Option<String>,

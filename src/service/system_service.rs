@@ -102,6 +102,30 @@ impl SystemService {
         return Ok(sign_in_vo);
     }
 
+    /// 校验密码是否正确
+    pub async fn check_password(&self, req: &HttpRequest, arg: &SignInDTO) -> Result<bool> {
+        if arg.password.is_none() || arg.password.as_ref().unwrap().is_empty() {
+            return Err(Error::from(("密码不能为空!", util::NOT_PARAMETER_CODE)));
+        }
+        let user_info = UserContext::extract_user_by_request(req).await.ok_or_else(|| Error::from(Error::from(util::NOT_AUTHORIZE_CODE)))?;
+        let query_user_wrap = User::select_by_account(primary_rbatis_pool!(), &user_info.account).await;
+        if query_user_wrap.is_err() {
+            error!("查询用户异常：{}", query_user_wrap.unwrap_err());
+            return Err(Error::from("查询用户失败!"));
+        }
+        let user_warp = query_user_wrap.unwrap().into_iter().next();
+        let user = user_warp.ok_or_else(|| { Error::from((format!("账号:{} 不存在!", &user_info.account), util::NOT_EXIST_CODE)) })?;
+
+        // 判断用户是否被锁定
+        if user.state.eq(&Some(0)) {
+            return Err(Error::from("账户被禁用!"));
+        }
+        if !PasswordEncoder::verify(user.password.as_ref().ok_or_else(|| { Error::from(("错误的用户数据，密码为空!", util::NOT_PARAMETER_CODE)) })?, &arg.password.clone().unwrap(), ) {
+            return Err(Error::from("账户或密码不正确!"));
+        }
+        return Ok(true);
+    }
+
     ///  生成用户token并返回
     pub async fn generate_token(
         &self,
@@ -455,7 +479,7 @@ impl SystemService {
                 util::NOT_PARAMETER_CODE,
             )));
         }
-        let r = User::delete_by_account(primary_rbatis_pool!(), account.clone()).await?;
+        let r = User::delete_by_account(primary_rbatis_pool!(), account).await?;
         return Ok(r.rows_affected);
     }
 
