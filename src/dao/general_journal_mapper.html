@@ -4,7 +4,7 @@
     <update id="update_general_journal">
         ` update `general_journal` `
         <set>
-            <if test="general_journal.flag != 0">
+            <if test="general_journal.flag != ''">
               `  `flag` = #{general_journal.flag}, `
             </if>
             <if test="general_journal.amount != ''">
