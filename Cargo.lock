@@ -921,9 +921,9 @@ checksum = "63dfa964fe2a66f3fde91fc70b267fe193d822c7e603e2a675a49a7f46ad3f49"
 
 [[package]]
 name = "delay_timer"
-version = "0.11.4"
+version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46e3040b73d9397711697558109c983a2dc6fc63e98785ffbefd3ece57b46b67"
+checksum = "d70c0d5d2addc05d1e0cf7e60b3a5bf08415f03136a773d7c66b4e4a3b892cef"
 dependencies = [
  "anyhow",
  "async-trait",
