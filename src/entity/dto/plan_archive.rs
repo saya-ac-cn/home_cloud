@@ -8,6 +8,8 @@ pub struct PlanArchiveDTO {
     pub title: Option<String>,
     /// 正文
     pub content: Option<String>,
+    /// 被提醒者
+    pub notice_user: Option<String>,
     /// 状态
     pub status: Option<u32>,
     /// 归属执行时间

@@ -7,7 +7,7 @@ use crate::entity::dto::plan_archive::{PlanArchiveDTO, PlanArchivePageDTO};
 use crate::entity::dto::sign_in::SignInDTO;
 use crate::entity::dto::user::{UserDTO, UserPageDTO};
 use crate::entity::vo::RespVO;
-use crate::config::CONTEXT;
+use crate::conf::CONTEXT;
 use actix_web::{delete, get, post, put, web, HttpRequest, Responder};
 
 /// 生成token

@@ -2,7 +2,7 @@ use crate::entity::dto::files::{FilesDTO, FilesPageDTO};
 use crate::entity::dto::picture_base64::Base64PictureDTO;
 use crate::entity::dto::pictures::PicturesPageDTO;
 use crate::entity::vo::RespVO;
-use crate::config::CONTEXT;
+use crate::conf::CONTEXT;
 use actix_multipart::Multipart;
 use actix_web::{delete, get, post, put, web, HttpRequest, Responder};
 

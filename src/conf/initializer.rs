@@ -1,8 +1,8 @@
 use rbatis::rbatis::RBatis;
 use lazy_static::lazy_static;
 use tokio::sync::Mutex;
-use crate::config::redis_client::RedisClient;
-use crate::config::config::ApplicationConfig;
+use crate::conf::redis_client::RedisClient;
+use crate::conf::context::ApplicationConfig;
 use crate::service::content_service::ContentService;
 use crate::service::financial_service::FinancialService;
 use crate::service::oss_service::OssService;
@@ -24,21 +24,21 @@ lazy_static! {
 #[macro_export]
 macro_rules! primary_rbatis_pool {
     () => {
-        &mut $crate::config::CONTEXT.primary_rbatis.clone()
+        &mut $crate::conf::CONTEXT.primary_rbatis.clone()
     };
 }
 
 #[macro_export]
 macro_rules! business_rbatis_pool {
     () => {
-        &mut $crate::config::CONTEXT.business_rbatis.clone()
+        &mut $crate::conf::CONTEXT.business_rbatis.clone()
     };
 }
 
 #[macro_export]
 macro_rules! financial_rbatis_pool {
     () => {
-        &mut $crate::config::CONTEXT.financial_rbatis.clone()
+        &mut $crate::conf::CONTEXT.financial_rbatis.clone()
     };
 }
 
@@ -58,7 +58,7 @@ impl ServiceContext {
     /// init database pool
     pub async fn init_pool(&self) {
         // futures::executor::block_on(async {
-        //     self.init_datasource(&self.primary_rbatis,&self.config.primary_database_url,"primary_pool").await
+        //     self.init_datasource(&self.primary_rbatis,&self.conf.primary_database_url,"primary_pool").await
         // });
         self.init_datasource(
             &self.primary_rbatis,

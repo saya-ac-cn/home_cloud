@@ -15,7 +15,7 @@ use crate::entity::vo::plan::PlanVO;
 use crate::entity::vo::plan_archive::PlanArchiveVO;
 use crate::entity::vo::sign_in::SignInVO;
 use crate::entity::vo::user::{UserOwnOrganizeVO, UserVO};
-use crate::config::CONTEXT;
+use crate::conf::CONTEXT;
 use crate::util::date_time::{DateTimeUtil, DateUtils};
 use crate::util::error::Error;
 use crate::util::error::Result;
@@ -34,9 +34,9 @@ use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::vo::total_pre_6_month::TotalPre6MonthVO;
 use crate::entity::vo::total_table::TotalTable;
-use crate::config::user_context::UserContext;
+use crate::conf::user_context::UserContext;
 use crate::util::ip_util::IpUtils;
-use crate::util::scheduler::Scheduler;
+use crate::conf::scheduler::Scheduler;
 use crate::util::token_util::TokenUtils;
 use crate::{business_rbatis_pool, primary_rbatis_pool, util};
 use excel::*;
@@ -351,6 +351,7 @@ impl SystemService {
         let user = User {
             account: arg.account.clone(),
             name: arg.name.clone(),
+            open_id: None,
             password: PasswordEncoder::encode(&password).into(),
             sex: arg.sex.clone(),
             qq: arg.qq.clone(),
@@ -429,6 +430,7 @@ impl SystemService {
         let user_edit = User {
             account: user_exist.account,
             name: arg.name.clone(),
+            open_id:user_exist.open_id,
             password: if arg.password.is_some() {
                 Some(PasswordEncoder::encode(arg.password.as_ref().unwrap()))
             } else {
@@ -547,6 +549,7 @@ impl SystemService {
         let user_edit = User {
             account: user_exist.account,
             name: None,
+            open_id: None,
             password: Some(PasswordEncoder::encode(arg.password.as_ref().unwrap())),
             sex: None,
             qq: None,
@@ -877,24 +880,23 @@ impl SystemService {
 
     /// 创建提醒事项
     pub async fn add_plan(&self, req: &HttpRequest, arg: &PlanDTO) -> Result<u64> {
-        TokenUtils::check_token(arg.token.clone())
-            .await
-            .ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
+        TokenUtils::check_token(arg.token.clone()).await.ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.standard_time.is_none()
             || arg.cycle.is_none()
+            || arg.notice_user.is_none()
             || arg.unit.is_none()
             || arg.content.is_none()
             || arg.content.as_ref().unwrap().is_empty();
         if check_flag {
             return Err(Error::from((
-                "基准时间、重复执行周期、单位和内容不能为空!",
+                "被提醒者、基准时间、重复执行周期、单位和内容不能为空!",
                 util::NOT_PARAMETER_CODE,
             )));
         }
         let cycle = arg.cycle.unwrap();
-
+        let standard_time = format!("{}:00",&arg.standard_time.clone().unwrap().as_str()[..16]);
         let standard_time_result = chrono::NaiveDateTime::parse_from_str(
-            &arg.standard_time.clone().unwrap().as_str(),
+            standard_time.clone().as_str(),
             &util::FORMAT_Y_M_D_H_M_S,
         );
         if standard_time_result.is_err() {
@@ -919,21 +921,23 @@ impl SystemService {
         //   `unit` '重复执行周期单位',
         let plan = Plan {
             id: None,
-            standard_time: arg.standard_time.clone(),
+            standard_time:  DateTimeUtil::naive_date_time_to_str(&Some(standard_time), &util::FORMAT_Y_M_D_H_M_0, ),
             cycle: Some(cycle),
             unit: arg.unit,
             title: arg.title.clone(),
             content: arg.content.clone(),
+            notice_user:arg.notice_user.clone(),
             // 一次性的任务，不用生成下一次执行时间
             next_exec_time: if 1 == cycle {
                 None
             } else {
                 DateTimeUtil::naive_date_time_to_str(
                     &Some(next_exec_time),
-                    &util::FORMAT_Y_M_D_H_M_S,
+                    &util::FORMAT_Y_M_D_H_M_0,
                 )
             },
             organize: Some(user_info.organize),
+            check_up: arg.check_up,
             user: Some(user_info.account.clone()),
             display: arg.display,
             create_time: DateTimeUtil::naive_date_time_to_str(
@@ -953,9 +957,8 @@ impl SystemService {
         }
         let result = write_result.unwrap();
         let plan_id = result.last_insert_id.as_u64().unwrap();
-        Scheduler::add_plan(plan_id, cron_tab.as_str());
-        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX022"))
-            .await?;
+        Scheduler::add_plan(plan_id, cron_tab.as_str()).await;
+        LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX022")).await?;
         return Ok(result.rows_affected);
     }
 
@@ -966,13 +969,14 @@ impl SystemService {
             .ok_or_else(|| Error::from(util::TOKEN_ERROR_CODE))?;
         let check_flag = arg.id.is_none()
             || arg.standard_time.is_none()
+            || arg.notice_user.is_none()
             || arg.cycle.is_none()
             || arg.unit.is_none()
             || arg.content.is_none()
             || arg.content.as_ref().unwrap().is_empty();
         if check_flag {
             return Err(Error::from((
-                "基准时间、重复执行周期、单位和内容不能为空!",
+                "被提醒者、基准时间、重复执行周期、单位和内容不能为空!",
                 util::NOT_PARAMETER_CODE,
             )));
         }
@@ -993,9 +997,9 @@ impl SystemService {
             ))
         })?;
         let cycle = arg.cycle.unwrap();
-
+        let standard_time = format!("{}:00",&arg.standard_time.clone().unwrap().as_str()[..16]);
         let standard_time_result = chrono::NaiveDateTime::parse_from_str(
-            &arg.standard_time.clone().unwrap().as_str(),
+            standard_time.clone().as_str(),
             &util::FORMAT_Y_M_D_H_M_S,
         );
         if standard_time_result.is_err() {
@@ -1015,11 +1019,12 @@ impl SystemService {
         let cron_tab = DateUtils::data_time_to_cron(&standard_time);
         let plan = Plan {
             id: plan_exist.id,
-            standard_time: arg.standard_time.clone(),
+            standard_time:  DateTimeUtil::naive_date_time_to_str(&Some(standard_time), &util::FORMAT_Y_M_D_H_M_0, ),
             cycle: Some(cycle),
             unit: arg.unit,
             title: arg.title.clone(),
             content: arg.content.clone(),
+            notice_user:arg.notice_user.clone(),
             // 一次性的任务，不用生成下一次执行时间
             next_exec_time: if 1 == cycle {
                 None
@@ -1031,6 +1036,7 @@ impl SystemService {
             },
             organize: plan_exist.organize,
             user: Some(user_info.account.clone()),
+            check_up: arg.check_up,
             display: arg.display,
             create_time: None,
             update_time: DateTimeUtil::naive_date_time_to_str(
@@ -1047,8 +1053,7 @@ impl SystemService {
             );
             return Err(Error::from("提醒事项修改失败"));
         }
-        Scheduler::remove(plan_exist.id.unwrap()).await;
-        Scheduler::add_plan(plan_exist.id.unwrap(), cron_tab.as_str()).await;
+        Scheduler::edit_plan(plan_exist.id.unwrap(), cron_tab.as_str()).await;
         LogMapper::record_log_by_context(primary_rbatis_pool!(), &user_info, String::from("OX023"))
             .await?;
         return Ok(result?.rows_affected);
@@ -1143,6 +1148,7 @@ impl SystemService {
             id: None,
             status: Some(3),
             title: plan_exist.title.clone(),
+            notice_user:plan_exist.notice_user.clone(),
             content: plan_exist.content.clone(),
             archive_time: plan_exist.standard_time.clone(),
             organize: plan_exist.organize,
@@ -1176,7 +1182,7 @@ impl SystemService {
         plan_exist.standard_time = plan_exist.next_exec_time;
 
         let standard_time_result = chrono::NaiveDateTime::parse_from_str(
-            &plan_exist.standard_time.clone().unwrap().as_str(),
+            &plan_exist.standard_time.clone().unwrap().as_str()[..19],
             &util::FORMAT_Y_M_D_H_M_S,
         );
         if standard_time_result.is_err() {
@@ -1197,7 +1203,7 @@ impl SystemService {
         let next_exec_time = next_exec_time_op.unwrap();
 
         plan_exist.next_exec_time =
-            DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time), &util::FORMAT_Y_M_D_H_M_S);
+            DateTimeUtil::naive_date_time_to_str(&Some(next_exec_time), &util::FORMAT_Y_M_D_H_M_0);
 
         let mut tx = primary_rbatis_pool!().acquire_begin().await.unwrap();
         let edit_plan_result = PlanMapper::update_plan(&mut tx, &plan_exist).await;

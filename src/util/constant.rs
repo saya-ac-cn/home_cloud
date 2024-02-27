@@ -35,6 +35,7 @@ pub const ILLUSTRATED_PATH: &str = "picture/illustrated";
 pub const WALLPAPER_PATH: &str = "picture/wallpaper";
 
 /// 定义日期相关的格式化format
+pub const FORMAT_Y_M_D_H_M_0: &str = "%Y-%m-%d %H:%M:00";
 pub const FORMAT_Y_M_D_H_M_S: &str = "%Y-%m-%d %H:%M:%S";
 pub const FORMAT_Y_M_D_T_H_M_S: &str = "%Y-%m-%dT%H:%M:%S";
 pub const FORMAT_Y_M_D_T_H_M_S_Z: &str = "%Y-%m-%dT%H:%M:%S%z";

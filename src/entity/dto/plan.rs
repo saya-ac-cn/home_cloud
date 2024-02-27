@@ -14,8 +14,12 @@ pub struct PlanDTO {
     pub title: Option<String>,
     /// 正文
     pub content: Option<String>,
+    /// 被提醒者
+    pub notice_user: Option<String>,
     /// 下次执行时间
     pub next_exec_time: Option<String>,
+    // 是否校验完成
+    pub check_up: Option<u32>,
     /// 归属组织
     pub organize: Option<u64>,
     /// 归属用户

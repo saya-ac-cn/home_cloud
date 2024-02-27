@@ -7,6 +7,8 @@ pub struct User {
     pub account: Option<String>,
     /// 姓名
     pub name: Option<String>,
+    /// 微信openId
+    pub open_id: Option<String>,
     /// 密码
     pub password: Option<String>,
     /// 性别
@@ -62,7 +64,9 @@ pub struct Plan {
     pub unit: Option<u32>,
     pub title: Option<String>,
     pub content: Option<String>,
+    pub notice_user: Option<String>,
     pub next_exec_time: Option<String>,
+    pub check_up: Option<u32>,
     pub organize: Option<u64>,
     pub user: Option<String>,
     pub display: Option<u32>,
@@ -76,6 +80,7 @@ pub struct PlanArchive {
     pub status: Option<u32>,
     pub title: Option<String>,
     pub content: Option<String>,
+    pub notice_user: Option<String>,
     pub archive_time: Option<String>,
     pub organize: Option<u64>,
     pub user: Option<String>,

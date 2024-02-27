@@ -20,7 +20,7 @@ impl RedisClient {
     pub async fn get_conn(&self) -> Result<Connection> {
         let conn = self.client.get_async_connection().await;
         if conn.is_err() {
-            let err = format!("RedisService connect fail:{}", conn.err().unwrap());
+            let err = format!("RedisClient connect fail:{}", conn.err().unwrap());
             error!("{}", err);
             return Err(crate::util::error::Error::from(err));
         }
@@ -34,7 +34,7 @@ impl RedisClient {
         return match result {
             Ok(v) => Ok(v.unwrap()),
             Err(e) => Err(Error::from(format!(
-                "RedisService exists({}) fail:{}",
+                "RedisClient exists({}) fail:{}",
                 k,
                 e.to_string()
             ))),
@@ -55,7 +55,7 @@ impl RedisClient {
         return match result {
             Ok(v) => Ok(v.unwrap_or_default()),
             Err(e) => Err(Error::from(format!(
-                "RedisService get_string({}) fail:{}",
+                "RedisClient get_string({}) fail:{}",
                 k,
                 e.to_string()
             ))),
@@ -71,7 +71,7 @@ impl RedisClient {
             match redis::cmd("SET").arg(&[k, v]).query_async(&mut conn).await {
                 Ok(v) => Ok(v),
                 Err(e) => Err(Error::from(format!(
-                    "RedisService set_string_ex fail:{}",
+                    "RedisClient set_string_ex fail:{}",
                     e.to_string()
                 ))),
             }
@@ -83,7 +83,7 @@ impl RedisClient {
             {
                 Ok(v) => Ok(v),
                 Err(e) => Err(Error::from(format!(
-                    "RedisService set_string_ex fail:{}",
+                    "RedisClient set_string_ex fail:{}",
                     e.to_string()
                 ))),
             }
@@ -97,7 +97,7 @@ impl RedisClient {
         return match redis::cmd("TTL").arg(&[k]).query_async(&mut conn).await {
             Ok(v) => Ok(v),
             Err(e) => Err(Error::from(format!(
-                "RedisService ttl fail:{}",
+                "RedisClient ttl fail:{}",
                 e.to_string()
             ))),
         };
@@ -114,7 +114,7 @@ impl RedisClient {
         {
             Ok(v) => Ok(v),
             Err(e) => Err(Error::from(format!(
-                "RedisService expire fail:{}",
+                "RedisClient expire fail:{}",
                 e.to_string()
             ))),
         };
@@ -138,7 +138,7 @@ impl RedisClient {
                 Ok(result)
             }
             Err(e) => Err(Error::from(format!(
-                "RedisService scan fail:{}",
+                "RedisClient scan fail:{}",
                 e.to_string()
             ))),
         };
@@ -151,7 +151,7 @@ impl RedisClient {
         return match redis::cmd("DEL").arg(&k).query_async(&mut conn).await {
             Ok(v) => Ok(v),
             Err(e) => Err(Error::from(format!(
-                "RedisService del fail:{}",
+                "RedisClient del fail:{}",
                 e.to_string()
             ))),
         };
@@ -166,7 +166,7 @@ impl RedisClient {
         return match redis::cmd("DEL").arg(&keys).query_async(&mut conn).await {
             Ok(v) => Ok(v),
             Err(e) => Err(Error::from(format!(
-                "RedisService del fail:{}",
+                "RedisClient del fail:{}",
                 e.to_string()
             ))),
         };

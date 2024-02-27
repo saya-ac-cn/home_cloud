@@ -8,6 +8,8 @@ pub struct UserVO {
     pub account: Option<String>,
     /// 姓名
     pub name: Option<String>,
+    /// 微信openId
+    pub open_id: Option<String>,
     /// 密码
     pub password: Option<String>,
     /// 性别
@@ -54,6 +56,7 @@ impl From<User> for UserVO {
         Self {
             account: arg.account,
             name: arg.name,
+            open_id:arg.open_id,
             //屏蔽密码
             password: None,
             sex: arg.sex,

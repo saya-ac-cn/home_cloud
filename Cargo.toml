@@ -18,7 +18,7 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 #log
 log = "0.4"
-#fast_log enable features = ["lz4", "zip", "gzip"], and edit src/config/logger fn choose_packer(),edit application.yml add log_pack_compress: "zip"
+#fast_log enable features = ["lz4", "zip", "gzip"], and edit src/conf/logger fn choose_packer(),edit application.yml add log_pack_compress: "zip"
 fast_log = { version = "1.6", features = ["mmap"]}
 futures= { version = "0.3.21", default-features = false, features = ["std"] }
 #web server
@@ -41,7 +41,7 @@ simple_excel_writer = "0.2.0"
 # 日期时间库
 chrono = { version = "0.4", features = ["serde"] }
 # 定时任务
-delay_timer = "0.11.4"
+delay_timer = "0.11.5"
 # 发送邮件
 lettre="0.10.0-alpha.5"
 #用于货币金额

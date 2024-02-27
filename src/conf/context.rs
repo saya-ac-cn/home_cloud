@@ -29,14 +29,8 @@ pub struct ApplicationConfig {
     pub log_chan_len: Option<usize>,
     /// 白名单接口
     pub white_list_api: Vec<String>,
-    /// 发件人
-    pub from_mail: String,
     /// 收件人
-    pub to_mail: Vec<String>,
-    /// 邮件服务器地址
-    pub mail_server: String,
-    /// 邮件服务器发送token
-    pub mail_token: String,
+    pub to_mail: String,
     /// 高德地图ip定位地址
     pub amap_url: String,
     /// 高德地图ip定位密钥
@@ -47,7 +41,18 @@ pub struct ApplicationConfig {
     pub mysql_dump: String,
     /// 文件类型映射字典
     pub file_type_map: HashMap<String, String>,
+    /// 发送微信消息的接口
+    pub wechat_api: String,
+    /// 发送微信消息的模板(提醒)
+    pub wechat_notice_template: String,
+    /// 发送邮件的接口
+    pub mail_api: String,
+    /// 发送邮件的模板(提醒)
+    pub mail_notice_template: String,
+    /// 发送邮件的模板(备份)
+    pub mail_dump_template: String,
 }
+
 
 impl Default for ApplicationConfig {
     fn default() -> Self {
@@ -55,7 +60,7 @@ impl Default for ApplicationConfig {
         config.merge(File::with_name("application.yml")).unwrap();
         let result: ApplicationConfig = config.try_into().unwrap();
         if result.debug {
-            println!("[home_cloud] load config:{:?}", result);
+            println!("[home_cloud] load conf:{:?}", result);
             println!("[home_cloud] ///////////////////// Start On Debug Mode ////////////////////////////");
         } else {
             println!("[home_cloud] ///////////////////// Start On Release Mode ////////////////////////////");

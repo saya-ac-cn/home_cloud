@@ -25,6 +25,9 @@
             <if test="plan.display != 0">
               `  `display` = #{plan.display}, `
             </if>
+            <if test="plan.check_up != ''">
+                `  `check_up` = #{plan.check_up}, `
+            </if>
             <if test="plan.user != ''">
               `  `user` = #{plan.user}, `
             </if>

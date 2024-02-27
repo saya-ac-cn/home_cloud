@@ -1,7 +1,7 @@
 use crate::entity::dto::general_journal::GeneralJournalDTO;
 use crate::entity::dto::journal::{JournalDTO, JournalPageDTO, JournalTotalDTO};
 use crate::entity::vo::RespVO;
-use crate::config::CONTEXT;
+use crate::conf::CONTEXT;
 use actix_web::{delete, get, post, put, web, HttpRequest, Responder};
 
 /// 申报流水

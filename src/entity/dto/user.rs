@@ -7,6 +7,8 @@ pub struct UserDTO {
     pub account: Option<String>,
     /// 姓名
     pub name: Option<String>,
+    /// 微信openId
+    pub open_id: Option<String>,
     /// 密码
     pub password: Option<String>,
     /// 性别
@@ -45,6 +47,7 @@ impl UserDTO {
         Self {
             account: None,
             name: None,
+            open_id:None,
             password: None,
             sex: None,
             qq: None,

@@ -3,9 +3,8 @@ use crate::dao::plan_archive_mapper::PlanArchiveMapper;
 use crate::dao::plan_mapper::PlanMapper;
 use crate::entity::table::{DbDumpLog, Plan, PlanArchive, User};
 use crate::entity::vo::plan_archive::PlanArchiveVO;
-use crate::config::{CONTEXT, SCHEDULER};
+use crate::conf::{CONTEXT, SCHEDULER};
 use crate::util::date_time::{DateTimeUtil, DateUtils};
-use crate::util::mail_util::MailUtils;
 use crate::{primary_rbatis_pool, util};
 use chrono::Duration;
 use delay_timer::prelude::{Task, TaskBuilder, TaskError};
@@ -14,6 +13,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::ops::Sub;
 use std::process::Command;
+use serde_json::{Map, Value};
+use crate::util::message_util::MessageUtil;
 
 /// 调度任务 https://github.com/BinChengZhao/delay-timer
 pub struct Scheduler {}
@@ -49,11 +50,11 @@ pub async fn execute_mysqldump_body() {
             if write_result.is_err() {
                 error!("备份数据库时，发生异常:{}", write_result.unwrap_err());
             } else {
-                MailUtils::send_dump_massage(
-                    today.clone().as_str(),
-                    start_time.unwrap().as_str(),
-                    end_time.unwrap().as_str(),
-                )
+                let mut data: HashMap<&str, String> = HashMap::new();
+                data.insert("archive_date", today);
+                data.insert("start_date", start_time.unwrap());
+                data.insert("end_date", end_time.unwrap());
+                MessageUtil::send_mail_message(&CONTEXT.config.to_mail,&CONTEXT.config.mail_dump_template,&data).await;
             }
             info!("Exit Status: {}", code);
         }
@@ -94,14 +95,14 @@ pub async fn undone_plan_notice_body() {
         return;
     }
     let plans: Vec<PlanArchiveVO> = query_list_result.unwrap().unwrap();
-    if plans.len() > 0 {
+    if plans.len() <= 0 {
         info!("今日不存在未完成的事项");
         return;
     }
     // 对提醒按照用户进行分组
     let mut map: HashMap<String, Vec<PlanArchiveVO>> = HashMap::new();
     for item in plans {
-        let account = item.user.clone().unwrap();
+        let account = item.notice_user.clone().unwrap();
         if map.contains_key(&account) {
             let mut list = map.get(&account).unwrap().to_vec();
             list.push(item);
@@ -113,32 +114,17 @@ pub async fn undone_plan_notice_body() {
     // 遍历这个map
     for (account, plans) in map.iter() {
         let user_info = plans.get(0).clone().unwrap();
-        let mut contets: Vec<String> = Vec::new();
-        let user_mail_info = User {
-            account: Some(account.clone()),
-            name: user_info.clone().user_name,
-            password: None,
-            sex: None,
-            qq: None,
-            email: user_info.clone().user_mail,
-            phone: None,
-            birthday: None,
-            hometown: None,
-            autograph: None,
-            logo: None,
-            background: None,
-            organize_id: None,
-            state: None,
-            create_time: None,
-            update_time: None,
-        };
+        let mut contets: Vec<Value> = Vec::new();
         // 对这个用户下的提醒整理成一个列表
         for plan in plans {
             let content = plan.content.clone().unwrap();
-            contets.push(content);
+            contets.push(Value::String(content));
         }
-        // 发送邮件
-        MailUtils::send_plan_massage(false, &user_mail_info, contets)
+        let mut data:Map<String,Value> = Map::new();
+        data.insert(String::from("user"),Value::String(user_info.clone().user_name.unwrap()));
+        data.insert(String::from("flag"),Value::Bool(false));
+        data.insert(String::from("contents"), Value::Array(contets));
+        MessageUtil::send_mail_message(user_info.clone().user_mail.unwrap().as_str(),&CONTEXT.config.mail_notice_template,&data).await;
     }
 }
 
@@ -208,10 +194,11 @@ pub async fn do_plan_notice() {
         // 提前准备任务归档数据
         let plan_archive = PlanArchive {
             id: None,
-            status: Some(1),
+            status: if 1 == plan.check_up.unwrap(){Some(1)}else{Some(3)},
             title: plan.title.clone(),
+            notice_user:plan.notice_user.clone(),
             content: plan.content.clone(),
-            archive_time: Some(date.clone()),
+            archive_time: plan.standard_time.clone(),
             organize: plan.organize,
             user: plan.user.clone(),
             display: plan.display,
@@ -221,6 +208,8 @@ pub async fn do_plan_notice() {
             ),
             update_time: None,
         };
+        let user_op = plan_pool.get(plan.user.clone().unwrap().as_str());
+        let user = user_op.unwrap();
         if 1 == plan.cycle.unwrap() {
             // 一次性的任务，计划提醒表(plan)按兵不动，只用归档
             let write_result = PlanArchive::insert(primary_rbatis_pool!(), &plan_archive).await;
@@ -233,13 +222,18 @@ pub async fn do_plan_notice() {
                 );
             }
             Scheduler::remove(plan.id.unwrap()).await;
+            let mut data: HashMap<&str, String> = HashMap::new();
+            data.insert("user", user.name.clone().unwrap());
+            data.insert("title", plan.title.unwrap());
+            data.insert("content", plan.content.unwrap());
+            MessageUtil::send_wechat_message(user.open_id.clone().unwrap().as_str(),&CONTEXT.config.wechat_notice_template,&data).await;
             continue;
         }
 
         // 将上次计算好的本次时间放入到本次的基准时间
         plan.standard_time = plan.next_exec_time;
         let standard_time_result = chrono::NaiveDateTime::parse_from_str(
-            plan.standard_time.clone().unwrap().as_str(),
+            &plan.standard_time.clone().unwrap().as_str()[..19],
             &util::FORMAT_Y_M_D_H_M_S,
         );
         if standard_time_result.is_err() {
@@ -305,12 +299,16 @@ pub async fn do_plan_notice() {
         // 生成定时cron表达式
         let cron_tab = DateUtils::data_time_to_cron(&standard_time.clone());
         Scheduler::edit_plan(plan.id.unwrap(), cron_tab.as_str()).await;
-        let user_op = plan_pool.get(plan.user.clone().unwrap().as_str());
-        let user = user_op.unwrap();
+
         let mut contets: Vec<String> = Vec::new();
         let content = plan.content.clone().unwrap();
         contets.push(content);
-        MailUtils::send_plan_massage(true, user, contets)
+
+        let mut data: HashMap<&str, String> = HashMap::new();
+        data.insert("user", user.name.clone().unwrap());
+        data.insert("title", plan.title.unwrap());
+        data.insert("content", plan.content.unwrap());
+        MessageUtil::send_wechat_message(user.open_id.clone().unwrap().as_str(),&CONTEXT.config.wechat_notice_template,&data).await;
     }
 }
 
@@ -338,7 +336,7 @@ impl Scheduler {
             let plans: Vec<Plan> = plan_result.unwrap();
             for plan in plans {
                 let standard_time_result = chrono::NaiveDateTime::parse_from_str(
-                    plan.standard_time.clone().unwrap().as_str(),
+                    &plan.standard_time.clone().unwrap().as_str()[..19],
                     &util::FORMAT_Y_M_D_H_M_S,
                 );
                 if standard_time_result.is_err() {
@@ -373,26 +371,15 @@ impl Scheduler {
 
     pub async fn edit_plan(task_id: u64, cron: &str) {
         let scheduler = SCHEDULER.lock().await;
-        let result: Result<(), TaskError> = scheduler.remove_task(task_id);
-        if result.is_ok() {
-            info!(" - task_id:{}  already remove", task_id);
-            let _result: Result<(), TaskError> =
-                scheduler.add_task(build_plan_notice_async_task(task_id, cron).unwrap());
-            if _result.is_ok() {
-                info!(" - task_id:{} edit success", task_id);
-            } else {
-                error!(
+        let _result: Result<(), TaskError> = scheduler.update_task (build_plan_notice_async_task(task_id, cron).unwrap());
+        if _result.is_ok() {
+            info!(" - task_id:{} edit success", task_id);
+        } else {
+            error!(
                     " - task_id:{} edit failed:{:?}",
                     task_id,
                     _result.unwrap_err()
                 );
-            }
-        } else {
-            error!(
-                " - task_id:{}  remove failed:{:?}",
-                task_id,
-                result.unwrap_err()
-            );
         }
     }
 

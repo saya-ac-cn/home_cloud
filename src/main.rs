@@ -4,14 +4,14 @@ use home_cloud::controller::{
     content_controller, financial_controller, oss_controller, system_controller,
 };
 use home_cloud::middleware::actix_interceptor::ActixInterceptor;
-use home_cloud::config::CONTEXT;
-use home_cloud::util::scheduler::Scheduler;
+use home_cloud::conf::CONTEXT;
+use home_cloud::conf::scheduler::Scheduler;
 
 /// use tokio,because Rbatis specifies the runtime-tokio
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     // log
-    home_cloud::config::logger::init_log();
+    home_cloud::conf::logger::init_log();
     // database
     CONTEXT.init_pool().await;
     // scheduler

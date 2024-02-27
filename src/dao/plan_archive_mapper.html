@@ -13,6 +13,9 @@
             <if test="plan.title != ''">
               `  `title` = #{plan.title}, `
             </if>
+            <if test="plan.notice_user != ''">
+                `  `notice_user` = #{plan.notice_user}, `
+            </if>
             <if test="plan.content != ''">
               `  `content` = #{plan.content}, `
             </if>
@@ -86,7 +89,7 @@
     </select>
 
     <select id="select_undone_list">
-        select a.*,b.`name` as user_name,b.`email` as user_mail from `plan_archive` a inner join `user` b on a.`user` = b.`account` where a.`status` != 3 and a.`archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')
+        select a.*,b.`name` as user_name,b.`email` as user_mail,b.open_id from `plan_archive` a inner join `user` b on a.`user` = b.`account` where a.`status` != 3 and a.`archive_time` <= date_format(now(),'%Y-%m-%d 23:59:59')
     </select>
 
 </mapper>

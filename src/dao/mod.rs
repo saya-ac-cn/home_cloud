@@ -16,7 +16,7 @@ pub mod plan_archive_mapper;
 pub mod plan_mapper;
 pub mod user_mapper;
 
-use crate::config::ApplicationConfig;
+use crate::conf::ApplicationConfig;
 use rbatis::RBatis;
 pub fn init_rbatis(config: &ApplicationConfig) -> RBatis {
     let rbatis = RBatis::new();

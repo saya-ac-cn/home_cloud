@@ -8,7 +8,7 @@ extern crate rbatis;
 
 #[macro_use]
 pub mod util;
-pub mod config;
+pub mod conf;
 pub mod controller;
 pub mod entity;
 pub mod middleware;
