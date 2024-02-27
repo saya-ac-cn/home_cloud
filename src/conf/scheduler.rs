@@ -68,13 +68,6 @@ pub async fn execute_mysqldump_body() {
 /// 构造MySQL备份计划任务
 fn build_mysqldump_async_task() -> Result<Task, TaskError> {
     let mut task_builder = TaskBuilder::default();
-    // let name = String::from("someting");
-    // let body = move || {
-    //     let name_ref = name.clone();
-    //     async move {
-    //         execute_mysqldump_body().await
-    //     }
-    // };
     task_builder
         .set_frequency_repeated_by_cron_str("0 0 3 * * ?")
         .set_task_id(0)
@@ -131,10 +124,6 @@ pub async fn undone_plan_notice_body() {
 /// 构造未完成的待办提醒任务
 fn build_undone_plan_async_task() -> Result<Task, TaskError> {
     let mut task_builder = TaskBuilder::default();
-    // let body = || async {
-    //     undone_plan_notice_body().await;
-    // };
-
     task_builder
         .set_frequency_repeated_by_cron_str("0 0 8 * * ?")
         .set_task_id(5)
